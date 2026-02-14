@@ -9,7 +9,7 @@ All pre-release checks **PASSED**. Your engine is spacecraft-ready. 🐙
 ## 📋 What's Complete
 
 ✅ **Phase 1: Clean & Polish**
-- Version updated to 0.2.2
+- Version updated to 0.2.3
 - Professional README.md (2KB)
 - MIT LICENSE added
 - .gitignore configured
@@ -80,8 +80,8 @@ git push origin v0.2.0
 Go to your repo → **Releases** → **Draft a new release**
 
 ```
-Tag version: v0.2.2
-Release title: OctoLearn v0.2.2 - Initial Release
+Tag version: v0.2.3
+Release title: OctoLearn v0.2.3 - Initial Release
 
 Description:
 🐙 OctoLearn - Structured AutoML Pipeline

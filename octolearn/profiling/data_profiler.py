@@ -3,6 +3,7 @@ import numpy as np
 import hashlib
 from dataclasses import dataclass
 from typing import List, Dict, Optional
+from pandas.api.types import is_numeric_dtype, is_categorical_dtype, is_object_dtype, is_string_dtype
 
 
 @dataclass
@@ -20,9 +21,9 @@ class DatasetProfile:
     low_variance_columns: List[str]
     id_like_columns: List[str]
     high_cardinality_cols: List[str]
-    leakage_suspects: List[str]
+    duplicate_rows: int            # ✅ add this
+    leakage_suspects: List[str]    # ✅ add this
     task_type: str
-
 
 class DataProfiler:
 
@@ -63,8 +64,8 @@ class DataProfiler:
             total_count = len(series)
             unique_ratio = unique_count / total_count if total_count > 0 else 0
 
-            # ---- 1. Datetime detection (object/str only) ----
-            if series.dtype == "object" or np.issubdtype(series.dtype, np.str_):
+            # ---- 1. Datetime detection (string/object only) ----
+            if is_object_dtype(series) or is_string_dtype(series):
                 try:
                     converted = pd.to_datetime(series, errors="raise")
                     datetime_features.append(col)
@@ -79,7 +80,7 @@ class DataProfiler:
                 continue
 
             # ---- 3. Numeric detection ----
-            if pd.api.types.is_numeric_dtype(series):
+            if is_numeric_dtype(series):
 
                 # Binary numeric → categorical
                 if unique_count == 2:
@@ -97,7 +98,7 @@ class DataProfiler:
                     numeric_features.append(col)
 
             # ---- 4. Categorical detection ----
-            elif pd.api.types.is_object_dtype(series) or pd.api.types.is_categorical_dtype(series):
+            elif is_object_dtype(series) or is_categorical_dtype(series) or is_string_dtype(series):
                 categorical_features.append(col)
 
             # ---- 5. Fallback ----
@@ -105,7 +106,6 @@ class DataProfiler:
                 numeric_features.append(col)
 
         return numeric_features, categorical_features, datetime_features, id_like_columns
-
     # -----------------------------------
     # Main Profiling Function
     # -----------------------------------

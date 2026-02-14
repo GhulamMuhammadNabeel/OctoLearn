@@ -20,12 +20,15 @@ class DatasetProfile:
     low_variance_columns: List[str]
     id_like_columns: List[str]
     high_cardinality_cols: List[str]
-    duplicate_rows: int
     leakage_suspects: List[str]
     task_type: str
 
 
 class DataProfiler:
+
+    # -----------------------------------
+    # Utility Functions
+    # -----------------------------------
 
     def _generate_hash(self, X: pd.DataFrame) -> str:
         raw = pd.util.hash_pandas_object(X.head(1000), index=True).values
@@ -42,16 +45,82 @@ class DataProfiler:
             return "classification"
         return "regression"
 
+    # -----------------------------------
+    # Smart Feature Type Inference
+    # -----------------------------------
+
+    def _infer_feature_types(self, X: pd.DataFrame):
+
+        numeric_features = []
+        categorical_features = []
+        datetime_features = []
+        id_like_columns = []
+
+        for col in X.columns:
+
+            series = X[col]
+            unique_count = series.nunique(dropna=True)
+            total_count = len(series)
+            unique_ratio = unique_count / total_count if total_count > 0 else 0
+
+            # ---- 1. Datetime detection (object/str only) ----
+            if series.dtype == "object" or np.issubdtype(series.dtype, np.str_):
+                try:
+                    converted = pd.to_datetime(series, errors="raise")
+                    datetime_features.append(col)
+                    X[col] = converted
+                    continue
+                except Exception:
+                    pass
+
+            # ---- 2. ID-like detection ----
+            if unique_count == total_count and unique_count > 0:
+                id_like_columns.append(col)
+                continue
+
+            # ---- 3. Numeric detection ----
+            if pd.api.types.is_numeric_dtype(series):
+
+                # Binary numeric → categorical
+                if unique_count == 2:
+                    categorical_features.append(col)
+
+                # Low cardinality numeric → categorical
+                elif unique_count <= 10:
+                    categorical_features.append(col)
+
+                # Very small unique ratio → categorical
+                elif unique_ratio < 0.01 and unique_count < 50:
+                    categorical_features.append(col)
+
+                else:
+                    numeric_features.append(col)
+
+            # ---- 4. Categorical detection ----
+            elif pd.api.types.is_object_dtype(series) or pd.api.types.is_categorical_dtype(series):
+                categorical_features.append(col)
+
+            # ---- 5. Fallback ----
+            else:
+                numeric_features.append(col)
+
+        return numeric_features, categorical_features, datetime_features, id_like_columns
+
+    # -----------------------------------
+    # Main Profiling Function
+    # -----------------------------------
+
     def profile(self, X: pd.DataFrame, y: pd.Series) -> DatasetProfile:
 
+        X = X.copy()
         X_sample, y_sample = self._smart_sample(X, y)
 
-        numeric_features = X.select_dtypes(include=np.number).columns.tolist()
-        categorical_features = X.select_dtypes(include=["object", "category"]).columns.tolist()
-        datetime_features = X.select_dtypes(include=["datetime"]).columns.tolist()
+        numeric_features, categorical_features, datetime_features, id_like_columns = self._infer_feature_types(X)
 
+        # Missing %
         missing_report = (X.isnull().mean() * 100).round(2).to_dict()
 
+        # Task detection
         task_type = self.detect_task(y)
 
         imbalance_ratio = None
@@ -59,34 +128,44 @@ class DataProfiler:
             class_counts = y.value_counts(normalize=True)
             imbalance_ratio = round(class_counts.max(), 3)
 
-        skewed_columns = [
-            col for col in numeric_features
-            if abs(X_sample[col].skew()) > 1
-        ]
+        # Skewness
+        skewed_columns = []
+        for col in numeric_features:
+            try:
+                if abs(X_sample[col].skew()) > 1:
+                    skewed_columns.append(col)
+            except Exception:
+                continue
 
+        # Constant columns
         constant_columns = [col for col in X.columns if X[col].nunique() <= 1]
 
-        low_variance_columns = [
-            col for col in numeric_features
-            if X_sample[col].var() < 1e-5
-        ]
+        # Low variance numeric
+        low_variance_columns = []
+        for col in numeric_features:
+            try:
+                if X_sample[col].var() < 1e-5:
+                    low_variance_columns.append(col)
+            except Exception:
+                continue
 
-        id_like_columns = [
-            col for col in X.columns
-            if X[col].nunique() == len(X)
-        ]
-
+        # Duplicates
         duplicate_rows = X.duplicated().sum()
 
+        # High cardinality categorical
         high_cardinality_cols = [
             col for col in categorical_features
             if X[col].nunique() > 0.3 * len(X)
         ]
 
+        # Leakage detection (regression only)
         leakage_suspects = []
         if task_type == "regression" and numeric_features:
-            corr = X_sample[numeric_features].corrwith(y_sample).abs()
-            leakage_suspects = corr[corr > 0.95].index.tolist()
+            try:
+                corr = X_sample[numeric_features].corrwith(y_sample).abs()
+                leakage_suspects = corr[corr > 0.95].index.tolist()
+            except Exception:
+                leakage_suspects = []
 
         dataset_hash = self._generate_hash(X)
 

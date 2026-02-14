@@ -1,10 +1,11 @@
 import pandas as pd
-from sklearn.datasets import load_breast_cancer
+from sklearn.datasets import load_diabetes
 from octolearn import AutoML
-
-data = load_breast_cancer(as_frame=True)
-X = data.data
-y = data.target
+import seaborn as  sns
+# data = load_diabetes(as_frame=True)
+data=sns.load_dataset('titanic')
+X = data.drop('survived', axis=1)
+y = data['survived']
 
 automl = AutoML(show_progress=False)
 automl.fit(X, y)

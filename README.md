@@ -208,6 +208,29 @@ octolearn/
 
 ---
 
+## Core Functionality
+
+OctoLearn ships a set of integrated, production-focused components. Key capabilities currently implemented in this codebase:
+
+- **Dataset Profiling**: `profiling/data_profiler.py` performs automatic type detection (numeric, categorical, datetime), missing-value summaries, duplicate detection, skewness and constant-column checks, high-cardinality detection, and produces a stable dataset hash.
+- **Risk Scoring**: `experiments/risk_scorer.py` computes a 0–100 data quality risk score and returns contributing factors and a categorical label (Low / Moderate / High).
+- **Preprocessing Suggestions**: `experiments/preprocessing_suggester.py` generates actionable strategies for imputation, encoding, scaling, cardinality handling, and column-specific actions.
+- **Baseline Feature Importance**: `experiments/baseline_importance.py` trains a fast Random Forest baseline to produce feature importances.
+- **Explainability (SHAP)**: `experiments/plot_generator.py` integrates SHAP `TreeExplainer` to produce SHAP summary plots and an importance bar chart for tree-based models.
+- **Visual Diagnostics**: `experiments/plot_generator.py` creates per-feature distribution plots, correlation heatmaps, and saves PNG artifacts (non-interactive `Agg` backend supported).
+- **Automated PDF Report**: `experiments/report_generator.py` composes a professional PDF dossier that embeds executive summary, risk banner, preprocessing suggestions, baseline importance, and visual diagnostics.
+- **Recommendation Engine**: `experiments/recommendation_engine.py` synthesizes profiling and model signals into concise, prioritized recommendations.
+- **Core API / Orchestration**: `core.py` exposes the high-level `AutoML` class with methods `fit(X, y)`, `generate_report()`, `get_risk_score()`, `get_preprocessing_suggestions()`, `get_feature_importance()`, and `report()` (raw profile).
+- **Model & Optimization Utilities**: `models/` (selector & registry) and `optimization/optimizer.py` provide foundations for model selection and future HPO workflows.
+- **Preprocessing Pipeline Builder**: `preprocessing/pipeline_builder.py` offers utilities to construct reproducible sklearn-compatible pipelines from suggested strategies.
+- **Feature Engineering & Selection**: `feature/feature_engineer.py` and `feature/feature_selector.py` include initial helpers for transformations and automatic selection heuristics.
+- **Evaluation & Metrics**: `evaluation/metrics.py` contains common evaluation helpers used by experiments and baseline checks.
+- **Tracking & Utilities**: `experiments/tracker.py` plus `utils/helpers.py` provide lightweight run-tracking, reproducibility helpers, and I/O utilities.
+- **Fonts & Assets**: `fonts/` contains font assets used when rendering the PDF reports for consistent professional typography.
+
+These components are designed to work together end-to-end: run `AutoML().fit(X,y)` to create a `DatasetProfile`, inspect suggestions and risks via the API, and call `generate_report()` to produce a stakeholder-ready PDF report and visual artifacts.
+
+
 ## ⚡ Performance
 
 | Task | Time |

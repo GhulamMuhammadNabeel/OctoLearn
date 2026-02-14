@@ -6,7 +6,7 @@
 
 ## ✅ Pre-Release Checklist (COMPLETE)
 
-- [x] Version updated to 0.2.3
+- [x] Version updated to 0.2.2
 - [x] setup.py configured with classifiers and dependencies
 - [x] pyproject.toml configured with build system
 - [x] Comprehensive README.md created
@@ -223,7 +223,7 @@ python -c "from octolearn import AutoML; print(AutoML.__doc__)"
 ## 🐙 Release Statistics
 
 ### Current Release
-- **Version**: 0.2.3
+- **Version**: 0.2.2
 - **Status**: Ready
 - **Files**: 36
 - **Tests**: ✅ Passing

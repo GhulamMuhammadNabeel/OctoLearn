@@ -1,6 +1,3 @@
-"""
-Baseline feature importance calculator - trains quick model for feature insights
-"""
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.preprocessing import LabelEncoder
@@ -15,57 +12,55 @@ class BaselineImportance:
         self.y = y
         self.profile = profile
 
+    def _smart_sample(self, max_rows=100_000):
+        if len(self.X) > max_rows:
+            idx = self.X.sample(max_rows, random_state=42).index
+            return self.X.loc[idx], self.y.loc[idx]
+        return self.X, self.y
+
     def calculate_importance(self) -> dict:
-        """
-        Train quick model and extract feature importance.
-        Returns: {feature: importance_score}
-        """
+
         try:
-            X_processed = self._preprocess_features()
-            
+            X_sample, y_sample = self._smart_sample()
+            X_processed = self._preprocess(X_sample)
+
             if self.profile.task_type == "classification":
                 model = RandomForestClassifier(
-                    n_estimators=50,
-                    max_depth=10,
+                    n_estimators=40,
+                    max_depth=8,
                     random_state=42,
                     n_jobs=-1
                 )
             else:
                 model = RandomForestRegressor(
-                    n_estimators=50,
-                    max_depth=10,
+                    n_estimators=40,
+                    max_depth=8,
                     random_state=42,
                     n_jobs=-1
                 )
-            
-            model.fit(X_processed, self.y)
-            
-            importance_dict = {}
-            for col, imp in zip(self.X.columns, model.feature_importances_):
-                importance_dict[col] = round(float(imp), 4)
-            
-            # Sort by importance
-            sorted_importance = dict(sorted(
+
+            model.fit(X_processed, y_sample)
+
+            importance_dict = {
+                col: round(float(imp), 4)
+                for col, imp in zip(X_sample.columns, model.feature_importances_)
+            }
+
+            return dict(sorted(
                 importance_dict.items(),
                 key=lambda x: x[1],
                 reverse=True
             ))
-            
-            return sorted_importance
-            
+
         except Exception as e:
             return {"error": str(e)}
 
-    def _preprocess_features(self):
-        """Simple preprocessing for model training"""
-        X_copy = self.X.copy()
-        
-        # Handle missing values
+    def _preprocess(self, X):
+        X_copy = X.copy()
         X_copy = X_copy.fillna(X_copy.mean(numeric_only=True))
-        
-        # Encode categorical features
+
         for col in self.profile.categorical_features:
             le = LabelEncoder()
             X_copy[col] = le.fit_transform(X_copy[col].astype(str))
-        
+
         return X_copy

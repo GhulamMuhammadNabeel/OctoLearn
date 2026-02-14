@@ -4,34 +4,21 @@ class RecommendationEngine:
         self.profile = profile
 
     def generate(self):
-        recommendations = []
+        recs = []
+
+        if self.profile.id_like_columns:
+            recs.append(f"Remove identifier columns: {self.profile.id_like_columns}")
+
+        if self.profile.leakage_suspects:
+            recs.append(f"Investigate target leakage in: {self.profile.leakage_suspects}")
+
+        if self.profile.low_variance_columns:
+            recs.append(f"Drop low variance columns: {self.profile.low_variance_columns}")
 
         if self.profile.imbalance_ratio and self.profile.imbalance_ratio > 0.8:
-            recommendations.append(
-                "Severe class imbalance detected. Consider SMOTE or class_weight balancing."
-            )
+            recs.append("Apply class balancing techniques.")
 
-        if len(self.profile.skewed_columns) > 0:
-            recommendations.append(
-                "Highly skewed features detected. Log transformation may improve performance."
-            )
+        if not recs:
+            recs.append("Dataset structurally sound. Proceed to modeling.")
 
-        if len(self.profile.constant_columns) > 0:
-            recommendations.append(
-                "Constant columns found. Remove them to reduce noise."
-            )
-
-        if len(self.profile.high_cardinality_cols) > 0:
-            recommendations.append(
-                "High cardinality categorical features detected. Prefer target encoding."
-            )
-
-        if self.profile.duplicate_rows > 0:
-            recommendations.append(
-                f"Duplicate rows exist ({self.profile.duplicate_rows}). Consider deduplication."
-            )
-
-        if not recommendations:
-            recommendations.append("Dataset looks structurally healthy.")
-
-        return recommendations
+        return recs

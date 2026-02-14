@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "octolearn"
-version = "0.2.0"
+version = "0.2.2"
 description = "Structured AutoML Pipeline with Intelligent Dataset Profiling"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -38,6 +38,6 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ghulam-nabeel/octolearn"
-"Bug Tracker" = "https://github.com/ghulam-nabeel/octolearn/issues"
-Documentation = "https://github.com/ghulam-nabeel/octolearn"
+Homepage = "https://github.com/GhulamMuhammadNabeel/OctoLearn"
+"Bug Tracker" = "https://github.com/GhulamMuhammadNabeel/OctoLearn"
+Documentation = "https://github.com/GhulamMuhammadNabeel/OctoLearn"

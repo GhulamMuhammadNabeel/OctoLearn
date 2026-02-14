@@ -2,7 +2,7 @@
 OctoLearn - Structured AutoML Pipeline with Intelligent Dataset Profiling
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.2"
 __author__ = "Ghulam Muhammad Nabeel"
 __license__ = "MIT"
 

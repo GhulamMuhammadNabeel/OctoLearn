@@ -6,7 +6,7 @@
 
 ## ✅ Pre-Release Checklist (COMPLETE)
 
-- [x] Version updated to 0.2.2
+- [x] Version updated to 0.4.0
 - [x] setup.py configured with classifiers and dependencies
 - [x] pyproject.toml configured with build system
 - [x] Comprehensive README.md created
@@ -50,12 +50,12 @@ git push -u origin main
 
 1. Go to https://github.com/YOUR_USERNAME/octolearn
 2. Click "Releases" → "Create a new release"
-3. Tag: `v0.2.0`
-4. Title: `OctoLearn v0.2.0 - Initial Release`
+3. Tag: `v0.4.0`
+4. Title: `OctoLearn v0.4.0 - Initial Release`
 5. Description:
 
 ```markdown
-## 🐙 OctoLearn v0.2.0 - Initial Release
+## 🐙 OctoLearn v0.4.0 - Initial Release
 
 Structured AutoML Pipeline with Intelligent Dataset Profiling
 
@@ -131,8 +131,8 @@ python -m build
 This creates:
 ```
 dist/
-  octolearn-0.2.0.tar.gz      ← Source distribution
-  octolearn-0.2.0-py3-none-any.whl  ← Wheel
+  octolearn-0.4.0.tar.gz      ← Source distribution
+  octolearn-0.4.0-py3-none-any.whl  ← Wheel
 ```
 
 ### Step 4: Test on TestPyPI (RECOMMENDED)
@@ -223,7 +223,7 @@ python -c "from octolearn import AutoML; print(AutoML.__doc__)"
 ## 🐙 Release Statistics
 
 ### Current Release
-- **Version**: 0.2.2
+- **Version**: 0.4.0
 - **Status**: Ready
 - **Files**: 36
 - **Tests**: ✅ Passing
@@ -231,7 +231,7 @@ python -c "from octolearn import AutoML; print(AutoML.__doc__)"
 - **Code Quality**: Documented, modular, tested
 
 ### Repository Stats
-- **First Commit**: Initial OctoLearn v0.2.0 release
+- **First Commit**: Initial OctoLearn v0.4.0 release
 - **Modules**: 8 core, 6 experiments
 - **Dependencies**: 8 (all pinned)
 - **Python**: 3.8+ supported
@@ -276,4 +276,4 @@ export PYPI_TOKEN="your-token-here"
 
 **OctoLearn is ready for the world. 🚀🐙**
 
-*v0.2.0 — February 2026*
+*v0.4.0 — February 2026*

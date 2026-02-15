@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="octolearn",
-    version="0.2.3",
+    version="0.4.0",
     description="Structured AutoML Pipeline with Intelligent Dataset Profiling",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -39,5 +39,11 @@ setup(
         "seaborn>=0.11.0",
         "shap>=0.40.0"
     ],
+    extras_require={
+        "distributed": [
+            "dask[complete]>=2021.9.0",
+            "ray[default]>=2.0.0"
+        ]
+    },
     python_requires=">=3.8",
 )

@@ -349,4 +349,12 @@ OctoLearn follows modular, automated principles:
 
 **Made with ☕ and 🐙 Logic.**
 
-*OctoLearn v0.2.0 — Intelligent AutoML for Everyone*
+*OctoLearn v0.4.0 — Intelligent AutoML for Everyone*
+
+Optional distributed execution: if you need scalable runs with large datasets or parallel Optuna trials, install the `distributed` extras:
+
+```bash
+pip install .[distributed]
+```
+
+Benchmarks and reproducible examples are available in the `benchmarks/` and `notebooks/` folders. See `benchmarks/README.md` for details.

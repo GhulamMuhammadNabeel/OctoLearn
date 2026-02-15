@@ -9,7 +9,7 @@ All pre-release checks **PASSED**. Your engine is spacecraft-ready. 🐙
 ## 📋 What's Complete
 
 ✅ **Phase 1: Clean & Polish**
-- Version updated to 0.2.3
+- Version updated to 0.4.0
 - Professional README.md (2KB)
 - MIT LICENSE added
 - .gitignore configured
@@ -71,8 +71,8 @@ git push -u origin main
 ### Step 3: Create Release Tag
 
 ```bash
-git tag -a v0.2.0 -m "OctoLearn v0.2.0 - Initial Release"
-git push origin v0.2.0
+git tag -a v0.4.0 -m "OctoLearn v0.4.0 - Initial Release"
+git push origin v0.4.0
 ```
 
 ### Step 4: Create GitHub Release
@@ -80,8 +80,8 @@ git push origin v0.2.0
 Go to your repo → **Releases** → **Draft a new release**
 
 ```
-Tag version: v0.2.3
-Release title: OctoLearn v0.2.3 - Initial Release
+Tag version: v0.4.0
+Release title: OctoLearn v0.4.0 - Initial Release
 
 Description:
 🐙 OctoLearn - Structured AutoML Pipeline
@@ -140,8 +140,8 @@ python -m build
 # Verify
 ls dist/
 # Should show:
-# octolearn-0.2.0-py3-none-any.whl
-# octolearn-0.2.0.tar.gz
+# octolearn-0.4.0-py3-none-any.whl
+# octolearn-0.4.0.tar.gz
 ```
 
 ### Step 3: Test on TestPyPI (RECOMMENDED)
@@ -299,8 +299,8 @@ You're building tools others rely on.
 
 ### GitHub Release
 ```bash
-git tag -a v0.2.0 -m "Release"
-git push origin v0.2.0
+git tag -a v0.4.0 -m "Release"
+git push origin v0.4.0
 # Then create release on github.com
 ```
 

@@ -105,7 +105,7 @@ class AutoCleaner:
 
         # Encoding step (NEW): handle ordinal, bool, and OHE
         self.X = self._encode_categoricals()
-            def _encode_categoricals(self) -> pd.DataFrame:
+        def _encode_categoricals(self) -> pd.DataFrame:
                 """
                 Encode categorical columns using user strategy or defaults.
                 - Ordinal columns: ordinal encoding (user-specified)

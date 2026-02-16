@@ -1,5 +1,5 @@
 """
-OctoLearn Core Module: Main AutoML Orchestrator
+Octolearn Core Module: Main AutoML Orchestrator
 
 Phase 1-4 Complete Pipeline:
 - Dataset profiling and analysis
@@ -50,12 +50,26 @@ logger = setup_logger(__name__)
 class AutoML:
     """
     Complete AutoML pipeline with all Phase 1-4 features.
-    
+
     Phases:
-    - Phase 1: Dataset profiling (COMPLETE ✅)
-    - Phase 2: EDA & visualization (COMPLETE ✅)
-    - Phase 3: Feature engineering & auto-cleaning (COMPLETE ✅)
-    - Phase 4: Model training & optimization (COMPLETE ✅)
+        - Phase 1: Dataset profiling (COMPLETE ✅)
+        - Phase 2: EDA & visualization (COMPLETE ✅)
+        - Phase 3: Feature engineering & auto-cleaning (COMPLETE ✅)
+        - Phase 4: Model training & optimization (COMPLETE ✅)
+
+    Attributes:
+        profiler (DataProfiler): Dataset profiling object.
+        profile_ (DatasetProfile): Profiled dataset object.
+        X_, y_ (pd.DataFrame, pd.Series): Cleaned features and target.
+        X_original_, y_original_ (pd.DataFrame, pd.Series): Original data.
+        outlier_results_ (dict): Outlier analysis results.
+        interaction_results_ (dict): Feature interaction results.
+        cleaning_log_ (dict): Data cleaning log.
+        trained_models_ (dict): All trained model objects.
+        best_model_ (object): Best trained model.
+        model_benchmarks_ (list): Model benchmark results.
+        registry_ (ModelRegistry): Model registry object.
+        evaluation_metric (str): Metric for best model selection.
     """
 
     def __init__(
@@ -71,48 +85,43 @@ class AutoML:
         detect_outliers: bool = True,
         analyze_interactions: bool = True,
         auto_clean: bool = True,
+        # User param overrides for preprocessing
+        imputer_strategy: dict = None,  # e.g. {"numeric": "mean", "categorical": "mode"}
+        encoder_strategy: dict = None,  # e.g. {"ordinal_cols": ["col1"], "bool_cols": ["col2"], "default": "ohe"}
+        scaler: str = None,             # e.g. "standard", "minmax", None
+        id_columns: list = None,        # User-specified ID columns to drop
         # Phase 4 parameters
         train_models: bool = True,
         use_optuna: bool = True,
         use_registry: bool = True,
         parallel_processing: bool = True,
-        n_models: int = 5
+        n_models: int = 5,
+        evaluation_metric: str = None   # User can specify e.g. "f1", "rmse", etc.
     ):
         """
-        Initialize complete AutoML pipeline.
+        Initialize the complete AutoML pipeline with all configuration options.
 
-        Parameters
-        ----------
-        use_full_data : bool
-            Use full dataset or sample (default False)
-        sample_size : int
-            Rows to sample if use_full_data=False (default 500)
-        parallel_workers : int
-            Parallel threads for report generation (default 7)
-        show_progress : bool
-            Print progress messages (default True)
-        generate_shap : bool
-            Generate SHAP plots (default True)
-        calculate_feature_importance : bool
-            Calculate feature importance (default True)
-        generate_recommendations : bool
-            Generate strategic recommendations (default True)
-        detect_outliers : bool
-            Detect outliers (Phase 3, default True)
-        analyze_interactions : bool
-            Analyze feature interactions (Phase 3, default True)
-        auto_clean : bool
-            Automatically clean data (Phase 3, default True)
-        train_models : bool
-            Train multiple models (Phase 4, default True)
-        use_optuna : bool
-            Use Optuna for HPO (Phase 4, default True)
-        use_registry : bool
-            Use model registry (Phase 4, default True)
-        parallel_processing : bool
-            Enable parallel processing (default True)
-        n_models : int
-            Number of models to train (default 5)
+        Args:
+            use_full_data (bool): Use full dataset or sample (default False).
+            sample_size (int): Rows to sample if use_full_data=False (default 500).
+            parallel_workers (int): Parallel threads for report generation (default 7).
+            show_progress (bool): Print progress messages (default True).
+            generate_shap (bool): Generate SHAP plots (default True).
+            calculate_feature_importance (bool): Calculate feature importance (default True).
+            generate_recommendations (bool): Generate strategic recommendations (default True).
+            detect_outliers (bool): Detect outliers (Phase 3, default True).
+            analyze_interactions (bool): Analyze feature interactions (Phase 3, default True).
+            auto_clean (bool): Automatically clean data (Phase 3, default True).
+            imputer_strategy (dict): Imputation strategy for missing values.
+            encoder_strategy (dict): Encoding strategy for categorical features.
+            scaler (str): Scaling method for numeric features.
+            id_columns (list): Columns to treat as IDs and exclude from modeling.
+            train_models (bool): Train multiple models (Phase 4, default True).
+            use_optuna (bool): Use Optuna for HPO (Phase 4, default True).
+            use_registry (bool): Use model registry (Phase 4, default True).
+            parallel_processing (bool): Enable parallel processing (default True).
+            n_models (int): Number of models to train (default 5).
+            evaluation_metric (str): Metric for best model selection (e.g., 'f1', 'rmse').
         """
         # Phase 1
         self.profiler = DataProfiler()
@@ -139,6 +148,11 @@ class AutoML:
         self.outlier_results_ = None
         self.interaction_results_ = None
         self.cleaning_log_ = None
+        # User param overrides for preprocessing
+        self.imputer_strategy = imputer_strategy or {}
+        self.encoder_strategy = encoder_strategy or {}
+        self.scaler = scaler
+        self.id_columns = id_columns
         
         # Phase 4
         self.train_models = train_models
@@ -148,21 +162,29 @@ class AutoML:
         self.trained_models_ = None
         self.best_model_ = None
         self.registry_ = None if use_registry else None
+        self.evaluation_metric = evaluation_metric
 
-    def fit(self, X: pd.DataFrame, y: pd.Series):
+    def fit(self, X: pd.DataFrame, y: pd.Series,
+            imputer_strategy: dict = None,
+            encoder_strategy: dict = None,
+            scaler: str = None,
+            id_columns: list = None):
         """
-        Fit the complete AutoML pipeline.
+        Fit the complete AutoML pipeline (profiling, EDA, cleaning, modeling).
 
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Feature dataframe
-        y : pd.Series
-            Target variable
+        Args:
+            X (pd.DataFrame): Feature dataframe.
+            y (pd.Series): Target variable.
+            imputer_strategy (dict, optional): Override imputation strategy.
+            encoder_strategy (dict, optional): Override encoding strategy.
+            scaler (str, optional): Override scaling method.
+            id_columns (list, optional): Override ID columns.
 
-        Returns
-        -------
-        self : AutoML
+        Returns:
+            AutoML: Self instance for chaining.
+
+        Side Effects:
+            Sets all internal attributes (profile_, X_, y_, etc.)
         """
         # Validate inputs
         validate_dataframe(X, "X")
@@ -170,12 +192,21 @@ class AutoML:
         
         if self.show_progress:
             print("=" * 60)
-            print("OctoLearn AutoML Pipeline")
+            print("Octolearn AutoML Pipeline")
             print("=" * 60)
         
         # Store original data
         self.X_original_ = X.copy()
         self.y_original_ = y.copy()
+        # Allow user to override params at fit time
+        if imputer_strategy is not None:
+            self.imputer_strategy = imputer_strategy
+        if encoder_strategy is not None:
+            self.encoder_strategy = encoder_strategy
+        if scaler is not None:
+            self.scaler = scaler
+        if id_columns is not None:
+            self.id_columns = id_columns
         
         # Sample if necessary
         if not self.use_full_data and X.shape[0] > self.sample_size:
@@ -206,7 +237,7 @@ class AutoML:
         # ============================================================
         if self.show_progress:
             logger.info("\n📊 PHASE 2: Exploratory Data Analysis...")
-        
+
         # Outlier detection (Phase 2/3)
         if self.detect_outliers:
             try:
@@ -218,7 +249,7 @@ class AutoML:
                     logger.info(f"✅ Outlier detection complete")
             except Exception as e:
                 logger.warning(f"⚠️ Outlier detection failed: {str(e)}")
-        
+
         # Feature interaction analysis (Phase 2/3)
         if self.analyze_interactions:
             try:
@@ -230,7 +261,19 @@ class AutoML:
                     logger.info(f"✅ Interaction analysis complete")
             except Exception as e:
                 logger.warning(f"⚠️ Interaction analysis failed: {str(e)}")
-        
+
+        # ============================================================
+        # PHASE 2.5: PREPROCESSING SUGGESTIONS (NEW)
+        # ============================================================
+        if self.show_progress:
+            logger.info("\n💡 Generating preprocessing suggestions (imputer, encoder, scaler, etc.)...")
+        self.preprocessing_suggester_ = PreprocessingSuggester(self.profile_, self.X_)
+        self.preprocessing_suggestions_ = self.preprocessing_suggester_.generate_suggestions()
+        if self.show_progress:
+            logger.info("Preprocessing Suggestions:")
+            for key, suggestions in self.preprocessing_suggestions_.items():
+                logger.info(f"  {key}: {suggestions}")
+
         # ============================================================
         # PHASE 3: AUTOMATIC DATA CLEANING & PREPROCESSING
         # ============================================================
@@ -238,7 +281,15 @@ class AutoML:
             try:
                 if self.show_progress:
                     logger.info("\n🧹 PHASE 3: Automatic Data Cleaning...")
-                cleaner = AutoCleaner(self.X_, self.y_, self.profile_)
+                cleaner = AutoCleaner(
+                    self.X_,
+                    self.y_,
+                    self.profile_,
+                    imputer_strategy=self.imputer_strategy,
+                    encoder_strategy=self.encoder_strategy,
+                    scaler=self.scaler,
+                    id_columns=self.id_columns
+                )
                 self.X_, self.y_, self.cleaning_log_ = cleaner.clean()
                 if self.show_progress:
                     logger.info(f"✅ Data cleaning complete")
@@ -246,30 +297,31 @@ class AutoML:
                         logger.info(f"   Rows after cleaning: {self.X_.shape[0]}")
             except Exception as e:
                 logger.warning(f"⚠️ Auto cleaning failed: {str(e)}")
-        
+
         # Re-profile after cleaning
         if self.auto_clean and self.cleaning_log_:
             self.profile_ = self.profiler.profile(self.X_, self.y_)
-        
+
         if self.show_progress:
             logger.info("\n✅ Phase 1-3 Complete: Ready for reporting and modeling")
-        
+
         # ============================================================
         # PHASE 4: MODEL TRAINING (AUTOMATIC if enabled)
         # ============================================================
         if self.train_models:
             self.train_auto_models()
-        
+
         return self
 
     def generate_report(self) -> str:
         """
-        Generate comprehensive PDF report with all analyses.
+        Generate a comprehensive PDF report with all analyses and visualizations.
 
-        Returns
-        -------
-        str
-            Path to generated PDF file
+        Returns:
+            str: Path to the generated PDF file.
+
+        Raises:
+            ValueError: If fit() has not been called.
         """
         if self.profile_ is None:
             raise ValueError("Run fit() before generating report.")
@@ -382,14 +434,18 @@ class AutoML:
 
         return pdf_file
 
-    def train_auto_models(self) -> Dict:
+    def train_auto_models(self, evaluation_metric: str = None) -> Dict:
         """
-        Train multiple models with Optuna hyperparameter optimization.
+        Train multiple models with Optuna hyperparameter optimization and select the best model.
 
-        Returns
-        -------
-        dict
-            Training results and model comparison
+        Args:
+            evaluation_metric (str, optional): Metric to use for best model selection (overrides class default).
+
+        Returns:
+            dict: Training results and model comparison, including all benchmarks.
+
+        Raises:
+            ValueError: If fit() has not been called.
         """
         if self.profile_ is None:
             raise ValueError("Run fit() before training models.")
@@ -398,12 +454,12 @@ class AutoML:
             logger.info("\n🤖 PHASE 4: Model Training & Optimization...")
 
         try:
-            trainer = ModelTrainer(self.X_, self.y_, self.profile_)
+            metric = evaluation_metric or self.evaluation_metric
+            trainer = ModelTrainer(self.X_, self.y_, self.profile_, evaluation_metric=metric)
             results = trainer.train_all_models()
-            
             self.trained_models_ = trainer.trained_models
             self.best_model_ = trainer.best_model
-            
+            self.model_benchmarks_ = getattr(trainer, 'model_benchmarks', None)
             # Register models if enabled
             if self.use_registry:
                 self.registry_ = ModelRegistry()
@@ -417,29 +473,26 @@ class AutoML:
                         metrics={'score': score},
                         parameters=params
                     )
-                
                 if self.show_progress:
                     logger.info(f"✅ {len(trainer.trained_models)} models registered in registry")
-            
             if self.show_progress:
                 logger.info(f"✅ Model training complete")
                 logger.info(f"   Best model: {results.get('best_model')}")
                 logger.info(f"   Best score: {results.get('best_score'):.4f}")
-            
             return results
-
         except Exception as e:
             logger.error(f"Model training failed: {str(e)}")
             return {'error': str(e)}
 
     def evaluate_best_model(self) -> Dict:
         """
-        Evaluate the best trained model.
+        Evaluate the best trained model on a holdout set using all relevant metrics.
 
-        Returns
-        -------
-        dict
-            Evaluation results
+        Returns:
+            dict: Evaluation results (metrics, confusion matrix, etc.)
+
+        Raises:
+            ValueError: If no model has been trained.
         """
         if self.best_model_ is None:
             logger.error("No trained model available. Run train_auto_models() first.")
@@ -474,7 +527,12 @@ class AutoML:
     # ========================================================================
 
     def get_risk_score(self) -> Dict:
-        """Get dataset risk score (0-100)."""
+        """
+        Get dataset risk score (0-100) and contributing factors.
+
+        Returns:
+            dict: {"score": int, "category": str, "factors": dict}
+        """
         if self.profile_ is None:
             raise ValueError("Run fit() before getting risk score.")
         scorer = RiskScorer(self.profile_, self.X_)
@@ -482,39 +540,79 @@ class AutoML:
         return {"score": score, "category": category, "factors": factors}
 
     def get_preprocessing_suggestions(self) -> Dict:
-        """Get preprocessing recommendations."""
+        """
+        Get recommended preprocessing strategy (imputer, encoder, scaler, etc.).
+
+        Returns:
+            dict: Preprocessing suggestions by category.
+        """
         if self.profile_ is None:
             raise ValueError("Run fit() before getting preprocessing suggestions.")
         suggester = PreprocessingSuggester(self.profile_, self.X_)
         return suggester.generate_suggestions()
 
     def get_feature_importance(self) -> Dict:
-        """Get feature importance ranking."""
+        """
+        Get feature importance ranking for all features.
+
+        Returns:
+            dict: {feature: importance_score}
+        """
         if self.profile_ is None:
             raise ValueError("Run fit() before getting feature importance.")
         importance = BaselineImportance(self.X_, self.y_, self.profile_).calculate_importance()
         return importance
 
     def get_outlier_analysis(self) -> Dict:
-        """Get outlier detection results."""
+        """
+        Get outlier detection results from the pipeline.
+
+        Returns:
+            dict: Outlier analysis results.
+        """
         return self.outlier_results_ or {}
 
     def get_interaction_analysis(self) -> Dict:
-        """Get feature interaction analysis results."""
+        """
+        Get feature interaction analysis results from the pipeline.
+
+        Returns:
+            dict: Feature interaction results.
+        """
         return self.interaction_results_ or {}
 
     def get_cleaning_log(self) -> Dict:
-        """Get data cleaning log."""
+        """
+        Get the data cleaning log (all cleaning steps performed).
+
+        Returns:
+            dict: Cleaning log.
+        """
         return self.cleaning_log_ or {}
 
     def get_trained_models(self) -> Dict:
-        """Get all trained models."""
+        """
+        Get all trained model objects from the pipeline.
+
+        Returns:
+            dict: {model_name: model_object}
+        """
         return self.trained_models_ or {}
 
     def get_best_model(self):
-        """Get best trained model."""
+        """
+        Get the best trained model object from the pipeline.
+
+        Returns:
+            object: Best model.
+        """
         return self.best_model_
 
     def report(self):
-        """Return dataset profile."""
+        """
+        Return the dataset profile object (all metrics, types, etc.).
+
+        Returns:
+            DatasetProfile: Profiled dataset object.
+        """
         return self.profile_

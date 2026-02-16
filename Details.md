@@ -1,6 +1,6 @@
-# OctoLearn: Complete Development Details
+# Octolearn: Complete Development Details
 
-**Version**: 0.4.0  
+**Version**: 0.5.0  
 **Author**: Ghulam Muhammad Nabeel  
 **License**: MIT  
 **Status**: Ready for publication (Phase 4 ✅)
@@ -23,7 +23,7 @@
 
 ### What You've Built
 
-**OctoLearn** is a structured AutoML pipeline that generates **professional-grade intelligence dossiers** on datasets automatically. It performs dataset analysis, profiling, risk assessment, preprocessing recommendations, and feature importance extraction—all in ~550ms.
+**Octolearn** is a structured AutoML pipeline that generates **professional-grade intelligence dossiers** on datasets automatically. It performs dataset analysis, profiling, risk assessment, preprocessing recommendations, and feature importance extraction—all in ~550ms.
 
 ### Key Deliverables
 
@@ -209,7 +209,7 @@ octolearn/
 **Lines**: ~10  
 **Exports**: 
 - `AutoML` class
-- `__version__` (0.4.0)
+- `__version__` (0.5.0)
 
 **Returns**: Nothing directly; acts as namespace
 
@@ -631,7 +631,7 @@ ReportGenerator(
 
 ```
 1. Title Page
-   ├─ OctoLearn Intelligence Report
+   ├─ Octolearn Intelligence Report
    ├─ Generation timestamp
    └─ Dataset hash
 
@@ -687,12 +687,12 @@ Format: `octolearn_report_[DATASET_HASH].pdf`
 
 **Purpose**: Utility functions, custom exceptions, decorators, and validation  
 **Lines**: 350+  
-**Key Classes**: `OctoLearnError` (base exception + 8 subclasses), logging setup, decorators
+**Key Classes**: `OctolearnError` (base exception + 8 subclasses), logging setup, decorators
 
 #### Custom Exception Hierarchy
 
 ```python
-OctoLearnError (base)
+OctolearnError (base)
 ├── ProfilingError
 ├── RiskScoringError
 ├── PreprocessingError
@@ -724,7 +724,7 @@ OctoLearnError (base)
 
 **Usage Example**:
 ```python
-from octolearn.utils.helpers import setup_logger, validate_dataframe, OctoLearnError
+from octolearn.utils.helpers import setup_logger, validate_dataframe, OctolearnError
 
 logger = setup_logger("phase3", "INFO")
 
@@ -1916,7 +1916,7 @@ config.py [250+ lines] ⭐ PHASE 3-4
 └─ ERROR_CONFIG
 
 helpers.py [350+ lines] ⭐ PHASE 3-4
-├─ OctoLearnError (9 exception classes)
+├─ OctolearnError (9 exception classes)
 ├─ setup_logger (logging configuration)
 ├─ @handle_exceptions (error handling decorator)
 ├─ @log_execution (execution tracking decorator)
@@ -1992,7 +1992,7 @@ Time/Date:
 
 ✅ **Distribution Ready**
 - PyPI setup configured
-- Version management (v0.4.0)
+- Version management (v0.5.0)
 - MIT License
 - README + ARCHITECTURE guide
 - Comprehensive Details.md documentation
@@ -2059,7 +2059,7 @@ Time/Date:
 
 | Class | Module | Purpose |
 |--------|--------|---------|
-| `OctoLearnError` | utils/helpers.py | Base exception class |
+| `OctolearnError` | utils/helpers.py | Base exception class |
 | Various exceptions | utils/helpers.py | 8 specific exception types |
 
 ### Key Methods (AutoML API)
@@ -2224,7 +2224,7 @@ automl = AutoML(
 
 ---
 
-**OctoLearn v0.4.0: Complete AutoML Intelligence Pipeline 🐙**
+**Octolearn v0.5.0: Complete AutoML Intelligence Pipeline 🐙**
 
 *Now featuring Phase 3-4: Intelligent Preprocessing + Model Training*
 

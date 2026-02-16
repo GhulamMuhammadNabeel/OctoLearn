@@ -1,4 +1,4 @@
-# Configuration and constants for OctoLearn
+# Configuration and constants for Octolearn
 # ============================================================================
 # DATASET PROFILING THRESHOLDS
 # ============================================================================

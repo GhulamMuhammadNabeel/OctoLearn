@@ -1,5 +1,5 @@
 """
-OctoLearn - Complete Pipeline Test Script
+Octolearn - Complete Pipeline Test Script
 
 This script tests all phases of the AutoML pipeline to verify they work correctly.
 Run this to validate that the library is working as expected.
@@ -10,7 +10,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 print("="*70)
-print("🐙 OctoLearn Complete Pipeline Test")
+print("🐙 Octolearn Complete Pipeline Test")
 print("="*70)
 
 # =========================================================================
@@ -64,12 +64,12 @@ print("\n[4/10] Verifying Phase 1 - Dataset Profiling...")
 try:
     profile = automl_profile.report()
     assert profile is not None, "Profile is None"
-    assert profile.get('n_rows') is not None, "n_rows not found"
-    assert profile.get('task_type') is not None, "task_type not found"
+    assert hasattr(profile, 'n_rows') and profile.n_rows is not None, "n_rows not found"
+    assert hasattr(profile, 'task_type') and profile.task_type is not None, "task_type not found"
     print(f"✅ Profile complete!")
-    print(f"   - Rows: {profile.get('n_rows')}")
-    print(f"   - Columns: {profile.get('n_columns')}")
-    print(f"   - Task: {profile.get('task_type')}")
+    print(f"   - Rows: {profile.n_rows}")
+    print(f"   - Columns: {profile.n_columns}")
+    print(f"   - Task: {profile.task_type}")
 except Exception as e:
     print(f"❌ Phase 1 verification failed: {e}")
     import traceback

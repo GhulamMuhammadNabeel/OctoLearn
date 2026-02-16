@@ -67,22 +67,31 @@ class PlotGenerator:
         # Numeric features
         for col in self.profile.numeric_features[:5]:
             plt.figure(figsize=(6, 4))
-            plt.hist(X_sample[col].dropna(), bins=30, color='#FF4500', alpha=0.7)
-            plt.title(f"Distribution of {col}", color='#FF0000')
+            plt.style.use('dark_background')
+            plt.hist(X_sample[col].dropna(), bins=30, color='#FF0000', alpha=0.85)
+            plt.title(f"Distribution of {col}", color='#FF0000', fontsize=14, fontweight='bold')
+            plt.xlabel(col, color='#FF0000')
+            plt.ylabel('Frequency', color='#FF0000')
+            plt.tick_params(colors='#FF0000')
             path = os.path.join(self.plot_dir, f"{col}_dist.png")
-            plt.savefig(path, dpi=100, bbox_inches='tight')
+            plt.savefig(path, dpi=100, bbox_inches='tight', facecolor='black')
             plt.close()
             paths.append(path)
 
         # Categorical features
         for col in self.profile.categorical_features[:5]:
             plt.figure(figsize=(6, 4))
+            plt.style.use('dark_background')
             counts = X_sample[col].value_counts()
-            sns.barplot(x=counts.index, y=counts.values, palette='magma')
-            plt.title(f"Categorical Distribution: {col}", color='#FF0000')
-            plt.xticks(rotation=45)
+            sns.barplot(x=counts.index, y=counts.values, palette='rocket')
+            plt.title(f"Categorical Distribution: {col}", color='#FF0000', fontsize=14, fontweight='bold')
+            plt.xlabel(col, color='#FF0000')
+            plt.ylabel('Count', color='#FF0000')
+            plt.xticks(rotation=45, color='#FF0000')
+            plt.yticks(color='#FF0000')
+            plt.tick_params(colors='#FF0000')
             path = os.path.join(self.plot_dir, f"{col}_cat.png")
-            plt.savefig(path, dpi=100, bbox_inches='tight')
+            plt.savefig(path, dpi=100, bbox_inches='tight', facecolor='black')
             plt.close()
             paths.append(path)
 
@@ -135,9 +144,9 @@ class PlotGenerator:
         shap_values = explainer(X_sample)
 
         plt.figure(figsize=(8, 6))
-        shap.summary_plot(shap_values, X_sample, show=False)
+        plt.style.use('dark_background')
+        shap.summary_plot(shap_values, X_sample, show=False, plot_color='#FF0000')
         path = os.path.join(self.plot_dir, "shap_summary.png")
-        plt.savefig(path, dpi=100, bbox_inches='tight')
+        plt.savefig(path, dpi=100, bbox_inches='tight', facecolor='black')
         plt.close()
-
         return path

@@ -129,7 +129,7 @@ dmypy.json
 *.swo
 *~
 
-# OctoLearn specific
+# Octolearn specific
 _octolearn_plots_*/
 octolearn_report_*.pdf
 .DS_Store

@@ -31,22 +31,32 @@ logger = setup_logger(__name__)
 class ModelTrainer:
     """
     Trains multiple models with hyperparameter optimization using Optuna.
+
+    Handles train-test split, preprocessing, hyperparameter search, model training, and benchmarking.
+
+    Attributes:
+        X (pd.DataFrame): Feature dataframe.
+        y (pd.Series): Target variable.
+        profile (DatasetProfile): Dataset profile object.
+        task_type (str): 'classification' or 'regression'.
+        trained_models (dict): Trained model objects.
+        model_scores (dict): Scores for each model.
+        best_model (object): Best trained model.
+        best_hp_params (dict): Best hyperparameters for each model.
+        evaluation_metric (str): Metric for best model selection.
+        model_benchmarks (list): List of model benchmark results.
     """
     
-    def __init__(self, X: pd.DataFrame, y: pd.Series, profile, task_type: str = None):
+    def __init__(self, X: pd.DataFrame, y: pd.Series, profile, task_type: str = None, evaluation_metric: str = None):
         """
-        Initialize ModelTrainer.
-        
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Feature dataframe
-        y : pd.Series
-            Target variable
-        profile : DatasetProfile
-            Dataset profile object
-        task_type : str, optional
-            'classification' or 'regression'. Auto-detected if None
+        Initialize ModelTrainer with data, profile, and configuration.
+
+        Args:
+            X (pd.DataFrame): Feature dataframe.
+            y (pd.Series): Target variable.
+            profile (DatasetProfile): Dataset profile object.
+            task_type (str, optional): 'classification' or 'regression'. Auto-detected if None.
+            evaluation_metric (str, optional): Metric for best model selection.
         """
         self.X = X
         self.y = y
@@ -56,12 +66,18 @@ class ModelTrainer:
         self.model_scores = {}
         self.best_model = None
         self.best_hp_params = {}
-        
+        self.evaluation_metric = evaluation_metric
+        self.model_benchmarks = None
         # Prepare data
         self.X_train, self.X_test, self.y_train, self.y_test = self._prepare_data()
     
     def _prepare_data(self) -> Tuple:
-        """Prepare train-test split."""
+        """
+        Prepare train-test split for model training and evaluation.
+
+        Returns:
+            Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]: X_train, X_test, y_train, y_test
+        """
         test_split = MODEL_TRAINING_CONFIG['test_split']
         random_state = MODEL_TRAINING_CONFIG['random_state']
         
@@ -73,7 +89,15 @@ class ModelTrainer:
         )
     
     def _preprocess_data(self, X: pd.DataFrame) -> pd.DataFrame:
-        """Preprocess data: handle categorical, missing values."""
+        """
+        Preprocess data: handle missing values and encode categoricals.
+
+        Args:
+            X (pd.DataFrame): Input features.
+
+        Returns:
+            pd.DataFrame: Preprocessed features.
+        """
         X_proc = X.copy()
         
         # Handle missing values
@@ -108,45 +132,65 @@ class ModelTrainer:
             'trained_models': {},
             'model_scores': {},
             'best_model': None,
-            'best_score': 0
+            'best_score': None,
+            'model_benchmarks': []
         }
+        best_score = None
+        best_model = None
         
         for model_name in models:
             try:
                 logger.info(f"Training {model_name}...")
-                
                 # Optimize hyperparameters
                 best_params = self._optimize_hyperparameters(model_name)
-                
                 # Train model with best params
                 model = self._build_model(model_name, best_params)
                 X_train_proc = self._preprocess_data(self.X_train)
                 X_test_proc = self._preprocess_data(self.X_test)
-                
                 model.fit(X_train_proc, self.y_train)
-                
                 # Evaluate
-                score = model.score(X_test_proc, self.y_test)
-                
+                metric = self.evaluation_metric
+                if metric is None:
+                    metric = 'f1' if self.task_type == 'classification' else 'rmse'
+                # Use ModelEvaluator for metrics
+                from ..evaluation.metrics import ModelEvaluator
+                evaluator = ModelEvaluator(model, X_test_proc, self.y_test, self.task_type)
+                eval_results = evaluator.evaluate()
+                # Get main metric value
+                if self.task_type == 'classification':
+                    metric_value = eval_results['metrics'].get(metric, None)
+                else:
+                    metric_value = eval_results['metrics'].get(metric, None)
+                score = metric_value if metric_value is not None else model.score(X_test_proc, self.y_test)
                 self.trained_models[model_name] = model
                 self.model_scores[model_name] = score
                 self.best_hp_params[model_name] = best_params
-                
                 results['trained_models'][model_name] = str(model)
                 results['model_scores'][model_name] = round(score, 4)
-                
-                logger.info(f"{model_name}: {score:.4f}")
-                
+                # Add to benchmarks table
+                results['model_benchmarks'].append({
+                    'model': model_name,
+                    'score': round(score, 4),
+                    'params': best_params,
+                    'metrics': eval_results['metrics']
+                })
+                logger.info(f"{model_name}: {score:.4f} ({metric})")
                 # Track best model
-                if score > results['best_score']:
-                    results['best_score'] = score
-                    results['best_model'] = model_name
+                if best_score is None or (self.task_type == 'regression' and score < best_score) or (self.task_type == 'classification' and score > best_score):
+                    best_score = score
+                    best_model = model_name
                     self.best_model = model
-            
             except Exception as e:
                 logger.warning(f"Failed to train {model_name}: {str(e)}")
                 continue
-        
+        # Sort benchmarks table
+        if self.task_type == 'regression':
+            results['model_benchmarks'] = sorted(results['model_benchmarks'], key=lambda x: x['score'])
+        else:
+            results['model_benchmarks'] = sorted(results['model_benchmarks'], key=lambda x: x['score'], reverse=True)
+        results['best_model'] = best_model
+        results['best_score'] = best_score
+        self.model_benchmarks = results['model_benchmarks']
         return results
     
     def _optimize_hyperparameters(self, model_name: str) -> Dict:

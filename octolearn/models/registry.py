@@ -29,19 +29,22 @@ logger = setup_logger(__name__)
 
 class ModelRegistry:
     """
-    Registry for storing and managing trained models.
+    Registry for storing and managing trained models, their metadata, and versioning.
+
+    Supports JSON, SQLite, and CSV backends for model persistence and retrieval.
+
+    Attributes:
+        storage_type (str): Backend type ('json', 'sqlite', 'csv').
+        db_path (str): Path to storage file or database.
     """
     
     def __init__(self, storage_type: str = None, db_path: str = None):
         """
-        Initialize ModelRegistry.
-        
-        Parameters
-        ----------
-        storage_type : str, optional
-            Storage backend: 'json' (default), 'sqlite' (optional), 'csv' (readable)
-        db_path : str, optional
-            Path to storage database/file
+        Initialize ModelRegistry with backend and storage path.
+
+        Args:
+            storage_type (str, optional): Storage backend: 'json' (default), 'sqlite', or 'csv'.
+            db_path (str, optional): Path to storage database/file.
         """
         requested_storage = storage_type or MODEL_REGISTRY_CONFIG['storage']
         self.db_path = db_path or MODEL_REGISTRY_CONFIG['db_path']
@@ -65,16 +68,12 @@ class ModelRegistry:
     def _validate_storage_type(self, requested_type: str) -> str:
         """
         Validate storage type and fallback to JSON if needed.
-        
-        Parameters
-        ----------
-        requested_type : str
-            Requested storage type
-            
-        Returns
-        -------
-        str
-            Valid storage type to use
+
+        Args:
+            requested_type (str): Requested storage type.
+
+        Returns:
+            str: Valid storage type to use.
         """
         if requested_type == 'sqlite':
             if not SQLITE_AVAILABLE:
@@ -202,15 +201,15 @@ class ModelRegistry:
     ) -> str:
         """Register model in SQLite."""
         try:
-            # Save model to file
-            model_path = f"{name}_v{version}.pkl"
+            # Save model to file in trained_models/
+            model_dir = Path('trained_models')
+            model_dir.mkdir(exist_ok=True)
+            model_path = str(model_dir / f"{name}_v{version}.pkl")
             with open(model_path, 'wb') as f:
                 pickle.dump(model, f)
-            
             # Store metadata in database
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
             cursor.execute('''
                 INSERT INTO models (name, version, model_path, task_type, metrics, parameters)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -222,13 +221,10 @@ class ModelRegistry:
                 json.dumps(metrics or {}),
                 json.dumps(parameters or {})
             ))
-            
             conn.commit()
             conn.close()
-            
             logger.info(f"Model {name} v{version} registered")
             return f"{name}_v{version}"
-        
         except Exception as e:
             logger.error(f"SQLite registration failed: {str(e)}")
             return None
@@ -238,15 +234,15 @@ class ModelRegistry:
     ) -> str:
         """Register model in JSON."""
         try:
-            # Save model to file
-            model_path = f"{name}_v{version}.pkl"
+            # Save model to file in trained_models/
+            model_dir = Path('trained_models')
+            model_dir.mkdir(exist_ok=True)
+            model_path = str(model_dir / f"{name}_v{version}.pkl")
             with open(model_path, 'wb') as f:
                 pickle.dump(model, f)
-            
             # Load registry
             with open(self.db_path, 'r') as f:
                 registry = json.load(f)
-            
             # Add model entry
             model_id = f"{name}_v{version}"
             registry[model_id] = {
@@ -258,14 +254,11 @@ class ModelRegistry:
                 'parameters': parameters or {},
                 'timestamp': datetime.now().isoformat()
             }
-            
             # Save registry
             with open(self.db_path, 'w') as f:
                 json.dump(registry, f, indent=2)
-            
             logger.info(f"Model {name} v{version} registered")
             return model_id
-        
         except Exception as e:
             logger.error(f"JSON registration failed: {str(e)}")
             return None
@@ -275,14 +268,14 @@ class ModelRegistry:
     ) -> str:
         """Register model in CSV."""
         try:
-            # Save model to file
-            model_path = f"{name}_v{version}.pkl"
+            # Save model to file in trained_models/
+            model_dir = Path('trained_models')
+            model_dir.mkdir(exist_ok=True)
+            model_path = str(model_dir / f"{name}_v{version}.pkl")
             with open(model_path, 'wb') as f:
                 pickle.dump(model, f)
-            
             csv_path = str(self.db_path).replace('.json', '.csv')
             model_id = f"{name}_v{version}"
-            
             # Append to CSV
             with open(csv_path, 'a', newline='') as f:
                 writer = csv.writer(f)
@@ -294,10 +287,8 @@ class ModelRegistry:
                     datetime.now().isoformat(),
                     model_path
                 ])
-            
             logger.info(f"Model {name} v{version} registered in CSV")
             return model_id
-        
         except Exception as e:
             logger.error(f"CSV registration failed: {str(e)}")
             return None

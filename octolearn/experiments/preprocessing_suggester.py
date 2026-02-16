@@ -4,13 +4,35 @@ Context-aware, task-aware, intelligence-driven
 """
 
 
+
 class PreprocessingSuggester:
+    """
+    Suggests advanced, context-aware preprocessing strategies for a dataset.
+
+    Attributes:
+        profile: Dataset profile object.
+        X: Feature dataframe.
+    """
 
     def __init__(self, profile, X):
+        """
+        Initialize PreprocessingSuggester with profile and data.
+
+        Args:
+            profile: Dataset profile object.
+            X: Feature dataframe.
+        """
         self.profile = profile
         self.X = X
 
+
     def generate_suggestions(self) -> dict:
+        """
+        Generate a dictionary of preprocessing suggestions for the dataset.
+
+        Returns:
+            dict: Suggestions for missing values, encoding, scaling, feature engineering, etc.
+        """
 
         return {
             "missing_value_strategy": self._suggest_missing_handling(),
@@ -26,6 +48,12 @@ class PreprocessingSuggester:
     # --------------------------------------------------------
 
     def _suggest_missing_handling(self):
+        """
+        Suggest strategies for handling missing values in the dataset.
+
+        Returns:
+            list: Suggestions for each column with missing values.
+        """
 
         if not self.profile.missing_report:
             return ["No missing values detected."]
@@ -69,6 +97,12 @@ class PreprocessingSuggester:
     # --------------------------------------------------------
 
     def _suggest_categorical_encoding(self):
+        """
+        Suggest encoding strategies for categorical features based on cardinality.
+
+        Returns:
+            list: Suggestions for each categorical column.
+        """
 
         if not self.profile.categorical_features:
             return ["No categorical features."]

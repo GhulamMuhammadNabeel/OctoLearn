@@ -1,7 +1,7 @@
 # Benchmarks
 
 This folder contains small reproducible benchmarks and example data for
-quick validation and demo usage of OctoLearn.
+quick validation and demo usage of Octolearn.
 
 Files:
 - `benchmark_small.csv` - tiny synthetic dataset used by `notebooks/benchmark.ipynb`.

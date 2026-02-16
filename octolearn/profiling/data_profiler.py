@@ -8,6 +8,27 @@ from pandas.api.types import is_numeric_dtype, is_categorical_dtype, is_object_d
 
 @dataclass
 class DatasetProfile:
+    """
+    Data structure for storing the results of dataset profiling.
+
+    Attributes:
+        dataset_hash (str): Unique hash of the dataset.
+        n_rows (int): Number of rows in the dataset.
+        n_columns (int): Number of columns in the dataset.
+        numeric_features (List[str]): List of numeric feature names.
+        categorical_features (List[str]): List of categorical feature names.
+        datetime_features (List[str]): List of datetime feature names.
+        missing_report (Dict[str, float]): Missing value percentage per column.
+        imbalance_ratio (Optional[float]): Class imbalance ratio (if classification).
+        skewed_columns (List[str]): List of skewed columns.
+        constant_columns (List[str]): List of constant columns.
+        low_variance_columns (List[str]): List of low variance columns.
+        id_like_columns (List[str]): List of columns detected as IDs.
+        high_cardinality_cols (List[str]): List of high cardinality columns.
+        duplicate_rows (int): Number of duplicate rows.
+        leakage_suspects (List[str]): Columns suspected of data leakage.
+        task_type (str): 'classification' or 'regression'.
+    """
     dataset_hash: str
     n_rows: int
     n_columns: int
@@ -21,27 +42,62 @@ class DatasetProfile:
     low_variance_columns: List[str]
     id_like_columns: List[str]
     high_cardinality_cols: List[str]
-    duplicate_rows: int            # ✅ add this
-    leakage_suspects: List[str]    # ✅ add this
+    duplicate_rows: int
+    leakage_suspects: List[str]
     task_type: str
 
+
 class DataProfiler:
+    """
+    Main class for profiling datasets in Octolearn.
+
+    Provides methods for feature type inference, task detection, and summary statistics.
+    """
 
     # -----------------------------------
     # Utility Functions
     # -----------------------------------
 
     def _generate_hash(self, X: pd.DataFrame) -> str:
+        """
+        Generate a unique hash for the dataset based on the first 1000 rows.
+
+        Args:
+            X (pd.DataFrame): Input dataframe.
+
+        Returns:
+            str: 12-character MD5 hash string.
+        """
         raw = pd.util.hash_pandas_object(X.head(1000), index=True).values
         return hashlib.md5(raw).hexdigest()[:12]
 
     def _smart_sample(self, X, y, max_rows=100_000):
+        """
+        Sample the dataset if it exceeds max_rows for efficient profiling.
+
+        Args:
+            X (pd.DataFrame): Feature dataframe.
+            y (pd.Series): Target variable.
+            max_rows (int): Maximum number of rows to keep.
+
+        Returns:
+            Tuple[pd.DataFrame, pd.Series]: Sampled X and y.
+        """
         if len(X) > max_rows:
             idx = X.sample(max_rows, random_state=42).index
             return X.loc[idx], y.loc[idx]
         return X, y
 
     def detect_task(self, y: pd.Series) -> str:
+        """
+        Detect the machine learning task type based on the target variable.
+
+        Args:
+            y (pd.Series): Target variable.
+
+        Returns:
+            str: 'classification' or 'regression'.
+        """
         if y.dtype == "object" or y.nunique() < 20:
             return "classification"
         return "regression"
@@ -51,6 +107,15 @@ class DataProfiler:
     # -----------------------------------
 
     def _infer_feature_types(self, X: pd.DataFrame):
+        """
+        Infer feature types (numeric, categorical, datetime, ID-like) for all columns.
+
+        Args:
+            X (pd.DataFrame): Input dataframe.
+
+        Returns:
+            Tuple[List[str], List[str], List[str], List[str]]: Lists of feature names by type.
+        """
 
         numeric_features = []
         categorical_features = []

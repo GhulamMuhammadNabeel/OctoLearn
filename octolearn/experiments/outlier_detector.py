@@ -1,5 +1,5 @@
 """
-Outlier Detection Module for OctoLearn
+Outlier Detection Module for Octolearn
 
 Detects outliers using multiple methods: IQR, Isolation Forest, Z-score
 """

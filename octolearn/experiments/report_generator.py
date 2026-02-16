@@ -23,7 +23,21 @@ from reportlab.pdfbase import pdfmetrics
 class ReportGenerator:
     """
     Generates final PDF report for dataset profiling, visualizations,
-    feature importance, risk score, preprocessing suggestions, and recommendations.
+    feature importance, risk score, preprocessing suggestions, model benchmarks, and recommendations.
+
+    Attributes:
+        profile: Dataset profile object.
+        plot_paths: List of plot image paths.
+        heatmap_path: Path to correlation heatmap image.
+        recommendations: List of strategic recommendations.
+        risk_score: Dataset risk score.
+        risk_category: Risk category string.
+        risk_factors: Dict of risk factors.
+        preprocessing_suggestions: Dict of preprocessing suggestions.
+        feature_importance: Dict of feature importances.
+        shap_path: Path to SHAP plot image.
+        model_benchmarks: List of model benchmark dicts.
+        fonts: Dict of loaded font names.
     """
 
     def __init__(
@@ -38,8 +52,26 @@ class ReportGenerator:
         preprocessing_suggestions=None,
         feature_importance=None,
         shap_path=None,
+        model_benchmarks=None,
         fonts_folder="fonts"
     ):
+        """
+        Initialize ReportGenerator with all report components.
+
+        Args:
+            profile: Dataset profile object.
+            plot_paths: List of plot image paths.
+            heatmap_path: Path to correlation heatmap image.
+            recommendations: List of strategic recommendations.
+            risk_score: Dataset risk score.
+            risk_category: Risk category string.
+            risk_factors: Dict of risk factors.
+            preprocessing_suggestions: Dict of preprocessing suggestions.
+            feature_importance: Dict of feature importances.
+            shap_path: Path to SHAP plot image.
+            model_benchmarks: List of model benchmark dicts.
+            fonts_folder: Path to fonts folder.
+        """
         self.profile = profile
         self.plot_paths = plot_paths or []
         self.heatmap_path = heatmap_path
@@ -50,6 +82,7 @@ class ReportGenerator:
         self.preprocessing_suggestions = preprocessing_suggestions or {}
         self.feature_importance = feature_importance or {}
         self.shap_path = shap_path
+        self.model_benchmarks = model_benchmarks or []
 
         # ---------- Load fonts ----------
         self.fonts = {}
@@ -73,11 +106,10 @@ class ReportGenerator:
 
     def generate(self):
         """
-        Generate the PDF report with red font (#FF0000).
+        Generate the PDF report with all sections, visuals, and model benchmarks.
 
-        Returns
-        -------
-        str : path to generated PDF file
+        Returns:
+            str: Path to the generated PDF file.
         """
         filename = f"octolearn_report_{self.profile.dataset_hash}.pdf"
         doc = SimpleDocTemplate(
@@ -99,7 +131,9 @@ class ReportGenerator:
             fontSize=26,
             textColor=colors.HexColor("#FF0000"),
             fontName=self.fonts["title"],
-            spaceAfter=20
+            spaceAfter=20,
+            backColor=colors.black,
+            alignment=1
         )
 
         section_style = ParagraphStyle(
@@ -108,7 +142,8 @@ class ReportGenerator:
             fontSize=18,
             textColor=colors.HexColor("#FF0000"),
             fontName=self.fonts["section"],
-            spaceAfter=10
+            spaceAfter=10,
+            backColor=colors.black
         )
 
         normal_style = ParagraphStyle(
@@ -116,11 +151,12 @@ class ReportGenerator:
             parent=styles["Normal"],
             fontName=self.fonts["normal"],
             fontSize=10,
-            textColor=colors.HexColor("#FF0000")
+            textColor=colors.HexColor("#FF0000"),
+            backColor=colors.black
         )
 
         # ---------- Title Page ----------
-        elements.append(Paragraph("OctoLearn Intelligence Report", title_style))
+        elements.append(Paragraph("Octolearn Intelligence Report", title_style))
         elements.append(Spacer(1, 0.3 * inch))
         elements.append(Paragraph(
             f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
@@ -177,7 +213,35 @@ class ReportGenerator:
         elements.append(summary_table)
         elements.append(PageBreak())
 
-        # ---------- Feature Overview ----------
+        # ---------- Model Benchmarks Table ----------
+        if self.model_benchmarks:
+            elements.append(Paragraph("Model Benchmarks & Results", section_style))
+            elements.append(Spacer(1, 0.2 * inch))
+            # Table header
+            header = ["Rank", "Model", "Score", "Parameters", "Metrics"]
+            data = [header]
+            for idx, entry in enumerate(self.model_benchmarks, 1):
+                params_str = ", ".join(f"{k}={v}" for k, v in (entry.get('params') or {}).items())
+                metrics_str = ", ".join(f"{k}={round(v,4) if isinstance(v, float) else v}" for k, v in (entry.get('metrics') or {}).items())
+                row = [
+                    str(idx),
+                    entry.get('model', ''),
+                    entry.get('score', ''),
+                    params_str,
+                    metrics_str
+                ]
+                data.append(row)
+            table = Table(data, colWidths=[0.5*inch, 1.2*inch, 0.8*inch, 2.2*inch, 2.2*inch])
+            table.setStyle(TableStyle([
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, -1), self.fonts["normal"]),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("TEXTCOLOR", (0, 1), (-1, 1), colors.HexColor("#FFD700")),  # Highlight best model row
+                ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#222222")),
+            ]))
+            elements.append(table)
+            elements.append(PageBreak())
         elements.append(Paragraph("Feature Overview", section_style))
         elements.append(Spacer(1, 0.2 * inch))
 

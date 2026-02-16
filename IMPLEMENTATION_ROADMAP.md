@@ -1,4 +1,4 @@
-# OctoLearn v0.5.0 - Implementation Roadmap & Code Examples
+# Octolearn v0.5.0 - Implementation Roadmap & Code Examples
 
 **Status:** Ready for development  
 **Priority:** High-impact UX improvements  
@@ -38,7 +38,7 @@ automl = AutoML(
 
 ```python
 """
-Preset configurations for OctoLearn.
+Preset configurations for Octolearn.
 Simplifies configuration for common use cases.
 """
 
@@ -484,7 +484,7 @@ def fit(self, X: pd.DataFrame, y: pd.Series):
     
     if self.show_progress:
         print("\n" + "=" * 70)
-        print("🐙 OctoLearn - Automated Machine Learning Pipeline")
+        print("🐙 Octolearn - Automated Machine Learning Pipeline")
         print("=" * 70)
         print(f"Version: {__version__}")
         print(f"Input data: {X.shape[0]} rows × {X.shape[1]} columns")
@@ -624,7 +624,7 @@ class AutoML:
     def summary(self):
         """Print a summary of analysis results."""
         print("\n" + "=" * 70)
-        print("OctoLearn Pipeline Summary")
+        print("Octolearn Pipeline Summary")
         print("=" * 70)
         
         # Profile summary
@@ -709,7 +709,7 @@ automl.to_json('results.json')  # Save for analysis
 ```python
 """
 Simple classification example with Iris dataset.
-Perfect for beginners learning OctoLearn.
+Perfect for beginners learning Octolearn.
 """
 
 from octolearn import AutoML
@@ -721,14 +721,14 @@ iris = load_iris(as_frame=True)
 X = iris.data
 y = iris.target
 
-print("🔗 OctoLearn Example 1: Iris Classification")
+print("🔗 Octolearn Example 1: Iris Classification")
 print("=" * 60)
 
 # Create AutoML with beginner preset
 automl = AutoML(preset='beginner')
 
 # Fit pipeline
-print("\n📊 Fitting OctoLearn pipeline...")
+print("\n📊 Fitting Octolearn pipeline...")
 automl.fit(X, y)
 
 # Get results
@@ -770,7 +770,7 @@ diabetes = load_diabetes(as_frame=True)
 X = diabetes.data
 y = diabetes.target
 
-print("🔗 OctoLearn Example 2: Housing Regression")
+print("🔗 Octolearn Example 2: Housing Regression")
 print("=" * 60)
 
 # Use production preset
@@ -811,7 +811,7 @@ titanic = load_dataset('titanic')
 X = titanic.drop('survived', axis=1)
 y = titanic['survived']
 
-print("🔗 OctoLearn Example 3: Custom Pipeline")
+print("🔗 Octolearn Example 3: Custom Pipeline")
 print("=" * 60)
 
 # Use custom config: profile only, no training
@@ -946,4 +946,4 @@ After implementing these changes:
 
 ---
 
-**This roadmap transforms OctoLearn from "powerful but intimidating" to "easy to use with room for experts." That's the sweet spot!** 🐙✨
+**This roadmap transforms Octolearn from "powerful but intimidating" to "easy to use with room for experts." That's the sweet spot!** 🐙✨

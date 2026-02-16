@@ -3,7 +3,7 @@
 This module provides a small, optional scaffold to integrate Dask or Ray
 for distributed data processing and parallel Optuna execution.
 
-The functions are intentionally lightweight so importing OctoLearn
+The functions are intentionally lightweight so importing Octolearn
 remains dependency-free; users can opt-in by installing the
 `distributed` extras (dask, ray).
 """

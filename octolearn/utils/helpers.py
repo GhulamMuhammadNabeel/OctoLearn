@@ -11,40 +11,58 @@ from ..config import LOGGING_CONFIG
 # CUSTOM EXCEPTIONS
 # ============================================================================
 
-class OctoLearnError(Exception):
-    """Base exception for OctoLearn"""
+class OctolearnError(Exception):
+    """
+    Base exception for all Octolearn errors.
+    """
     pass
 
-class ProfilingError(OctoLearnError):
-    """Raised when dataset profiling fails"""
+class ProfilingError(OctolearnError):
+    """
+    Raised when dataset profiling fails.
+    """
     pass
 
-class RiskScoringError(OctoLearnError):
-    """Raised when risk scoring fails"""
+class RiskScoringError(OctolearnError):
+    """
+    Raised when risk scoring fails.
+    """
     pass
 
-class PreprocessingError(OctoLearnError):
-    """Raised when preprocessing fails"""
+class PreprocessingError(OctolearnError):
+    """
+    Raised when preprocessing fails.
+    """
     pass
 
-class FeatureEngineeringError(OctoLearnError):
-    """Raised when feature engineering fails"""
+class FeatureEngineeringError(OctolearnError):
+    """
+    Raised when feature engineering fails.
+    """
     pass
 
-class ModelTrainingError(OctoLearnError):
-    """Raised when model training fails"""
+class ModelTrainingError(OctolearnError):
+    """
+    Raised when model training fails.
+    """
     pass
 
-class OptimizationError(OctoLearnError):
-    """Raised when hyperparameter optimization fails"""
+class OptimizationError(OctolearnError):
+    """
+    Raised when hyperparameter optimization fails.
+    """
     pass
 
-class EvaluationError(OctoLearnError):
-    """Raised when evaluation fails"""
+class EvaluationError(OctolearnError):
+    """
+    Raised when evaluation fails.
+    """
     pass
 
-class ReportGenerationError(OctoLearnError):
-    """Raised when report generation fails"""
+class ReportGenerationError(OctolearnError):
+    """
+    Raised when report generation fails.
+    """
     pass
 
 # ============================================================================
@@ -53,16 +71,13 @@ class ReportGenerationError(OctoLearnError):
 
 def setup_logger(name: str) -> logging.Logger:
     """
-    Setup logger for OctoLearn modules.
-    
-    Parameters
-    ----------
-    name : str
-        Logger name (usually __name__)
-        
-    Returns
-    -------
-    logger : logging.Logger
+    Setup logger for Octolearn modules.
+
+    Args:
+        name (str): Logger name (usually __name__).
+
+    Returns:
+        logging.Logger: Configured logger instance.
     """
     logger = logging.getLogger(name)
     
@@ -108,7 +123,7 @@ def handle_exceptions(raise_error: bool = False, logger_obj: Optional[logging.Lo
                     logger_obj.error(f"{error_msg}\n{error_traceback}")
                 
                 if raise_error:
-                    raise OctoLearnError(error_msg) from e
+                    raise OctolearnError(error_msg) from e
                 return None
         return wrapper
     return decorator

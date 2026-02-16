@@ -1,16 +1,20 @@
 class RiskScorer:
-    """Comprehensive data quality risk scoring (0-100)."""
+    """
+    Comprehensive data quality risk scoring (0-100) for datasets.
+
+    Attributes:
+        profile: Dataset profile object.
+        X: Feature dataframe.
+        risk_factors (dict): Detailed risk factors and explanations.
+    """
 
     def __init__(self, profile, X):
         """
-        Initialize RiskScorer.
-        
-        Parameters
-        ----------
-        profile : DatasetProfile
-            Dataset profile from DataProfiler
-        X : pd.DataFrame
-            Feature dataframe
+        Initialize RiskScorer with profile and data.
+
+        Args:
+            profile: Dataset profile from DataProfiler.
+            X: Feature dataframe.
         """
         self.profile = profile
         self.X = X
@@ -18,16 +22,10 @@ class RiskScorer:
 
     def calculate_risk_score(self):
         """
-        Calculate comprehensive risk score (0-100).
-        
-        Returns
-        -------
-        score : int
-            Risk score (0-100)
-        category : str
-            Risk category (Low/Moderate/High)
-        factors : dict
-            Detailed risk factors
+        Calculate comprehensive risk score (0-100) and contributing factors.
+
+        Returns:
+            tuple: (score (int), category (str), factors (dict))
         """
         score = 0
         self.risk_factors = {}

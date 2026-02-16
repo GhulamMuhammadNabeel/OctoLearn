@@ -1,4 +1,4 @@
-# 🐙 OctoLearn v0.2 - Complete Intelligence Engine
+# 🐙 Octolearn v0.2 - Complete Intelligence Engine
 
 **Status**: ✅ PRODUCTION READY  
 **Release**: Phase 2 Complete - Full Diagnostic Suite  
@@ -28,56 +28,56 @@ pdf_report = automl.generate_report()  # Outputs: octolearn_report_<hash>.pdf
 
 ## 🏗 Architecture
 
-### Core Pipeline
-```
-octolearn/
-├── core.py                          ← Main AutoML orchestrator
-├── profiling/
-│   └── data_profiler.py            ← Dataset intelligence (16 metrics)
-├── experiments/
-│   ├── risk_scorer.py              ← Data quality assessment (0-100)
-│   ├── preprocessing_suggester.py   ← Smart preprocessing hints
-│   ├── baseline_importance.py       ← Quick feature ranking
-│   ├── plot_generator.py            ← 6 visualization types
-│   ├── recommendation_engine.py     ← Automated insights
-│   └── report_generator.py          ← PDF factory (ReportLab)
-└── [feature, models, optimization, evaluation, utils]  ← Future layers
-```
+# Octolearn Architecture
 
-### New Modules (Phase 2)
+## Overview
+Octolearn is a modular AutoML pipeline with user-driven, explainable, and automated preprocessing, robust model registry, and modern reporting.
 
-| Module | Purpose | Output |
-|--------|---------|--------|
-| `risk_scorer.py` | Calculate data quality score | Score (0-100), Category, Risk Factors |
-| `preprocessing_suggester.py` | Generate preprocessing strategy | Dict of recommendations by category |
-| `baseline_importance.py` | Train quick model for feature ranking | Feature → Importance dict |
-| `plot_generator.py` (upd) | Generate SHAP plots | 6 PNG visualizations |
-| `report_generator.py` (upd) | Build multi-page PDF | 177KB professional report |
+## Module Wiring
+
+- **core.py (AutoML)**: Orchestrates all phases. Accepts user params for all preprocessing steps (imputer, encoder, scaler, ID columns, etc.).
+    - Calls:
+        - `profiling/data_profiler.py` (profiling)
+        - `experiments/preprocessing_suggester.py` (suggestions)
+        - `preprocessing/auto_cleaner.py` (cleaning, encoding, imputation)
+        - `experiments/plot_generator.py` (EDA, plots)
+        - `experiments/report_generator.py` (PDF)
+        - `models/model_trainer.py` (training)
+        - `models/registry.py` (model registry)
+
+- **profiling/data_profiler.py**: Profiles dataset, detects feature types, missingness, ID columns, cardinality, etc. Returns `DatasetProfile` dataclass.
+
+- **experiments/preprocessing_suggester.py**: Generates context-aware suggestions for imputation, encoding, scaling, feature engineering, column actions, and risk mitigation.
+
+- **preprocessing/auto_cleaner.py**: Applies cleaning actions (duplicates, ID columns, constants, low variance, imputation, encoding) based on user params or config. Handles ordinal, bool, and OHE encoding.
+
+- **models/model_trainer.py**: Trains multiple models with Optuna HPO. Returns trained models and scores.
+
+- **models/registry.py**: Saves all trained models in `trained_models/` and tracks them in a registry (JSON/SQLite/CSV). Handles versioning and metadata.
+
+- **experiments/plot_generator.py**: Generates all plots with black background, red accents, and modern font.
+
+- **experiments/report_generator.py**: Generates PDF report with black background, red accents, and modern font. Includes all analyses, plots, and recommendations.
+
+## Param Flow
+
+- User can override any preprocessing step via `AutoML` params or at `fit()` time:
+    - `imputer_strategy`, `encoder_strategy`, `scaler`, `id_columns`
+- These are passed to `AutoCleaner` and used for all cleaning/encoding/imputation.
+- If not provided, defaults are used (see `config.py`).
+
+## Model Saving & Registry
+
+- All trained models are saved in `trained_models/`.
+- Registry tracks model name, version, metrics, parameters, and file path.
+
+## Visual & Report Theme
+
+- All plots and PDF use a black background, red accents, and modern font (ShantellSans or Helvetica fallback).
 
 ---
 
-## 📊 Feature Inventory
-
-### 1. **Dataset Risk Score (0-100)**
-Comprehensive data quality credit score assessing:
-- Missing data severity (max 20 pts)
-- Duplicate rows (max 15 pts)
-- Class imbalance (max 15 pts)
-- Feature skewness (max 10 pts)
-- Constant columns (max 10 pts)
-- High cardinality (max 10 pts)
-- Feature-to-sample ratio (max 10 pts)
-- Sample size (max 5 pts)
-
-**Categories:**
-- 0-30: ✅ Low Risk (safe data)
-- 31-60: ⚠️ Moderate Risk (proceed carefully)
-- 61-100: ❌ High Risk (needs serious preprocessing)
-
-### 2. **Preprocessing Suggestions**
-Auto-generated strategy for:
-- **Missing Values**: Mean/Median, KNN, Iterative imputation rules
-- **Categorical Encoding**: One-Hot (≤5 categories), Target Encoding, Frequency Encoding
+For more, see the code and README.
 - **Scaling**: StandardScaler vs MinMaxScaler recommendations
 - **Feature Engineering**: Polynomial features, interactions, temporal features
 - **Column Actions**: Remove constants, handle cardinality
@@ -108,7 +108,7 @@ SHAP TreeExplainer analysis:
 
 ### Installation
 ```bash
-cd c:\Users\Nabeel\Desktop\OctoLearn
+cd c:\Users\Nabeel\Desktop\Octolearn
 pip install -e .
 ```
 
@@ -281,7 +281,7 @@ class DatasetProfile:
 
 > "Build the skeleton first. Then make it breathe."
 
-Everything in OctoLearn follows this principle:
+Everything in Octolearn follows this principle:
 - **Structure over features**: Proper architecture supports future growth
 - **Automation over manual**: Recommendations, not questions
 - **Quality over speed**: Professional PDFs, reproducible hashes
@@ -307,4 +307,4 @@ Everything in OctoLearn follows this principle:
 ---
 
 **Made with ☕ and 🐙 Logic.**  
-*OctoLearn v0.2 — February 2026*
+*Octolearn v0.2 — February 2026*

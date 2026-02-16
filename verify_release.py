@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-OctoLearn Pre-Release Verification Script
+Octolearn Pre-Release Verification Script
 Verifies all components are ready for publication
 """
 
@@ -23,11 +23,11 @@ def check_version():
     try:
         import octolearn
         version = octolearn.__version__
-        if version == "0.4.0":
+        if version == "0.5.0":
             print(f"✅ Version Check: {version}")
             return True
         else:
-            print(f"⚠️  Version Check: {version} (expected 0.4.0)")
+            print(f"⚠️  Version Check: {version} (expected 0.5.0)")
             return False
     except Exception as e:
         print(f"❌ Version Check Failed: {e}")
@@ -72,7 +72,7 @@ def print_header(title):
 
 def main():
     """Run all checks"""
-    print_header("🚀 OCTOLEARN PRE-RELEASE VERIFICATION")
+    print_header("🚀 Octolearn PRE-RELEASE VERIFICATION")
     
     all_passed = True
     

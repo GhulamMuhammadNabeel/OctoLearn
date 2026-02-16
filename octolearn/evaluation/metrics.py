@@ -24,23 +24,25 @@ logger = setup_logger(__name__)
 
 class ModelEvaluator:
     """
-    Comprehensive model evaluation with multiple metrics.
+    Comprehensive model evaluation with multiple metrics and visualizations.
+
+    Attributes:
+        model: Trained model object.
+        X_test (pd.DataFrame): Test features.
+        y_test (pd.Series): Test target.
+        task_type (str): 'classification' or 'regression'.
+        evaluation_results (dict): Results of evaluation.
     """
     
     def __init__(self, model, X_test: pd.DataFrame, y_test: pd.Series, task_type: str):
         """
-        Initialize ModelEvaluator.
-        
-        Parameters
-        ----------
-        model : sklearn model
-            Trained model
-        X_test : pd.DataFrame
-            Test features
-        y_test : pd.Series
-            Test target
-        task_type : str
-            'classification' or 'regression'
+        Initialize ModelEvaluator with model, test data, and task type.
+
+        Args:
+            model: Trained model object.
+            X_test (pd.DataFrame): Test features.
+            y_test (pd.Series): Test target.
+            task_type (str): 'classification' or 'regression'.
         """
         self.model = model
         self.X_test = X_test
@@ -51,12 +53,10 @@ class ModelEvaluator:
     @log_execution(logger_obj=logger)
     def evaluate(self) -> Dict:
         """
-        Perform comprehensive evaluation.
-        
-        Returns
-        -------
-        dict
-            Evaluation results
+        Perform comprehensive evaluation using all relevant metrics.
+
+        Returns:
+            dict: Evaluation results (metrics, confusion matrix, etc.)
         """
         logger.info(f"Evaluating {self.task_type} model...")
         
@@ -66,7 +66,12 @@ class ModelEvaluator:
             return self._evaluate_regression()
     
     def _evaluate_classification(self) -> Dict:
-        """Evaluate classification model."""
+        """
+        Evaluate classification model using accuracy, precision, recall, F1, ROC AUC, etc.
+
+        Returns:
+            dict: Classification evaluation results.
+        """
         y_pred = self.model.predict(self.X_test)
         results = {
             'task': 'classification',

@@ -15,13 +15,13 @@ Features:
 - Actionable recommendations
 
 Author: OctoLearn Development Team
-Version: 0.7.0
+Version: 0.7.4 (Patched)
 License: MIT
 """
 
 import os
 from datetime import datetime
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union
 from io import BytesIO
 import warnings
 
@@ -34,9 +34,6 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, 
     PageBreak, KeepTogether, PageTemplate, Frame, BaseDocTemplate
 )
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -115,15 +112,6 @@ class ReportGenerator:
     - Color-coded insights
     - Professional formatting
     - Responsive layouts
-    
-    Example:
-        >>> generator = ReportGenerator(
-        ...     raw_profile=profile,
-        ...     clean_profile=clean_profile,
-        ...     mode='detailed',
-        ...     logo_path='logo.png'
-        ... )
-        >>> pdf_path = generator.generate()
     """
 
     def __init__(
@@ -133,7 +121,7 @@ class ReportGenerator:
         mode: str = 'detailed',
         dist_plots: Optional[List[str]] = None,
         heatmap_plot: Optional[str] = None,
-        recommendations: Optional[List[str]] = None,
+        recommendations: Optional[Union[List[str], Dict[str, List[str]]]] = None,
         risk_score: Optional[int] = None,
         risk_category: Optional[str] = None,
         risk_factors: Optional[Dict[str, Any]] = None,
@@ -150,19 +138,6 @@ class ReportGenerator:
     ):
         """
         Initialize the enhanced report generator.
-        
-        Parameters
-        ----------
-        raw_profile : DatasetProfile
-            Profile of raw data
-        clean_profile : DatasetProfile
-            Profile of cleaned data
-        mode : str, default='detailed'
-            'brief' for 5-7 pages or 'detailed' for 15-20 pages
-        logo_path : str, optional
-            Path to company logo for watermark
-        title, author, company : str
-            Metadata for PDF
         """
         # Validate mode
         if mode not in ['brief', 'detailed']:
@@ -413,40 +388,77 @@ class ReportGenerator:
         story.append(Paragraph(summary_text, self.styles['ReportBody']))
 
     def _add_risk_analysis(self, story: list):
-        """Add detailed risk analysis section."""
+        """Add detailed risk analysis section with robust type handling."""
         story.append(PageBreak())
         story.append(Paragraph("Risk Assessment", self.styles['SectionHeading']))
         story.append(Spacer(1, 0.2 * inch))
         
-        # Risk factors table
         if self.risk_factors:
             risk_data = [['Factor', 'Impact', 'Severity']]
-            for factor, severity in sorted(self.risk_factors.items(), key=lambda x: x[1], reverse=True)[:5]:
-                severity_color = ReportColors.get_risk_color(severity * 10)
+            
+            # Helper to safely get score for sorting
+            def get_sort_score(item):
+                val = item[1]
+                if isinstance(val, dict):
+                    return val.get('score', 0)
+                if isinstance(val, (int, float)):
+                    return val
+                return 0
+
+            # Sort by score descending
+            sorted_factors = sorted(
+                self.risk_factors.items(), 
+                key=get_sort_score, 
+                reverse=True
+            )
+
+            for factor, data in sorted_factors[:5]:
+                # Extract score and description safely
+                if isinstance(data, dict):
+                    score = data.get('score', 0)
+                    description = data.get('description', str(data))
+                elif isinstance(data, (int, float)):
+                    score = data
+                    description = str(data)
+                else:
+                    # Fallback for plain strings (legacy format)
+                    score = 0
+                    description = str(data)
+
+                severity_val = score * 10
+                severity_color = ReportColors.get_risk_color(severity_val)
+                
                 risk_data.append([
-                    Paragraph(str(factor), self.styles['TableText']),
-                    Paragraph(str(severity), self.styles['TableText']),
+                    Paragraph(str(factor).replace('_', ' ').title(), self.styles['TableText']),
+                    Paragraph(description, self.styles['TableText']),
                     Paragraph('●', ParagraphStyle(
                         'SeverityIndicator',
                         parent=self.styles['TableText'],
-                        textColor=severity_color
+                        textColor=severity_color,
+                        alignment=TA_CENTER,
+                        fontSize=14
                     ))
                 ])
             
-            risk_table = Table(risk_data, colWidths=[3 * inch, 2 * inch, 1 * inch])
+            risk_table = Table(risk_data, colWidths=[1.5 * inch, 3.5 * inch, 1 * inch])
             risk_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), ReportColors.PRIMARY),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('ALIGN', (2, 1), (2, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('FONTNAME', (0, 0), (-1, 0), self.font_bold),
                 ('FONTSIZE', (0, 0), (-1, -1), 10),
                 ('PADDING', (0, 0), (-1, -1), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey)
+                ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, ReportColors.LIGHT_BG])
             ]))
             story.append(risk_table)
+        else:
+            story.append(Paragraph("No significant risk factors identified.", self.styles['ReportBody']))
 
     def _add_recommendations(self, story: list):
-        """Add actionable recommendations."""
+        """Add actionable recommendations (Handles both List and Dict inputs)."""
         if not self.recommendations:
             return
         
@@ -454,7 +466,30 @@ class ReportGenerator:
         story.append(Paragraph("Recommendations", self.styles['SectionHeading']))
         story.append(Spacer(1, 0.2 * inch))
         
-        for idx, rec in enumerate(self.recommendations[:5 if self.mode == 'brief' else 10], 1):
+        # Flatten recommendations if they are in dictionary format (from RecommendationEngine)
+        rec_list = []
+        if isinstance(self.recommendations, dict):
+            # Prioritize based on severity keys
+            for priority in ['critical', 'high', 'medium', 'low', 'informational']:
+                if priority in self.recommendations:
+                    rec_list.extend(self.recommendations[priority])
+            
+            # If there are keys not in the standard list, add them too (just in case)
+            known_keys = {'critical', 'high', 'medium', 'low', 'informational'}
+            for k, v in self.recommendations.items():
+                if k not in known_keys and isinstance(v, list):
+                    rec_list.extend(v)
+        elif isinstance(self.recommendations, list):
+            rec_list = self.recommendations
+        else:
+            rec_list = []
+        
+        if not rec_list:
+            return
+
+        limit = 5 if self.mode == 'brief' else 10
+        
+        for idx, rec in enumerate(rec_list[:limit], 1):
             story.append(Paragraph(
                 f"<b>{idx}. {rec}</b>",
                 self.styles['ReportBody']
@@ -497,26 +532,6 @@ class ReportGenerator:
     def generate(self, filename: Optional[str] = None) -> str:
         """
         Generate the complete PDF report.
-        
-        Parameters
-        ----------
-        filename : str, optional
-            Output filename. Auto-generated if not provided.
-            
-        Returns
-        -------
-        str
-            Path to generated PDF file
-            
-        Raises
-        ------
-        RuntimeError
-            If PDF generation fails
-            
-        Example
-        -------
-        >>> pdf_path = generator.generate()
-        >>> print(f"Report saved to: {pdf_path}")
         """
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -551,69 +566,67 @@ class ReportGenerator:
         except Exception as e:
             logger.error(f"Failed to generate PDF: {e}")
             raise RuntimeError(f"PDF generation failed: {e}")
-
-
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
 
-def create_brief_report(
-    raw_profile: Any,
-    clean_profile: Any,
-    **kwargs
-) -> str:
-    """
-    Convenience function to create a brief report.
-    
-    Parameters
-    ----------
-    raw_profile : DatasetProfile
-        Raw data profile
-    clean_profile : DatasetProfile
-        Cleaned data profile
-    **kwargs
-        Additional arguments passed to ReportGenerator
-        
-    Returns
-    -------
-    str
-        Path to generated PDF
-    """
-    generator = ReportGenerator(
-        raw_profile=raw_profile,
-        clean_profile=clean_profile,
-        mode='brief',
+    def create_brief_report(
+        raw_profile: Any,
+        clean_profile: Any,
         **kwargs
-    )
-    return generator.generate()
+    ) -> str:
+        """
+        Convenience function to create a brief report.
+        
+        Parameters
+        ----------
+        raw_profile : DatasetProfile
+            Raw data profile
+        clean_profile : DatasetProfile
+            Cleaned data profile
+        **kwargs
+            Additional arguments passed to ReportGenerator
+            
+        Returns
+        -------
+        str
+            Path to generated PDF
+        """
+        generator = ReportGenerator(
+            raw_profile=raw_profile,
+            clean_profile=clean_profile,
+            mode='brief',
+            **kwargs
+        )
+        return generator.generate()
 
 
-def create_detailed_report(
-    raw_profile: Any,
-    clean_profile: Any,
-    **kwargs
-) -> str:
-    """
-    Convenience function to create a detailed report.
-    
-    Parameters
-    ----------
-    raw_profile : DatasetProfile
-        Raw data profile
-    clean_profile : DatasetProfile
-        Cleaned data profile
-    **kwargs
-        Additional arguments passed to ReportGenerator
-        
-    Returns
-    -------
-    str
-        Path to generated PDF
-    """
-    generator = ReportGenerator(
-        raw_profile=raw_profile,
-        clean_profile=clean_profile,
-        mode='detailed',
+    def create_detailed_report(
+        raw_profile: Any,
+        clean_profile: Any,
         **kwargs
-    )
-    return generator.generate()
+    ) -> str:
+        """
+        Convenience function to create a detailed report.
+        
+        Parameters
+        ----------
+        raw_profile : DatasetProfile
+            Raw data profile
+        clean_profile : DatasetProfile
+            Cleaned data profile
+        **kwargs
+            Additional arguments passed to ReportGenerator
+            
+        Returns
+        -------
+        str
+            Path to generated PDF
+        """
+        generator = ReportGenerator(
+            raw_profile=raw_profile,
+            clean_profile=clean_profile,
+            mode='detailed',
+            **kwargs
+        )
+        return generator.generate()

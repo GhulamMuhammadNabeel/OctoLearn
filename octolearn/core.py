@@ -1099,9 +1099,18 @@ class AutoML:
         results = self._generate_report_components()
         
         # Create report
+# Create report with enhanced ReportGenerator (v0.7.4)
+        # Determine report mode from config
+        report_mode = getattr(self.reporting_config, 'report_detail', 'detailed')
+        if report_mode == 'brief':
+            mode = 'brief'
+        else:
+            mode = 'detailed'
+        
         generator = ReportGenerator(
             raw_profile=self.raw_profile_,
             clean_profile=self.clean_profile_,
+            mode=mode,  # Changed: detail_level -> mode (v0.7.4 enhancement)
             dist_plots=results.get("dist_paths"),
             heatmap_plot=results.get("heatmap_path"),
             recommendations=results.get("recommendations"),
@@ -1113,13 +1122,12 @@ class AutoML:
             shap_path=results.get("shap_path"),
             model_benchmarks=self.model_benchmarks_,
             best_model_name=self.best_model_.__class__.__name__ if self.best_model_ else None,
-            detail_level=self.reporting_config.report_detail,
             cleaning_log=self.cleaning_log_,
-            # New parameters for enhanced reporting
-            include_data_journey=self.reporting_config.include_data_journey,
-            outlier_results=self.outlier_results_,
-            interaction_results=self.interaction_results_,
-            artifact_dir=self.artifact_dir if self.save_artifacts else None
+            # New parameters for enhanced reporting (v0.7.4)
+            logo_path=getattr(self, 'logo_path', None),
+            title=getattr(self, 'report_title', 'OctoLearn Intelligence Report'),
+            author=getattr(self, 'author', 'OctoLearn AutoML'),
+            company=getattr(self, 'report_company', 'Data Science Team')
         )
         
         if self.show_progress:

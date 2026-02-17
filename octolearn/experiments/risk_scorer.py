@@ -1,6 +1,5 @@
 import pandas as pd
 
-
 class RiskScorer:
     """
     Comprehensive data quality risk scoring (0-100) for datasets.
@@ -24,28 +23,34 @@ class RiskScorer:
         # ID-LIKE COLUMNS (10)
         # =====================================================================
         if self.profile.id_like_columns:
-            score += 10
-            self.risk_factors["id_columns"] = (
-                f"ID-like columns detected: {self.profile.id_like_columns}"
-            )
+            points = 10
+            score += points
+            self.risk_factors["id_columns"] = {
+                "score": points,
+                "description": f"ID-like columns detected: {self.profile.id_like_columns}"
+            }
 
         # =====================================================================
         # DATA LEAKAGE (25)
         # =====================================================================
         if hasattr(self.profile, "leakage_suspects") and self.profile.leakage_suspects:
-            score += 25
-            self.risk_factors["leakage"] = (
-                f"Potential leakage suspects: {self.profile.leakage_suspects}"
-            )
+            points = 25
+            score += points
+            self.risk_factors["leakage"] = {
+                "score": points,
+                "description": f"Potential leakage suspects: {self.profile.leakage_suspects}"
+            }
 
         # =====================================================================
         # LOW VARIANCE (5)
         # =====================================================================
         if self.profile.low_variance_columns:
-            score += 5
-            self.risk_factors["low_variance"] = (
-                f"Low variance columns: {len(self.profile.low_variance_columns)}"
-            )
+            points = 5
+            score += points
+            self.risk_factors["low_variance"] = {
+                "score": points,
+                "description": f"Low variance columns: {len(self.profile.low_variance_columns)}"
+            }
 
         # =====================================================================
         # DUPLICATE ROWS (15)
@@ -54,77 +59,121 @@ class RiskScorer:
         if dup_count > 0:
             dup_pct = (dup_count / rows) * 100 if rows else 0
             if dup_pct > 10:
-                score += 15
+                points = 15
             elif dup_pct > 5:
-                score += 10
+                points = 10
             else:
-                score += 5
-            self.risk_factors["duplicates"] = f"{dup_count} duplicate rows ({dup_pct:.1f}%)"
+                points = 5
+            
+            score += points
+            self.risk_factors["duplicates"] = {
+                "score": points,
+                "description": f"{dup_count} duplicate rows ({dup_pct:.1f}%)"
+            }
 
         # =====================================================================
         # CLASS IMBALANCE (15)
         # =====================================================================
         imbalance = getattr(self.profile, "imbalance_ratio", None)
         if imbalance is not None:
+            points = 0
             if imbalance < 0.70:
-                score += 15
-                self.risk_factors["imbalance"] = f"Severe imbalance ratio: {imbalance:.3f}"
+                points = 15
+                desc = f"Severe imbalance ratio: {imbalance:.3f}"
             elif imbalance < 0.85:
-                score += 10
-                self.risk_factors["imbalance"] = f"Moderate imbalance ratio: {imbalance:.3f}"
+                points = 10
+                desc = f"Moderate imbalance ratio: {imbalance:.3f}"
             elif imbalance < 0.95:
-                score += 5
-                self.risk_factors["imbalance"] = f"Minor imbalance ratio: {imbalance:.3f}"
+                points = 5
+                desc = f"Minor imbalance ratio: {imbalance:.3f}"
+            
+            if points > 0:
+                score += points
+                self.risk_factors["imbalance"] = {
+                    "score": points,
+                    "description": desc
+                }
 
         # =====================================================================
         # MISSING VALUES (20)
         # =====================================================================
         if self.profile.missing_ratio:
             avg_missing = sum(self.profile.missing_ratio.values()) / len(self.profile.missing_ratio)
+            points = 0
             if avg_missing > 0.5:
-                score += 20
+                points = 20
             elif avg_missing > 0.3:
-                score += 15
+                points = 15
             elif avg_missing > 0.1:
-                score += 10
+                points = 10
             elif avg_missing > 0.05:
-                score += 5
-            self.risk_factors["missing_values"] = f"Average missing ratio: {avg_missing:.2f}"
+                points = 5
+            
+            if points > 0:
+                score += points
+                self.risk_factors["missing_values"] = {
+                    "score": points,
+                    "description": f"Average missing ratio: {avg_missing:.2f}"
+                }
 
         # =====================================================================
         # CONSTANT COLUMNS (10)
         # =====================================================================
         if self.profile.constant_columns:
-            score += 10
-            self.risk_factors["constant_columns"] = f"Constant columns: {self.profile.constant_columns}"
+            points = 10
+            score += points
+            self.risk_factors["constant_columns"] = {
+                "score": points,
+                "description": f"Constant columns: {self.profile.constant_columns}"
+            }
 
         # =====================================================================
         # HIGH CARDINALITY (10)
         # =====================================================================
         if hasattr(self.profile, "high_cardinality_cols") and self.profile.high_cardinality_cols:
-            score += 10
-            self.risk_factors["high_cardinality"] = (
-                f"High cardinality columns: {len(self.profile.high_cardinality_cols)}"
-            )
+            points = 10
+            score += points
+            self.risk_factors["high_cardinality"] = {
+                "score": points,
+                "description": f"High cardinality columns: {len(self.profile.high_cardinality_cols)}"
+            }
 
         # =====================================================================
         # FEATURE TO SAMPLE RATIO (10)
         # =====================================================================
         ratio = cols / rows if rows else 0
+        points = 0
         if ratio > 0.5:
-            score += 10
-            self.risk_factors["feature_ratio"] = f"High feature/sample ratio: {ratio:.2f}"
+            points = 10
         elif ratio > 0.1:
-            score += 5
+            points = 5
+        
+        if points > 0:
+            score += points
+            self.risk_factors["feature_ratio"] = {
+                "score": points,
+                "description": f"High feature/sample ratio: {ratio:.2f}"
+            }
 
         # =====================================================================
         # SAMPLE SIZE (5)
         # =====================================================================
+        points = 0
+        desc = ""
         if rows < 50:
-            score += 5
-            self.risk_factors["small_sample"] = f"Very small dataset: {rows} rows"
+            points = 5
+            desc = f"Very small dataset: {rows} rows"
         elif rows < 100:
-            self.risk_factors["small_sample"] = f"Small dataset: {rows} rows"
+            # Note: Logic in original was ambiguous, assuming it adds 0 points but warns?
+            # Or maybe it was meant to add points. Assuming low risk for now.
+            desc = f"Small dataset: {rows} rows"
+        
+        if points > 0 or desc:
+            if points > 0: score += points
+            self.risk_factors["small_sample"] = {
+                "score": points,
+                "description": desc
+            }
 
         # Cap score
         score = min(score, 100)

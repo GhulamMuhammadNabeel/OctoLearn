@@ -1,7 +1,8 @@
 """
-Report Generator Module - Fixed Image Limits
+Report Generator Module - Sequential Storytelling
 
-Generates a professional PDF report summarizing the AutoML pipeline results.
+Generates a professional PDF report summarizing the AutoML pipeline results
+with a logical flow: Profile -> Risk -> Cleaning -> Analysis -> Models.
 """
 
 import os
@@ -24,10 +25,11 @@ COLOR_PRIMARY = colors.HexColor('#2E86C1')
 COLOR_ACCENT = colors.HexColor('#D6EAF8')
 COLOR_DARK = colors.HexColor('#1B4F72')
 COLOR_TEXT = colors.HexColor('#2C3E50')
+COLOR_SUCCESS = colors.HexColor('#27AE60')
 
-IMG_WIDTH_LARGE = 450
-IMG_HEIGHT_LARGE = 250
-IMG_WIDTH_MED = 400
+IMG_WIDTH_LARGE = 500
+IMG_HEIGHT_LARGE = 200
+IMG_WIDTH_MED = 450
 IMG_HEIGHT_MED = 200
 
 
@@ -49,7 +51,10 @@ class ReportGenerator:
         feature_importance: Optional[Dict[str, float]] = None,
         shap_path: Optional[str] = None,
         model_benchmarks: Optional[List[Dict[str, Any]]] = None,
-        best_model_name: Optional[str] = None
+        best_model_name: Optional[str] = None,
+        detail_level: str = 'detailed',
+        logo_path: Optional[str] = None,
+        cleaning_log: Optional[Dict] = None
     ):
         self.profile = profile
         self.dist_plots = dist_plots or []
@@ -63,6 +68,9 @@ class ReportGenerator:
         self.shap_path = shap_path
         self.model_benchmarks = model_benchmarks or []
         self.best_model_name = best_model_name
+        self.detail_level = detail_level
+        self.logo_path = logo_path
+        self.cleaning_log = cleaning_log or {}
 
         self._register_fonts()
         self.styles = getSampleStyleSheet()
@@ -110,7 +118,11 @@ class ReportGenerator:
             leading=22,
             textColor=COLOR_PRIMARY,
             spaceBefore=15,
-            spaceAfter=10
+            spaceAfter=10,
+            borderPadding=5,
+            borderWidth=0,
+            borderColor=COLOR_PRIMARY,
+            borderRadius=5
         ))
 
         self.styles.add(ParagraphStyle(
@@ -133,7 +145,7 @@ class ReportGenerator:
         ))
 
     def generate(self, filename: Optional[str] = None) -> str:
-        """Builds the PDF report."""
+        """Builds the PDF report with a logical storyline."""
         self._validate_profile()
 
         if not filename:
@@ -149,22 +161,32 @@ class ReportGenerator:
 
         story = []
 
-        story.append(Spacer(1, 40))
-        story.append(Paragraph("Octolearn Analysis Report", self.styles['OctoTitle']))
-        story.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y')}", self.styles['OctoNormal']))
-        story.append(Spacer(1, 20))
+        # --- CHAPTER 0: The Cover ---
+        self._add_cover_page(story)
+        story.append(PageBreak())
 
-        self._add_executive_summary(story)
+        # --- CHAPTER 1: The Situation (Introduction) ---
+        self._add_introduction(story)
         self._add_data_profile(story)
+        
+        # --- CHAPTER 2: The Problem (Risk Analysis) ---
+        self._add_risk_analysis(story)
+        
+        # --- CHAPTER 3: The Fix (Cleaning) - Only Detailed ---
+        if self.detail_level == 'detailed' and self.cleaning_log:
+             story.append(PageBreak())
+             self._add_cleaning_actions(story)
 
         story.append(PageBreak())
-        self._add_model_benchmarks(story)
 
-        self._add_feature_importance(story)
+        # --- CHAPTER 4: The Investigation (Visual Analysis) ---
+        self._add_visual_investigation(story)
+        
+        story.append(PageBreak())
+
+        # --- CHAPTER 5: The Conclusion (Models & Recommendations) ---
+        self._add_model_results(story)
         self._add_recommendations(story)
-
-        story.append(PageBreak())
-        self._add_visualizations(story)
 
         try:
             doc.build(story, onFirstPage=self._footer_page, onLaterPages=self._footer_page)
@@ -188,94 +210,70 @@ class ReportGenerator:
         page_num = canvas.getPageNumber()
         canvas.drawRightString(A4[0] - 50, 30, f"Octolearn AutoML Report | Page {page_num}")
         canvas.restoreState()
-
-    def _add_executive_summary(self, story):
-        story.append(Paragraph("Executive Summary", self.styles['OctoHeading']))
-
+        
+    def _add_cover_page(self, story):
+        story.append(Spacer(1, 40))
+        if self.logo_path and os.path.exists(self.logo_path):
+             im = Image(self.logo_path, width=100, height=100)
+             story.append(im)
+             story.append(Spacer(1, 20))
+             
+        story.append(Paragraph("Octolearn Analysis Report", self.styles['OctoTitle']))
+        story.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y')}", self.styles['OctoNormal']))
+        story.append(Spacer(1, 20))
+        
+        # Executive Summary right on cover for impact
         if self.risk_score is not None:
             health_score = max(0, 100 - self.risk_score)
-            story.append(Paragraph(f"Dataset Health Score: {health_score}/100", self.styles['Heading3']))
+            color = 'green' if health_score > 70 else 'orange' if health_score > 40 else 'red'
+            story.append(Paragraph(f"<b>Dataset Health Score:</b> <font color='{color}'>{health_score}/100</font>", self.styles['Heading3']))
+            
+        if self.best_model_name:
+             story.append(Paragraph(f"<b>Best Model:</b> {self.best_model_name}", self.styles['Heading3']))
+
+    def _add_introduction(self, story):
+        story.append(Paragraph("1. Introduction", self.styles['OctoHeading']))
+        story.append(Paragraph("This report provides a comprehensive analysis of your dataset, highlighting structural issues, key insights, and predictive modeling results.", self.styles['OctoNormal']))
 
     def _add_data_profile(self, story):
-        story.append(Paragraph("Dataset Profile", self.styles['OctoHeading']))
         rows, cols = self.profile.shape
-        txt = f"<b>Rows:</b> {rows:,} | <b>Columns:</b> {cols} | <b>Task Type:</b> {self.profile.task_type.title()}"
+        txt = f"Your dataset contains <b>{rows:,} rows</b> and <b>{cols} columns</b>. The target task has been identified as a <b>{self.profile.task_type.title()}</b> problem."
         story.append(Paragraph(txt, self.styles['OctoNormal']))
         story.append(Spacer(1, 10))
 
-    def _add_model_benchmarks(self, story):
-        story.append(Paragraph("Model Performance Leaderboard", self.styles['OctoHeading']))
+    def _add_risk_analysis(self, story):
+        story.append(Paragraph("2. Risk Assessment", self.styles['OctoHeading']))
+        story.append(Paragraph(f"Risk Category: <b>{self.risk_category}</b>", self.styles['OctoNormal']))
+        
+        if self.risk_factors:
+            story.append(Paragraph("Key issues identified:", self.styles['OctoNormal']))
+            for k, v in self.risk_factors.items():
+                story.append(Paragraph(f"• {v}", self.styles['OctoNormal']))
+        else:
+             story.append(Paragraph("No significant structural risks were detected.", self.styles['OctoNormal']))
 
-        if not self.model_benchmarks:
-            story.append(Paragraph("No models were trained or benchmarks are unavailable.", self.styles['OctoNormal']))
-            story.append(Spacer(1, 15))
-            return
+    def _add_cleaning_actions(self, story):
+        story.append(Paragraph("3. Automated Cleaning Actions", self.styles['OctoHeading']))
+        
+        log = self.cleaning_log.get('train', {})
+        actions = []
+        if log.get('duplicates_removed'): actions.append(f"Removed {log['duplicates_removed']} duplicate rows.")
+        if log.get('id_columns_removed'): actions.append(f"Dropped ID columns: {log['id_columns_removed']}")
+        if log.get('constant_columns_removed'): actions.append(f"Dropped constant columns: {log['constant_columns_removed']}")
+        
+        if actions:
+            for act in actions:
+                story.append(Paragraph(f"✓ {act}", self.styles['OctoNormal']))
+        else:
+            story.append(Paragraph("No major cleaning actions were required.", self.styles['OctoNormal']))
+            
+        story.append(Spacer(1, 10))
+        story.append(Paragraph(f"<b>Final Feature Count:</b> {len(log.get('output_columns', []))} columns.", self.styles['OctoNormal']))
 
-        if self.best_model_name:
-            story.append(Paragraph(f"Best Performing Model: <b>{self.best_model_name}</b>", self.styles['OctoNormal']))
-            story.append(Spacer(1, 10))
-
-        data = [['Rank', 'Model Name', 'Score', 'Best Params']]
-
-        for idx, bench in enumerate(self.model_benchmarks):
-            params_str = str(bench.get('params', {})).replace('{', '').replace('}', '')
-            # Truncate params if too long to prevent table explosion
-            if len(params_str) > 50:
-                params_str = params_str[:47] + "..."
-            params_para = Paragraph(params_str, self.styles['OctoTableText'])
-            data.append([
-                str(idx + 1),
-                bench.get('model', 'Unknown').replace('_', ' ').title(),
-                f"{bench.get('score', 0):.4f}",
-                params_para
-            ])
-
-        t = Table(data, colWidths=[40, 120, 80, 220])
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-            ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ]))
-        story.append(t)
-        story.append(Spacer(1, 20))
-
-    def _add_feature_importance(self, story):
-        story.append(Paragraph("Feature Importance Summary", self.styles['OctoHeading']))
-
-        if not self.feature_importance:
-            story.append(Paragraph("Feature importance could not be computed.", self.styles['OctoNormal']))
-            story.append(Spacer(1, 15))
-            return
-
-        data = [['Feature', 'Importance']]
-        for feat, score in sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)[:10]:
-            data.append([feat, f"{score:.4f}"])
-
-        t = Table(data, colWidths=[250, 150])
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), COLOR_ACCENT),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-            ('FONTNAME', (0,0), (-1,0), self.font_bold),
-        ]))
-        story.append(t)
-        story.append(Spacer(1, 20))
-
-    def _add_recommendations(self, story):
-        story.append(Paragraph("Strategic Recommendations", self.styles['OctoHeading']))
-
-        if self.preprocessing_suggestions:
-            for cat, details in self.preprocessing_suggestions.items():
-                story.append(Paragraph(f"{cat.title()}: {details}", self.styles['OctoNormal']))
-
-        if self.recommendations:
-            for rec in self.recommendations[:5]:
-                story.append(Paragraph(f"- {rec}", self.styles['OctoNormal']))
-
-        story.append(Spacer(1, 20))
-
-    def _add_visualizations(self, story):
-        story.append(Paragraph("Visual Analysis", self.styles['OctoHeading']))
+    def _add_visual_investigation(self, story):
+        story.append(Paragraph("4. Visual Investigation", self.styles['OctoHeading']))
+        story.append(Paragraph("We analyzed the most significant features based on their relationship with the target variable.", self.styles['OctoNormal']))
+        story.append(Spacer(1, 10))
 
         def add_img(path, width, height, title=None):
             if path and os.path.exists(path):
@@ -286,19 +284,51 @@ class ReportGenerator:
                 story.append(img)
                 story.append(Spacer(1, 15))
 
-        if self.shap_path:
-            add_img(self.shap_path, IMG_WIDTH_LARGE, IMG_HEIGHT_LARGE, "Model Explainability (SHAP)")
-
+        # Correlation Heatmap (General Overview)
         if self.heatmap_plot:
-            add_img(self.heatmap_plot, IMG_WIDTH_MED, 300, "Correlation Matrix")
+            add_img(self.heatmap_plot, IMG_WIDTH_MED, 300, "Correlation Overview")
 
-        # FIX: Removed the [:4] slice limit. Now we check all plots.
+        # Feature Dashboards (Deep Dive)
         if self.dist_plots:
-            # We limit to 20 just to avoid making a 100 page PDF if user passes crazy data
-            # but 20 is plenty for meaningful analysis
-            count = 0
+            story.append(Paragraph("<b>Top Feature Analysis</b>", self.styles['Heading3']))
             for path in self.dist_plots:
-                if count >= 20: 
-                    break
-                add_img(path, IMG_WIDTH_MED, IMG_HEIGHT_MED)
-                count += 1
+                add_img(path, IMG_WIDTH_LARGE, 160)
+
+        # SHAP (Explainability)
+        if self.shap_path:
+            add_img(self.shap_path, IMG_WIDTH_LARGE, IMG_HEIGHT_LARGE, "Model Decision Explanation (SHAP)")
+
+    def _add_model_results(self, story):
+        story.append(Paragraph("5. Model Performance", self.styles['OctoHeading']))
+
+        if not self.model_benchmarks:
+            story.append(Paragraph("No models were trained.", self.styles['OctoNormal']))
+            return
+
+        story.append(Paragraph(f"The champion model is <b>{self.best_model_name}</b>.", self.styles['OctoNormal']))
+
+        data = [['Rank', 'Model Name', 'Score']]
+
+        for idx, bench in enumerate(self.model_benchmarks):
+            data.append([
+                str(idx + 1),
+                bench.get('model', 'Unknown').replace('_', ' ').title(),
+                f"{bench.get('score', 0):.4f}"
+            ])
+
+        t = Table(data, colWidths=[50, 200, 100])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 20))
+
+    def _add_recommendations(self, story):
+        story.append(Paragraph("6. Recommendations", self.styles['OctoHeading']))
+
+        if self.recommendations:
+            for rec in self.recommendations[:5]:
+                story.append(Paragraph(f"• {rec}", self.styles['OctoNormal']))

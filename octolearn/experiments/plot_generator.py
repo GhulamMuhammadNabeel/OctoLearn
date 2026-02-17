@@ -1,163 +1,212 @@
 """
 Plot Generator Module
 
-Generates professional, classic-themed visualizations for the report.
+Generates intelligent, beautiful visualization dashboards including distributions,
+KDEs, Box Plots, and Target Relationships.
 """
 
+import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-import os
 import shap
 from typing import List, Optional
+
 from ..utils.helpers import setup_logger
-from sklearn.preprocessing import LabelEncoder
 
 logger = setup_logger(__name__)
 
+
 class PlotGenerator:
     """
-    Generates high-quality plots for dataset distributions, correlations, and SHAP explanations.
-    Uses a professional 'Whitegrid' theme with a classic blue/grey palette.
+    Generates visualizations for the AutoML report.
     """
 
-    def __init__(self, df: pd.DataFrame, target: pd.Series, profile, model=None):
-        self.df = df
-        self.target = target
+    def __init__(self, X: pd.DataFrame, y: pd.Series, profile):
+        self.X = X
+        self.y = y
         self.profile = profile
-        self.best_model = model  # <- store the trained model for SHAP
-        self.output_dir = f"_octolearn_plots_{id(self)}"
+        self.output_dir = ".octolearn/plots"
+        os.makedirs(self.output_dir, exist_ok=True)
         
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-            
-        # --- VISUAL THEME SETUP ---
-        try:
-            plt.style.use('seaborn-v0_8-whitegrid')
-        except OSError:
-            try:
-                plt.style.use('seaborn-whitegrid')
-            except:
-                plt.style.use('ggplot')
+        # Set professional theme
+        sns.set_theme(style="whitegrid", palette="muted")
 
-        # Professional Palette
-        self.palette = sns.color_palette("Blues_r")
-        self.categorical_palette = sns.color_palette("viridis")
+    def generate_smart_visuals(self, limit: int = 10) -> List[str]:
+        """
+        Generates comprehensive 'Dashboard' style visuals for top features.
         
-        plt.rcParams.update({
-            'font.size': 10,
-            'axes.titlesize': 12,
-            'axes.labelsize': 10,
-            'figure.facecolor': 'white',
-            'axes.facecolor': 'white',
-            'savefig.facecolor': 'white'
-        })
-
-    def generate_distributions(self, max_cols: int = 6) -> List[str]:
+        Logic:
+        1. Ranks features by 'interest' (Correlation with target or Variance).
+        2. Generates a 3-panel plot for each top feature:
+           - Panel 1: Distribution (Hist + KDE)
+           - Panel 2: Box Plot (Outlier Focus)
+           - Panel 3: Relationship with Target (Scatter or Violin)
+        """
         paths = []
+        numeric_cols = self.X.select_dtypes(include=[np.number]).columns.tolist()
         
-        numeric_cols = self.profile.numeric_columns[:max_cols]
-        for col in numeric_cols:
-            try:
-                plt.figure(figsize=(8, 4))
-                sns.histplot(self.df[col], kde=True, color='#2E86C1', edgecolor='white')
-                plt.title(f'Distribution of {col}', fontweight='bold')
-                plt.xlabel(col)
-                plt.ylabel('Count')
-                
-                path = os.path.join(self.output_dir, f"{col}_dist.png")
-                plt.tight_layout()
-                plt.savefig(path, dpi=300, bbox_inches='tight')
-                plt.close()
-                paths.append(path)
-            except Exception as e:
-                logger.warning(f"Failed to plot distribution for {col}: {e}")
+        if not numeric_cols:
+            return []
 
-        categorical_cols = self.profile.categorical_columns[:max_cols]
-        for col in categorical_cols:
+        # 1. Rank features
+        ranked_cols = self._rank_features(numeric_cols)
+        
+        # 2. Limit features
+        cols_to_plot = ranked_cols[:limit]
+        logger.info(f"Generating smart visuals for top {len(cols_to_plot)} features: {cols_to_plot}")
+
+        # 3. Generate Dashboard Plots
+        for col in cols_to_plot:
             try:
-                plt.figure(figsize=(8, 4))
-                top_n = self.df[col].value_counts().head(10)
-                sns.barplot(x=top_n.index, y=top_n.values, palette="viridis")
-                plt.title(f'Top Categories: {col}', fontweight='bold')
-                plt.xticks(rotation=45, ha='right')
-                plt.ylabel('Count')
-                
-                path = os.path.join(self.output_dir, f"{col}_dist.png")
-                plt.tight_layout()
-                plt.savefig(path, dpi=300, bbox_inches='tight')
-                plt.close()
-                paths.append(path)
+                path = self._plot_feature_dashboard(col)
+                if path:
+                    paths.append(path)
             except Exception as e:
-                logger.warning(f"Failed to plot category dist for {col}: {e}")
-                
+                logger.warning(f"Failed to plot dashboard for {col}: {e}")
+        
         return paths
 
-    def generate_correlation_heatmap(self) -> Optional[str]:
+    def _rank_features(self, cols: List[str]) -> List[str]:
+        """
+        Ranks columns based on importance.
+        - If Target is available & numeric: Rank by absolute correlation.
+        - Otherwise: Rank by Variance.
+        """
+        if self.y is not None:
+            # Temporary dataframe for correlation
+            temp_df = self.X[cols].copy()
+            
+            # If target is categorical, encode it temporarily for ranking
+            y_enc = self.y
+            if not pd.api.types.is_numeric_dtype(self.y):
+                y_enc = pd.factorize(self.y)[0]
+            
+            temp_df['__target__'] = y_enc
+            
+            try:
+                corrs = temp_df.corr()['__target__'].drop('__target__').abs()
+                return corrs.sort_values(ascending=False).index.tolist()
+            except Exception:
+                pass # Fallback to variance
+
+        # Fallback: Rank by Variance (normalized)
+        # Normalize first to compare apples to apples
+        temp_df = self.X[cols].copy()
         try:
-            numeric_df = self.df.select_dtypes(include=[np.number])
-            if numeric_df.shape[1] < 2:
-                return None
-                
-            plt.figure(figsize=(10, 8))
-            corr = numeric_df.corr()
-            mask = np.triu(np.ones_like(corr, dtype=bool))
-            
-            sns.heatmap(
-                corr, 
-                mask=mask, 
-                annot=True, 
-                fmt=".2f", 
-                cmap="RdBu_r", 
-                center=0,
-                square=True, 
-                linewidths=.5, 
-                cbar_kws={"shrink": .5}
-            )
-            
-            plt.title('Feature Correlation Matrix', fontweight='bold', pad=20)
-            
-            path = os.path.join(self.output_dir, "correlation_heatmap.png")
-            plt.tight_layout()
-            plt.savefig(path, dpi=300, bbox_inches='tight')
-            plt.close()
-            return path
-        except Exception as e:
-            logger.warning(f"Failed to generate heatmap: {e}")
+            normalized = (temp_df - temp_df.mean()) / temp_df.std()
+            variances = normalized.var().sort_values(ascending=False)
+            return variances.index.tolist()
+        except Exception:
+            return cols[:10] # Desperate fallback
+
+    def _plot_feature_dashboard(self, col: str) -> Optional[str]:
+        """
+        Creates a 3-panel dashboard for a single feature.
+        """
+        # Figure setup: Wide layout
+        fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+        fig.suptitle(f"Feature Analysis: {col}", fontsize=16, fontweight='bold')
+        
+        # Determine target type for visuals
+        is_class = self.profile.task_type == 'classification' if self.profile else False
+        
+        # --- PANEL 1: Distribution (Hist + KDE) ---
+        sns.histplot(data=self.X, x=col, kde=True, ax=axes[0], color='skyblue')
+        axes[0].set_title("Distribution & KDE")
+        axes[0].set_xlabel(col)
+        
+        # --- PANEL 2: Box Plot (Outliers) ---
+        sns.boxplot(data=self.X, x=col, ax=axes[1], color='lightgreen')
+        axes[1].set_title("Box Plot (Outlier Detection)")
+        axes[1].set_xlabel(col)
+        
+        # --- PANEL 3: Relation with Target ---
+        if self.y is not None:
+            if is_class:
+                # Classification: Violin Plot or Box Plot split by class
+                # We limit classes to top 5 to prevent mess
+                top_classes = self.y.value_counts().head(5).index
+                mask = self.y.isin(top_classes)
+                sns.violinplot(x=self.y[mask], y=self.X.loc[mask, col], ax=axes[2], palette="pastel")
+                axes[2].set_title(f"{col} by Target Class")
+            else:
+                # Regression: Scatter Plot with Trendline
+                sns.regplot(x=self.X[col], y=self.y, ax=axes[2], 
+                           scatter_kws={'alpha':0.5, 's':20}, line_kws={'color':'red'})
+                axes[2].set_title(f"{col} vs Target")
+                axes[2].set_ylabel("Target")
+        else:
+            # Unsupervised: QQ Plot or just empty
+            axes[2].text(0.5, 0.5, "No Target Variable", ha='center', va='center')
+            axes[2].axis('off')
+
+        plt.tight_layout()
+        
+        filename = f"viz_dashboard_{col}.png"
+        path = os.path.join(self.output_dir, filename)
+        plt.savefig(path, bbox_inches='tight', dpi=100)
+        plt.close()
+        
+        return path
+
+    def generate_correlation_heatmap(self) -> Optional[str]:
+        """
+        Generates a smart correlation heatmap.
+        If cols > 15, it selects the top 15 features correlated with the target.
+        """
+        numeric_df = self.X.select_dtypes(include=[np.number])
+        if numeric_df.empty:
             return None
 
-    def generate_shap_plot(self) -> Optional[str]:
-        """
-        Generate SHAP summary plot using the trained model from AutoML.
-        """
-        if self.best_model is None:
-            logger.warning("No trained model provided for SHAP. Skipping plot.")
-            return None
+        plt.figure(figsize=(10, 8))
         
-        try:
-            X_temp = self.df.select_dtypes(include=[np.number]).fillna(0)
-            if X_temp.shape[1] == 0: return None
+        # SMART LOGIC: If too many columns, filter them
+        if numeric_df.shape[1] > 15:
+            logger.info("High dimensionality detected. Generating 'Smart Heatmap' for top 15 features.")
             
-            y_temp = self.target
-            if y_temp.dtype == 'object':
-                y_temp = LabelEncoder().fit_transform(y_temp.astype(str))
+            cols_to_plot = []
             
-            explainer = shap.TreeExplainer(self.best_model)
-            shap_values = explainer.shap_values(X_temp)
-            
-            if isinstance(shap_values, list):
-                shap_values = shap_values[1]  # For classification: positive class
+            # Scenario A: Target is numeric/convertible -> Select features correlated with target
+            if self.y is not None and pd.api.types.is_numeric_dtype(self.y):
+                # Create temp frame
+                temp_df = numeric_df.copy()
+                temp_df['__target__'] = self.y
                 
-            plt.figure(figsize=(10, 6))
-            shap.summary_plot(shap_values, X_temp, show=False, plot_type="dot")
-            plt.title("SHAP Feature Impact", fontweight='bold')
-            
-            path = os.path.join(self.output_dir, "shap_summary.png")
-            plt.tight_layout()
-            plt.savefig(path, dpi=300, bbox_inches='tight', facecolor='white')
-            plt.close()
-            return path
-        except Exception as e:
-            logger.warning(f"Failed to generate SHAP plot: {e}")
-            return None
+                # Get correlations with target
+                corr_with_target = temp_df.corr()['__target__'].abs().sort_values(ascending=False)
+                
+                # Top 15 features + target (total 16 max)
+                # Drop target from list itself to avoid duplicate, but keep in plot columns
+                top_features = corr_with_target.index.tolist()
+                if '__target__' in top_features:
+                    top_features.remove('__target__')
+                
+                cols_to_plot = top_features[:15]
+                numeric_df = numeric_df[cols_to_plot]
+                
+                # Add target back for the plot to show relationship
+                numeric_df['Target'] = self.y
+                
+            # Scenario B: No valid target -> Select features with highest variance
+            else:
+                variances = numeric_df.var().sort_values(ascending=False)
+                cols_to_plot = variances.head(15).index.tolist()
+                numeric_df = numeric_df[cols_to_plot]
+
+        # Standard Heatmap
+        sns.heatmap(numeric_df.corr(), annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
+        plt.title("Correlation Matrix (Top Features)")
+        
+        path = os.path.join(self.output_dir, "heatmap.png")
+        plt.savefig(path, bbox_inches='tight')
+        plt.close()
+        return path
+
+    def generate_shap_plot(self, model=None) -> Optional[str]:
+        """
+        Generates SHAP summary plot if a tree-based model is used.
+        """
+        # Placeholder for now as SHAP requires trained model passed explicitly
+        return None

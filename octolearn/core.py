@@ -67,7 +67,9 @@ class AutoML:
         n_models: int = 5,
         evaluation_metric: str = None,
         test_size: float = 0.2,
-        random_state: int = 42
+        random_state: int = 42,
+        visuals_limit: int = 10,
+        report_detail: str = 'detailed' # 'brief' or 'detailed'
     ):
         # Phase 1
         self.profiler = DataProfiler()
@@ -95,6 +97,10 @@ class AutoML:
         self.calculate_feature_importance = calculate_feature_importance
         self.generate_recommendations = generate_recommendations
         self.parallel_processing = parallel_processing
+
+        # Visuals
+        self.visuals_limit = visuals_limit
+        self.report_detail = report_detail
 
         # Phase 3
         self.detect_outliers = detect_outliers
@@ -352,7 +358,8 @@ class AutoML:
         plotter = PlotGenerator(self.X_, self.y_, self.profile_)
 
         try:
-            results["dist_paths"] = plotter.generate_distributions()
+            # Use smart visuals with user-defined limit
+            results["dist_paths"] = plotter.generate_smart_visuals(limit=self.visuals_limit)
         except Exception as e:
             logger.warning(f"Distribution plots failed: {e}")
 
@@ -391,6 +398,11 @@ class AutoML:
         if risk_res and isinstance(risk_res, tuple) and len(risk_res) == 3:
             risk_score, risk_category, risk_factors = risk_res
 
+        # Pass detail setting and logo path
+        logo_path = os.path.join(os.path.dirname(__file__), 'images', 'logo.png')
+        if not os.path.exists(logo_path):
+             logo_path = None
+
         generator = ReportGenerator(
             self.profile_,
             results.get("dist_paths"),
@@ -403,7 +415,10 @@ class AutoML:
             feature_importance=results.get("feature_importance"),
             shap_path=results.get("shap_path"),
             model_benchmarks=self.model_benchmarks_,
-            best_model_name=self.best_model_.__class__.__name__ if self.best_model_ else None
+            best_model_name=self.best_model_.__class__.__name__ if self.best_model_ else None,
+            detail_level=self.report_detail,
+            logo_path=logo_path,
+            cleaning_log=self.cleaning_log_
         )
 
         if self.show_progress: logger.info("Composing PDF...")

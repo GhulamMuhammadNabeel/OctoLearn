@@ -1,9 +1,7 @@
 """
-Report Generator Module
+Report Generator Module - Fixed Image Limits
 
 Generates a professional PDF report summarizing the AutoML pipeline results.
-Includes Data Profile, Data Quality, Recommendations, Model Benchmarks,
-and Feature Importance Summary.
 """
 
 import os
@@ -36,7 +34,6 @@ IMG_HEIGHT_MED = 200
 class ReportGenerator:
     """
     Generates a PDF report using ReportLab.
-    Theme: Professional White/Blue (Classic).
     """
 
     def __init__(
@@ -206,9 +203,6 @@ class ReportGenerator:
         story.append(Paragraph(txt, self.styles['OctoNormal']))
         story.append(Spacer(1, 10))
 
-    # =========================
-    # IMPROVEMENT #1
-    # =========================
     def _add_model_benchmarks(self, story):
         story.append(Paragraph("Model Performance Leaderboard", self.styles['OctoHeading']))
 
@@ -224,7 +218,11 @@ class ReportGenerator:
         data = [['Rank', 'Model Name', 'Score', 'Best Params']]
 
         for idx, bench in enumerate(self.model_benchmarks):
-            params_para = Paragraph(str(bench.get('params', {})), self.styles['OctoTableText'])
+            params_str = str(bench.get('params', {})).replace('{', '').replace('}', '')
+            # Truncate params if too long to prevent table explosion
+            if len(params_str) > 50:
+                params_str = params_str[:47] + "..."
+            params_para = Paragraph(params_str, self.styles['OctoTableText'])
             data.append([
                 str(idx + 1),
                 bench.get('model', 'Unknown').replace('_', ' ').title(),
@@ -242,9 +240,6 @@ class ReportGenerator:
         story.append(t)
         story.append(Spacer(1, 20))
 
-    # =========================
-    # IMPROVEMENT #2
-    # =========================
     def _add_feature_importance(self, story):
         story.append(Paragraph("Feature Importance Summary", self.styles['OctoHeading']))
 
@@ -286,6 +281,7 @@ class ReportGenerator:
             if path and os.path.exists(path):
                 if title:
                     story.append(Paragraph(title, self.styles['Heading3']))
+                # Scaling image to fit if needed
                 img = Image(path, width=width, height=height)
                 story.append(img)
                 story.append(Spacer(1, 15))
@@ -296,6 +292,13 @@ class ReportGenerator:
         if self.heatmap_plot:
             add_img(self.heatmap_plot, IMG_WIDTH_MED, 300, "Correlation Matrix")
 
+        # FIX: Removed the [:4] slice limit. Now we check all plots.
         if self.dist_plots:
-            for path in self.dist_plots[:4]:
+            # We limit to 20 just to avoid making a 100 page PDF if user passes crazy data
+            # but 20 is plenty for meaningful analysis
+            count = 0
+            for path in self.dist_plots:
+                if count >= 20: 
+                    break
                 add_img(path, IMG_WIDTH_MED, IMG_HEIGHT_MED)
+                count += 1

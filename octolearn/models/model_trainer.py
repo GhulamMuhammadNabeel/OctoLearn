@@ -4,6 +4,7 @@ Model Training Module with Optuna Hyperparameter Optimization
 Trains multiple models with automated hyperparameter tuning
 """
 
+import os
 import pandas as pd
 import numpy as np
 from typing import Dict, Tuple, List, Optional
@@ -11,15 +12,21 @@ import warnings
 import optuna
 from optuna.samplers import TPESampler
 from optuna.pruners import MedianPruner
-from sklearn.model_selection import cross_val_score, train_test_split, cross_validate
+from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.linear_model import LogisticRegression, LinearRegression
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, GradientBoostingClassifier, GradientBoostingRegressor
+from sklearn.ensemble import (
+    RandomForestClassifier, RandomForestRegressor,
+    GradientBoostingClassifier, GradientBoostingRegressor
+)
 from sklearn.svm import SVC, SVR
 from sklearn.preprocessing import LabelEncoder
 import xgboost as xgb
 import lightgbm as lgb
 
+# suppress parallel-related sklearn warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="sklearn.utils.parallel")
 warnings.filterwarnings('ignore')
+
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 from ..config import MODEL_TRAINING_CONFIG, OPTUNA_CONFIG
@@ -32,102 +39,104 @@ class ModelTrainer:
     """
     Trains multiple models with hyperparameter optimization using Optuna.
 
-    Handles train-test split, preprocessing, hyperparameter search, model training, and benchmarking.
-
-    Attributes:
-        X (pd.DataFrame): Feature dataframe.
-        y (pd.Series): Target variable.
-        profile (DatasetProfile): Dataset profile object.
-        task_type (str): 'classification' or 'regression'.
-        trained_models (dict): Trained model objects.
-        model_scores (dict): Scores for each model.
-        best_model (object): Best trained model.
-        best_hp_params (dict): Best hyperparameters for each model.
-        evaluation_metric (str): Metric for best model selection.
-        model_benchmarks (list): List of model benchmark results.
+    Accepts optionally pre-split data (X_train, X_test, y_train, y_test) to avoid
+    re-splitting cleaned datasets (prevents leakage). If pre-split data are not
+    provided, a train/test split will be performed internally.
     """
-    
-    def __init__(self, X: pd.DataFrame, y: pd.Series, profile, task_type: str = None, evaluation_metric: str = None):
-        """
-        Initialize ModelTrainer with data, profile, and configuration.
 
-        Args:
-            X (pd.DataFrame): Feature dataframe.
-            y (pd.Series): Target variable.
-            profile (DatasetProfile): Dataset profile object.
-            task_type (str, optional): 'classification' or 'regression'. Auto-detected if None.
-            evaluation_metric (str, optional): Metric for best model selection.
+    def __init__(
+        self,
+        X: Optional[pd.DataFrame],
+        y: Optional[pd.Series],
+        profile,
+        task_type: str = None,
+        evaluation_metric: str = None,
+        X_train: Optional[pd.DataFrame] = None,
+        X_test: Optional[pd.DataFrame] = None,
+        y_train: Optional[pd.Series] = None,
+        y_test: Optional[pd.Series] = None
+    ):
         """
+        ModelTrainer initialization.
+
+        Supports:
+        - Standard full X/y data
+        - Pre-split X_train, X_test, y_train, y_test
+        - X/y can be None if splits are provided
+        """
+
+        # store original
         self.X = X
         self.y = y
         self.profile = profile
-        self.task_type = task_type or profile.task_type
-        self.trained_models = {}
-        self.model_scores = {}
-        self.best_model = None
-        self.best_hp_params = {}
+        self.task_type = task_type or getattr(profile, 'task_type', None)
         self.evaluation_metric = evaluation_metric
-        self.model_benchmarks = None
-        # Prepare data
-        self.X_train, self.X_test, self.y_train, self.y_test = self._prepare_data()
-    
-    def _prepare_data(self) -> Tuple:
-        """
-        Prepare train-test split for model training and evaluation.
 
-        Returns:
-            Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]: X_train, X_test, y_train, y_test
-        """
-        test_split = MODEL_TRAINING_CONFIG['test_split']
-        random_state = MODEL_TRAINING_CONFIG['random_state']
-        
+        # containers
+        self.trained_models: Dict[str, object] = {}
+        self.model_scores: Dict[str, float] = {}
+        self.best_model = None
+        self.best_hp_params: Dict[str, Dict] = {}
+        self.model_benchmarks = None
+
+        # --- Handle provided splits ---
+        if X_train is not None and X_test is not None and y_train is not None and y_test is not None:
+            self.X_train, self.X_test = X_train, X_test
+            self.y_train, self.y_test = y_train, y_test
+            logger.info("ModelTrainer: using externally provided train/test split (no internal split).")
+        else:
+            # --- Prepare split internally if full X/y is available ---
+            if self.X is None or self.y is None:
+                raise ValueError(
+                    "X and y must be provided if train/test splits are not supplied."
+                )
+            self.X_train, self.X_test, self.y_train, self.y_test = self._prepare_data()
+
+    def _prepare_data(self) -> Tuple:
+        """Prepare train-test split for model training and evaluation."""
+        test_split = MODEL_TRAINING_CONFIG.get('test_split', 0.2)
+        random_state = MODEL_TRAINING_CONFIG.get('random_state', 42)
+
         return train_test_split(
             self.X, self.y,
             test_size=test_split,
             random_state=random_state,
             stratify=self.y if self.task_type == 'classification' else None
         )
-    
+
     def _preprocess_data(self, X: pd.DataFrame) -> pd.DataFrame:
-        """
-        Preprocess data: handle missing values and encode categoricals.
-
-        Args:
-            X (pd.DataFrame): Input features.
-
-        Returns:
-            pd.DataFrame: Preprocessed features.
-        """
+        """Simple preprocessing fallback: numeric fill + label encoding for objects."""
         X_proc = X.copy()
-        
-        # Handle missing values
+        # numeric only mean fill
         X_proc = X_proc.fillna(X_proc.mean(numeric_only=True))
-        
-        # Encode categorical features
-        for col in X_proc.select_dtypes(include=['object']).columns:
+        # label-encode remaining object/category columns (deterministic fallback)
+        for col in X_proc.select_dtypes(include=['object', 'category']).columns:
             le = LabelEncoder()
             X_proc[col] = le.fit_transform(X_proc[col].astype(str))
-        
         return X_proc
-    
+
+    def _force_single_threading_env(self):
+        """
+        Set environment variables to limit native BLAS/OMP threading inside Optuna worker processes.
+        Helps avoid CPU oversubscription when running parallel trials.
+        """
+        os.environ["OMP_NUM_THREADS"] = "1"
+        os.environ["OPENBLAS_NUM_THREADS"] = "1"
+        os.environ["MKL_NUM_THREADS"] = "1"
+        os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+        os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
     @log_execution(logger_obj=logger)
     def train_all_models(self) -> Dict:
-        """
-        Train all models with hyperparameter optimization.
-        
-        Returns
-        -------
-        dict
-            Training results
-        """
-        logger.info(f"Starting training for {self.task_type} task...")
-        
-        # Get model list
+        """Trains all models with hyperparameter optimization and returns results summary."""
+        logger.info(f"Starting training for task: {self.task_type}")
+
+        # choose model list
         if self.task_type == 'classification':
-            models = MODEL_TRAINING_CONFIG['classification_models']
+            models = MODEL_TRAINING_CONFIG.get('classification_models', [])
         else:
-            models = MODEL_TRAINING_CONFIG['regression_models']
-        
+            models = MODEL_TRAINING_CONFIG.get('regression_models', [])
+
         results = {
             'trained_models': {},
             'model_scores': {},
@@ -135,266 +144,281 @@ class ModelTrainer:
             'best_score': None,
             'model_benchmarks': []
         }
-        best_score = None
-        best_model = None
-        
+
+        best_score: Optional[float] = None
+        best_model_name: Optional[str] = None
+
+        # Preprocess train/test once (used for final fitting & evaluation)
+        X_train_proc = self._preprocess_data(self.X_train)
+        X_test_proc = self._preprocess_data(self.X_test)
+
         for model_name in models:
             try:
-                logger.info(f"Training {model_name}...")
-                # Optimize hyperparameters
+                logger.info(f"Training model: {model_name}")
+
+                # 1) Hyperparameter optimization with Optuna (returns best params or {})
                 best_params = self._optimize_hyperparameters(model_name)
-                # Train model with best params
-                model = self._build_model(model_name, best_params)
-                X_train_proc = self._preprocess_data(self.X_train)
-                X_test_proc = self._preprocess_data(self.X_test)
+
+                # 2) Build final model (force single-thread for safety)
+                model = self._build_model(model_name, best_params, force_single_thread=True)
+
+                # 3) Fit on training data
                 model.fit(X_train_proc, self.y_train)
-                # Evaluate
-                metric = self.evaluation_metric
-                if metric is None:
-                    metric = 'f1' if self.task_type == 'classification' else 'rmse'
-                # Use ModelEvaluator for metrics
+
+                # 4) Evaluate using ModelEvaluator for consistent metrics output
                 from ..evaluation.metrics import ModelEvaluator
                 evaluator = ModelEvaluator(model, X_test_proc, self.y_test, self.task_type)
                 eval_results = evaluator.evaluate()
-                # Get main metric value
-                if self.task_type == 'classification':
-                    metric_value = eval_results['metrics'].get(metric, None)
+
+                # Determine metric key
+                metric = self.evaluation_metric or ('f1' if self.task_type == 'classification' else 'rmse')
+
+                # Extract metric value (fallback to model.score if necessary)
+                metric_value = eval_results.get('metrics', {}).get(metric, None)
+                if metric_value is None:
+                    try:
+                        score = float(model.score(X_test_proc, self.y_test))
+                    except Exception:
+                        score = float(0.0)
                 else:
-                    metric_value = eval_results['metrics'].get(metric, None)
-                score = metric_value if metric_value is not None else model.score(X_test_proc, self.y_test)
+                    score = float(metric_value)
+
+                # Save artifacts
                 self.trained_models[model_name] = model
                 self.model_scores[model_name] = score
                 self.best_hp_params[model_name] = best_params
+
                 results['trained_models'][model_name] = str(model)
                 results['model_scores'][model_name] = round(score, 4)
-                # Add to benchmarks table
                 results['model_benchmarks'].append({
                     'model': model_name,
                     'score': round(score, 4),
                     'params': best_params,
-                    'metrics': eval_results['metrics']
+                    'metrics': eval_results.get('metrics', {})
                 })
-                logger.info(f"{model_name}: {score:.4f} ({metric})")
-                # Track best model
-                if best_score is None or (self.task_type == 'regression' and score < best_score) or (self.task_type == 'classification' and score > best_score):
+
+                logger.info(f"Model {model_name} result -> {score:.4f} ({metric})")
+
+                # Compare to best (safe None handling)
+                is_better = False
+                if best_score is None:
+                    is_better = True
+                else:
+                    if self.task_type == 'regression':
+                        # For common error metrics lower is better
+                        if metric in ['rmse', 'mse', 'mae', 'mape']:
+                            if score < best_score:
+                                is_better = True
+                        else:
+                            if score > best_score:
+                                is_better = True
+                    else:
+                        # classification maximize
+                        if score > best_score:
+                            is_better = True
+
+                if is_better:
                     best_score = score
-                    best_model = model_name
+                    best_model_name = model_name
                     self.best_model = model
+
             except Exception as e:
-                logger.warning(f"Failed to train {model_name}: {str(e)}")
+                logger.warning(f"Training failed for {model_name}: {e}")
                 continue
-        # Sort benchmarks table
-        if self.task_type == 'regression':
-            results['model_benchmarks'] = sorted(results['model_benchmarks'], key=lambda x: x['score'])
-        else:
-            results['model_benchmarks'] = sorted(results['model_benchmarks'], key=lambda x: x['score'], reverse=True)
-        results['best_model'] = best_model
+
+        # finalize results ordering
+        chosen_metric = self.evaluation_metric or ('f1' if self.task_type == 'classification' else 'rmse')
+        reverse_sort = True
+        if self.task_type == 'regression' and chosen_metric in ['rmse', 'mse', 'mae', 'mape']:
+            reverse_sort = False
+
+        results['model_benchmarks'] = sorted(results['model_benchmarks'], key=lambda x: x['score'], reverse=reverse_sort)
+        results['best_model'] = best_model_name
         results['best_score'] = best_score
         self.model_benchmarks = results['model_benchmarks']
+
         return results
-    
+
     def _optimize_hyperparameters(self, model_name: str) -> Dict:
-        """
-        Optimize hyperparameters using Optuna.
-        
-        Parameters
-        ----------
-        model_name : str
-            Model name
-            
-        Returns
-        -------
-        dict
-            Best hyperparameters
-        """
+        """Optimize hyperparameters using Optuna with guarded single-threading in trials."""
+
         X_train_proc = self._preprocess_data(self.X_train)
-        
+
         def objective(trial):
             try:
-                # Get hyperparameters for this model
-                if model_name not in OPTUNA_CONFIG['hyperparameters']:
+                # reduce native thread usage inside this trial to avoid oversubscription
+                self._force_single_threading_env()
+
+                if model_name not in OPTUNA_CONFIG.get('hyperparameters', {}):
                     return 0.0
-                
+
                 hp_config = OPTUNA_CONFIG['hyperparameters'].get(model_name, {})
                 params = self._create_trial_params(trial, model_name, hp_config)
-                
-                # Build and train model
-                model = self._build_model(model_name, params)
-                model.fit(X_train_proc, self.y_train)
-                
-                # Cross-validation score
+
+                # Defensive: remove user-supplied thread keys to avoid collisions
+                params_for_build = params.copy()
+                params_for_build.pop('n_jobs', None)
+                params_for_build.pop('nthread', None)
+
+                # Force single-thread at model-level (defensive)
+                params_for_build['n_jobs'] = 1
+                params_for_build['nthread'] = 1
+
+                # Build model with forced single thread behavior
+                model = self._build_model(model_name, params_for_build, force_single_thread=True)
+
+                scoring_metric = 'accuracy' if self.task_type == 'classification' else 'r2'
                 cv_scores = cross_val_score(
                     model, X_train_proc, self.y_train,
-                    cv=OPTUNA_CONFIG['cv_folds'],
-                    scoring='accuracy' if self.task_type == 'classification' else 'r2',
-                    n_jobs=1
+                    cv=OPTUNA_CONFIG.get('cv_folds', 3),
+                    scoring=scoring_metric,
+                    n_jobs=1  # IMPORTANT: keep CV single-threaded inside each optuna worker
                 )
-                
-                return cv_scores.mean()
-            
+                return float(np.mean(cv_scores))
             except Exception as e:
-                logger.debug(f"Trial failed: {str(e)}")
+                logger.debug(f"Optuna trial for {model_name} failed: {e}")
                 return 0.0
-        
+
         try:
             sampler = TPESampler(seed=42)
             pruner = MedianPruner()
-            
-            study = optuna.create_study(
-                sampler=sampler,
-                pruner=pruner,
-                direction='maximize'
-            )
-            
+            study = optuna.create_study(sampler=sampler, pruner=pruner, direction='maximize')
+
+            n_jobs_config = OPTUNA_CONFIG.get('optimization', {}).get('n_jobs', 1)
             study.optimize(
                 objective,
-                n_trials=OPTUNA_CONFIG['optimization']['n_trials'],
+                n_trials=OPTUNA_CONFIG.get('optimization', {}).get('n_trials', 20),
+                n_jobs=n_jobs_config,
                 show_progress_bar=False
             )
-            
-            return study.best_params
-        
+
+            return study.best_params or {}
         except Exception as e:
-            logger.warning(f"Hyperparameter optimization failed for {model_name}: {str(e)}")
+            logger.warning(f"Hyperopt failed for {model_name}: {e}")
             return {}
-    
+
     def _create_trial_params(self, trial, model_name: str, hp_config: Dict) -> Dict:
-        """
-        Create trial parameters for Optuna.
-        
-        Parameters
-        ----------
-        trial : optuna.trial.Trial
-            Optuna trial
-        model_name : str
-            Model name
-        hp_config : dict
-            Hyperparameter configuration
-            
-        Returns
-        -------
-        dict
-            Trial parameters
-        """
+        """Map hyperparameter config to Optuna trial suggestions."""
         params = {}
-        
         for hp_name, hp_range in hp_config.items():
-            if isinstance(hp_range, list) and len(hp_range) == 2:
-                # Numeric range
-                if isinstance(hp_range[0], int):
-                    params[hp_name] = trial.suggest_int(hp_name, hp_range[0], hp_range[1])
-                else:
-                    params[hp_name] = trial.suggest_float(hp_name, hp_range[0], hp_range[1])
-            elif isinstance(hp_range, list):
-                # Categorical choice
-                params[hp_name] = trial.suggest_categorical(hp_name, hp_range)
-        
+            try:
+                if isinstance(hp_range, list) and len(hp_range) == 2:
+                    if isinstance(hp_range[0], int):
+                        params[hp_name] = trial.suggest_int(hp_name, hp_range[0], hp_range[1])
+                    else:
+                        params[hp_name] = trial.suggest_float(hp_name, hp_range[0], hp_range[1])
+                elif isinstance(hp_range, list):
+                    params[hp_name] = trial.suggest_categorical(hp_name, hp_range)
+            except Exception as e:
+                logger.debug(f"Failed to suggest {hp_name}: {e}")
         return params
-    
-    def _build_model(self, model_name: str, params: Dict = None):
+
+    def _build_model(self, model_name: str, params: Dict = None, force_single_thread: bool = False):
         """
         Build a model with specified hyperparameters.
-        
-        Parameters
-        ----------
-        model_name : str
-            Model name
-        params : dict, optional
-            Hyperparameters
-            
-        Returns
-        -------
-        model
-            Trained model
+
+        This method removes potential threading keys from params (n_jobs/nthread)
+        to avoid collisions with explicit keyword arguments, and builds model-specific kwargs.
         """
         params = params or {}
-        
+        params = params.copy()  # avoid mutating caller
+
+        # Defensive removal to avoid "multiple values for argument" errors
+        params.pop('n_jobs', None)
+        params.pop('nthread', None)
+
+        # Prepare model-specific kwargs (we will pass these explicitly)
+        if force_single_thread:
+            # enforce single-thread defaults
+            base_thread_kwargs = {'n_jobs': 1, 'nthread': 1}
+        else:
+            base_thread_kwargs = {}
+
+        # Classification
         if self.task_type == 'classification':
             if model_name == 'logistic_regression':
-                return LogisticRegression(
-                    max_iter=1000,
-                    random_state=42,
-                    **params
-                )
-            elif model_name == 'random_forest':
-                return RandomForestClassifier(
-                    n_jobs=MODEL_TRAINING_CONFIG['n_jobs'],
-                    random_state=42,
-                    **params
-                )
-            elif model_name == 'gradient_boosting':
-                return GradientBoostingClassifier(
-                    random_state=42,
-                    **params
-                )
-            elif model_name == 'xgboost':
-                return xgb.XGBClassifier(
-                    random_state=42,
-                    verbosity=0,
-                    **params
-                )
-            elif model_name == 'lightgbm':
-                return lgb.LGBMClassifier(
-                    random_state=42,
-                    verbose=-1,
-                    **params
-                )
-            elif model_name == 'svm':
-                return SVC(
-                    kernel='rbf',
-                    random_state=42,
-                    **params
-                )
+                kwargs = {'max_iter': 1000, 'random_state': 42}
+                kwargs.update(params)
+                return LogisticRegression(**kwargs)
+
+            if model_name == 'random_forest':
+                kwargs = {'n_jobs': base_thread_kwargs.get('n_jobs', 1), 'random_state': 42}
+                kwargs.update(params)
+                return RandomForestClassifier(**kwargs)
+
+            if model_name == 'gradient_boosting':
+                kwargs = {'random_state': 42}
+                kwargs.update(params)
+                return GradientBoostingClassifier(**kwargs)
+
+            if model_name == 'xgboost':
+                # xgboost accepts n_jobs; older versions accept nthread. pass explicit kwargs.
+                kwargs = {'random_state': 42, 'verbosity': 0}
+                if force_single_thread:
+                    kwargs['n_jobs'] = 1
+                    # some xgb versions accept nthread
+                    kwargs['nthread'] = 1
+                kwargs.update(params)
+                return xgb.XGBClassifier(**kwargs)
+
+            if model_name == 'lightgbm':
+                kwargs = {'random_state': 42, 'verbose': -1}
+                if force_single_thread:
+                    kwargs['n_jobs'] = 1
+                kwargs.update(params)
+                return lgb.LGBMClassifier(**kwargs)
+
+            if model_name == 'svm':
+                kwargs = {'kernel': 'rbf', 'probability': True, 'random_state': 42}
+                kwargs.update(params)
+                return SVC(**kwargs)
+
+        # Regression
         else:
             if model_name == 'linear_regression':
-                return LinearRegression(**params)
-            elif model_name == 'random_forest':
-                return RandomForestRegressor(
-                    n_jobs=MODEL_TRAINING_CONFIG['n_jobs'],
-                    random_state=42,
-                    **params
-                )
-            elif model_name == 'gradient_boosting':
-                return GradientBoostingRegressor(
-                    random_state=42,
-                    **params
-                )
-            elif model_name == 'xgboost':
-                return xgb.XGBRegressor(
-                    random_state=42,
-                    verbosity=0,
-                    **params
-                )
-            elif model_name == 'lightgbm':
-                return lgb.LGBMRegressor(
-                    random_state=42,
-                    verbose=-1,
-                    **params
-                )
-            elif model_name == 'svr':
-                return SVR(**params)
-        
+                kwargs = {}
+                kwargs.update(params)
+                return LinearRegression(**kwargs)
+
+            if model_name == 'random_forest':
+                kwargs = {'n_jobs': base_thread_kwargs.get('n_jobs', 1), 'random_state': 42}
+                kwargs.update(params)
+                return RandomForestRegressor(**kwargs)
+
+            if model_name == 'gradient_boosting':
+                kwargs = {'random_state': 42}
+                kwargs.update(params)
+                return GradientBoostingRegressor(**kwargs)
+
+            if model_name == 'xgboost':
+                kwargs = {'random_state': 42, 'verbosity': 0}
+                if force_single_thread:
+                    kwargs['n_jobs'] = 1
+                    kwargs['nthread'] = 1
+                kwargs.update(params)
+                return xgb.XGBRegressor(**kwargs)
+
+            if model_name == 'lightgbm':
+                kwargs = {'random_state': 42, 'verbose': -1}
+                if force_single_thread:
+                    kwargs['n_jobs'] = 1
+                kwargs.update(params)
+                return lgb.LGBMRegressor(**kwargs)
+
+            if model_name == 'svr':
+                kwargs = {}
+                kwargs.update(params)
+                return SVR(**kwargs)
+
         raise ValueError(f"Unknown model: {model_name}")
-    
+
     def get_best_model(self):
-        """Get the best trained model."""
+        """Return the best trained sklearn-like model object (or None)."""
         return self.best_model
-    
+
     def get_model_comparison(self) -> pd.DataFrame:
-        """
-        Get comparison of all trained models.
-        
-        Returns
-        -------
-        pd.DataFrame
-            Model comparison table
-        """
-        comparison_data = {
-            'Model': list(self.model_scores.keys()),
-            'Score': list(self.model_scores.values()),
-        }
-        
+        """Return a sorted dataframe comparing models and scores."""
+        comparison_data = {'Model': list(self.model_scores.keys()), 'Score': list(self.model_scores.values())}
         df = pd.DataFrame(comparison_data)
         df = df.sort_values('Score', ascending=False)
-        
         return df

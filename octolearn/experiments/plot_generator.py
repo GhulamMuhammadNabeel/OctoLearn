@@ -1,152 +1,163 @@
-import os
-import matplotlib
-matplotlib.use('Agg')  # Non-interactive backend
+"""
+Plot Generator Module
+
+Generates professional, classic-themed visualizations for the report.
+"""
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-import warnings
+import os
 import shap
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from typing import List, Optional
+from ..utils.helpers import setup_logger
+from sklearn.preprocessing import LabelEncoder
 
-warnings.filterwarnings('ignore')
-
+logger = setup_logger(__name__)
 
 class PlotGenerator:
     """
-    Generates dataset visualizations: distributions, correlations, SHAP plots.
+    Generates high-quality plots for dataset distributions, correlations, and SHAP explanations.
+    Uses a professional 'Whitegrid' theme with a classic blue/grey palette.
     """
 
-    def __init__(self, X, y, profile):
-        """
-        Initialize PlotGenerator.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Feature dataframe
-        y : pd.Series
-            Target variable
-        profile : DataProfile
-            Dataset profile object
-        """
-        self.X = X
-        self.y = y
+    def __init__(self, df: pd.DataFrame, target: pd.Series, profile, model=None):
+        self.df = df
+        self.target = target
         self.profile = profile
-        self.plot_dir = f"_octolearn_plots_{profile.dataset_hash}"
-        os.makedirs(self.plot_dir, exist_ok=True)
+        self.best_model = model  # <- store the trained model for SHAP
+        self.output_dir = f"_octolearn_plots_{id(self)}"
+        
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+            
+        # --- VISUAL THEME SETUP ---
+        try:
+            plt.style.use('seaborn-v0_8-whitegrid')
+        except OSError:
+            try:
+                plt.style.use('seaborn-whitegrid')
+            except:
+                plt.style.use('ggplot')
 
-    def _smart_sample(self, max_rows=50_000):
-        """
-        Return a sampled subset of X for faster plotting.
+        # Professional Palette
+        self.palette = sns.color_palette("Blues_r")
+        self.categorical_palette = sns.color_palette("viridis")
+        
+        plt.rcParams.update({
+            'font.size': 10,
+            'axes.titlesize': 12,
+            'axes.labelsize': 10,
+            'figure.facecolor': 'white',
+            'axes.facecolor': 'white',
+            'savefig.facecolor': 'white'
+        })
 
-        Parameters
-        ----------
-        max_rows : int
-            Maximum rows to sample
-
-        Returns
-        -------
-        pd.DataFrame
-        """
-        if len(self.X) > max_rows:
-            return self.X.sample(max_rows, random_state=42)
-        return self.X
-
-    def generate_distributions(self):
-        """
-        Generate distribution plots for numeric and categorical features.
-
-        Returns
-        -------
-        list : paths to saved plot images
-        """
+    def generate_distributions(self, max_cols: int = 6) -> List[str]:
         paths = []
-        X_sample = self._smart_sample()
+        
+        numeric_cols = self.profile.numeric_columns[:max_cols]
+        for col in numeric_cols:
+            try:
+                plt.figure(figsize=(8, 4))
+                sns.histplot(self.df[col], kde=True, color='#2E86C1', edgecolor='white')
+                plt.title(f'Distribution of {col}', fontweight='bold')
+                plt.xlabel(col)
+                plt.ylabel('Count')
+                
+                path = os.path.join(self.output_dir, f"{col}_dist.png")
+                plt.tight_layout()
+                plt.savefig(path, dpi=300, bbox_inches='tight')
+                plt.close()
+                paths.append(path)
+            except Exception as e:
+                logger.warning(f"Failed to plot distribution for {col}: {e}")
 
-        # Numeric features
-        for col in self.profile.numeric_features[:5]:
-            plt.figure(figsize=(6, 4))
-            plt.style.use('dark_background')
-            plt.hist(X_sample[col].dropna(), bins=30, color='#FF0000', alpha=0.85)
-            plt.title(f"Distribution of {col}", color='#FF0000', fontsize=14, fontweight='bold')
-            plt.xlabel(col, color='#FF0000')
-            plt.ylabel('Frequency', color='#FF0000')
-            plt.tick_params(colors='#FF0000')
-            path = os.path.join(self.plot_dir, f"{col}_dist.png")
-            plt.savefig(path, dpi=100, bbox_inches='tight', facecolor='black')
-            plt.close()
-            paths.append(path)
-
-        # Categorical features
-        for col in self.profile.categorical_features[:5]:
-            plt.figure(figsize=(6, 4))
-            plt.style.use('dark_background')
-            counts = X_sample[col].value_counts()
-            sns.barplot(x=counts.index, y=counts.values, palette='rocket')
-            plt.title(f"Categorical Distribution: {col}", color='#FF0000', fontsize=14, fontweight='bold')
-            plt.xlabel(col, color='#FF0000')
-            plt.ylabel('Count', color='#FF0000')
-            plt.xticks(rotation=45, color='#FF0000')
-            plt.yticks(color='#FF0000')
-            plt.tick_params(colors='#FF0000')
-            path = os.path.join(self.plot_dir, f"{col}_cat.png")
-            plt.savefig(path, dpi=100, bbox_inches='tight', facecolor='black')
-            plt.close()
-            paths.append(path)
-
+        categorical_cols = self.profile.categorical_columns[:max_cols]
+        for col in categorical_cols:
+            try:
+                plt.figure(figsize=(8, 4))
+                top_n = self.df[col].value_counts().head(10)
+                sns.barplot(x=top_n.index, y=top_n.values, palette="viridis")
+                plt.title(f'Top Categories: {col}', fontweight='bold')
+                plt.xticks(rotation=45, ha='right')
+                plt.ylabel('Count')
+                
+                path = os.path.join(self.output_dir, f"{col}_dist.png")
+                plt.tight_layout()
+                plt.savefig(path, dpi=300, bbox_inches='tight')
+                plt.close()
+                paths.append(path)
+            except Exception as e:
+                logger.warning(f"Failed to plot category dist for {col}: {e}")
+                
         return paths
 
-    def generate_correlation_heatmap(self):
-        """
-        Generate correlation table CSV for numeric features.
-
-        Returns
-        -------
-        str : path to CSV file (currently no image)
-        """
-        if len(self.profile.numeric_features) < 2:
+    def generate_correlation_heatmap(self) -> Optional[str]:
+        try:
+            numeric_df = self.df.select_dtypes(include=[np.number])
+            if numeric_df.shape[1] < 2:
+                return None
+                
+            plt.figure(figsize=(10, 8))
+            corr = numeric_df.corr()
+            mask = np.triu(np.ones_like(corr, dtype=bool))
+            
+            sns.heatmap(
+                corr, 
+                mask=mask, 
+                annot=True, 
+                fmt=".2f", 
+                cmap="RdBu_r", 
+                center=0,
+                square=True, 
+                linewidths=.5, 
+                cbar_kws={"shrink": .5}
+            )
+            
+            plt.title('Feature Correlation Matrix', fontweight='bold', pad=20)
+            
+            path = os.path.join(self.output_dir, "correlation_heatmap.png")
+            plt.tight_layout()
+            plt.savefig(path, dpi=300, bbox_inches='tight')
+            plt.close()
+            return path
+        except Exception as e:
+            logger.warning(f"Failed to generate heatmap: {e}")
             return None
 
-        X_sample = self._smart_sample()
-        corr = X_sample[self.profile.numeric_features].corr().abs()
-        corr_unstacked = corr.unstack()
-        corr_unstacked = corr_unstacked[corr_unstacked < 1]
-        top_corr = corr_unstacked.sort_values(ascending=False).head(15)
-
-        path = os.path.join(self.plot_dir, "top_correlations.csv")
-        top_corr.to_csv(path)
-        return path
-
-    def generate_shap_plot(self, model=None):
+    def generate_shap_plot(self) -> Optional[str]:
         """
-        Generate SHAP summary plot using RandomForest if model not provided.
-
-        Parameters
-        ----------
-        model : sklearn model, optional
-
-        Returns
-        -------
-        str : path to SHAP plot image
+        Generate SHAP summary plot using the trained model from AutoML.
         """
-        X_sample = self._smart_sample(max_rows=10_000)
-        y_sample = self.y.loc[X_sample.index]
-
-        if model is None:
-            if self.profile.target_type == "classification":
-                model = RandomForestClassifier(n_estimators=50, random_state=42)
-            else:
-                model = RandomForestRegressor(n_estimators=50, random_state=42)
-            model.fit(X_sample, y_sample)
-
-        explainer = shap.Explainer(model, X_sample)
-        shap_values = explainer(X_sample)
-
-        plt.figure(figsize=(8, 6))
-        plt.style.use('dark_background')
-        shap.summary_plot(shap_values, X_sample, show=False, plot_color='#FF0000')
-        path = os.path.join(self.plot_dir, "shap_summary.png")
-        plt.savefig(path, dpi=100, bbox_inches='tight', facecolor='black')
-        plt.close()
-        return path
+        if self.best_model is None:
+            logger.warning("No trained model provided for SHAP. Skipping plot.")
+            return None
+        
+        try:
+            X_temp = self.df.select_dtypes(include=[np.number]).fillna(0)
+            if X_temp.shape[1] == 0: return None
+            
+            y_temp = self.target
+            if y_temp.dtype == 'object':
+                y_temp = LabelEncoder().fit_transform(y_temp.astype(str))
+            
+            explainer = shap.TreeExplainer(self.best_model)
+            shap_values = explainer.shap_values(X_temp)
+            
+            if isinstance(shap_values, list):
+                shap_values = shap_values[1]  # For classification: positive class
+                
+            plt.figure(figsize=(10, 6))
+            shap.summary_plot(shap_values, X_temp, show=False, plot_type="dot")
+            plt.title("SHAP Feature Impact", fontweight='bold')
+            
+            path = os.path.join(self.output_dir, "shap_summary.png")
+            plt.tight_layout()
+            plt.savefig(path, dpi=300, bbox_inches='tight', facecolor='white')
+            plt.close()
+            return path
+        except Exception as e:
+            logger.warning(f"Failed to generate SHAP plot: {e}")
+            return None

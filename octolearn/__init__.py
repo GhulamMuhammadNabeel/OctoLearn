@@ -25,11 +25,17 @@ Note:
     See HOW_TO_USE.md and README.md for full usage details and advanced options.
 """
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 __author__ = "Ghulam Muhammad Nabeel"
 __license__ = "MIT"
 
 
 from .core import AutoML
+from .profiling.data_profiler import DataProfiler
+from .models.registry import ModelRegistry
 
-__all__ = ["AutoML", "__version__"]
+__all__ = [
+    "AutoML",
+    "DataProfiler",
+    "ModelRegistry"
+]

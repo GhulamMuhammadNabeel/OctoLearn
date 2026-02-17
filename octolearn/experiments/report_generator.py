@@ -1,80 +1,62 @@
-import os
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-FONTS_DIR = os.path.join(BASE_DIR, "fonts")
+"""
+Report Generator Module
 
+Generates a professional PDF report summarizing the AutoML pipeline results.
+Includes Data Profile, Data Quality, Recommendations, Model Benchmarks,
+and Feature Importance Summary.
+"""
+
+import os
 from datetime import datetime
-from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
-    Image,
-    PageBreak
-)
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
-from reportlab.lib.units import inch
+from typing import List, Dict, Any, Optional
 from reportlab.lib.pagesizes import A4
-from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak
+)
 from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from ..utils.helpers import setup_logger
+
+logger = setup_logger(__name__)
+
+# --- CONSTANTS ---
+COLOR_PRIMARY = colors.HexColor('#2E86C1')
+COLOR_ACCENT = colors.HexColor('#D6EAF8')
+COLOR_DARK = colors.HexColor('#1B4F72')
+COLOR_TEXT = colors.HexColor('#2C3E50')
+
+IMG_WIDTH_LARGE = 450
+IMG_HEIGHT_LARGE = 250
+IMG_WIDTH_MED = 400
+IMG_HEIGHT_MED = 200
 
 
 class ReportGenerator:
     """
-    Generates final PDF report for dataset profiling, visualizations,
-    feature importance, risk score, preprocessing suggestions, model benchmarks, and recommendations.
-
-    Attributes:
-        profile: Dataset profile object.
-        plot_paths: List of plot image paths.
-        heatmap_path: Path to correlation heatmap image.
-        recommendations: List of strategic recommendations.
-        risk_score: Dataset risk score.
-        risk_category: Risk category string.
-        risk_factors: Dict of risk factors.
-        preprocessing_suggestions: Dict of preprocessing suggestions.
-        feature_importance: Dict of feature importances.
-        shap_path: Path to SHAP plot image.
-        model_benchmarks: List of model benchmark dicts.
-        fonts: Dict of loaded font names.
+    Generates a PDF report using ReportLab.
+    Theme: Professional White/Blue (Classic).
     """
 
     def __init__(
         self,
         profile,
-        plot_paths,
-        heatmap_path,
-        recommendations,
-        risk_score=None,
-        risk_category=None,
-        risk_factors=None,
-        preprocessing_suggestions=None,
-        feature_importance=None,
-        shap_path=None,
-        model_benchmarks=None,
-        fonts_folder="fonts"
+        dist_plots: Optional[List[str]] = None,
+        heatmap_plot: Optional[str] = None,
+        recommendations: Optional[List[str]] = None,
+        risk_score: Optional[int] = None,
+        risk_category: Optional[str] = None,
+        risk_factors: Optional[Dict[str, Any]] = None,
+        preprocessing_suggestions: Optional[Dict[str, Any]] = None,
+        feature_importance: Optional[Dict[str, float]] = None,
+        shap_path: Optional[str] = None,
+        model_benchmarks: Optional[List[Dict[str, Any]]] = None,
+        best_model_name: Optional[str] = None
     ):
-        """
-        Initialize ReportGenerator with all report components.
-
-        Args:
-            profile: Dataset profile object.
-            plot_paths: List of plot image paths.
-            heatmap_path: Path to correlation heatmap image.
-            recommendations: List of strategic recommendations.
-            risk_score: Dataset risk score.
-            risk_category: Risk category string.
-            risk_factors: Dict of risk factors.
-            preprocessing_suggestions: Dict of preprocessing suggestions.
-            feature_importance: Dict of feature importances.
-            shap_path: Path to SHAP plot image.
-            model_benchmarks: List of model benchmark dicts.
-            fonts_folder: Path to fonts folder.
-        """
         self.profile = profile
-        self.plot_paths = plot_paths or []
-        self.heatmap_path = heatmap_path
+        self.dist_plots = dist_plots or []
+        self.heatmap_plot = heatmap_plot
         self.recommendations = recommendations or []
         self.risk_score = risk_score
         self.risk_category = risk_category
@@ -83,292 +65,237 @@ class ReportGenerator:
         self.feature_importance = feature_importance or {}
         self.shap_path = shap_path
         self.model_benchmarks = model_benchmarks or []
+        self.best_model_name = best_model_name
 
-        # ---------- Load fonts ----------
-        self.fonts = {}
-        font_files = {
-            "title": os.path.join(FONTS_DIR, "ShantellSans-ExtraBold.ttf"),
-            "section": os.path.join(FONTS_DIR, "ShantellSans-Bold.ttf"),
-            "normal": os.path.join(FONTS_DIR, "ShantellSans-Regular.ttf"),
-            "italic": os.path.join(FONTS_DIR, "ShantellSans-Italic.ttf"),
-        }
+        self._register_fonts()
+        self.styles = getSampleStyleSheet()
+        self._create_custom_styles()
 
+    def _register_fonts(self):
+        """Attempts to register Shantell Sans, falls back to Helvetica."""
+        font_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'fonts')
+        self.font_regular = "Helvetica"
+        self.font_bold = "Helvetica-Bold"
+        self.font_italic = "Helvetica-Oblique"
+        self.font_title = "Helvetica-Bold"
 
-        for key, file_name in font_files.items():
-            font_path = os.path.join(fonts_folder, file_name)
-            if os.path.exists(font_path):
-                font_name = file_name.replace(".ttf", "")
-                pdfmetrics.registerFont(TTFont(font_name, font_path))
-                self.fonts[key] = font_name
-            else:
-                print(f"Font {file_name} not found, using default Helvetica for {key}.")
-                self.fonts[key] = "Helvetica"
+        try:
+            if os.path.exists(os.path.join(font_dir, 'ShantellSans-Regular.ttf')):
+                pdfmetrics.registerFont(TTFont('ShantellSans-Regular', os.path.join(font_dir, 'ShantellSans-Regular.ttf')))
+                pdfmetrics.registerFont(TTFont('ShantellSans-Bold', os.path.join(font_dir, 'ShantellSans-Bold.ttf')))
+                pdfmetrics.registerFont(TTFont('ShantellSans-Italic', os.path.join(font_dir, 'ShantellSans-Italic.ttf')))
+                pdfmetrics.registerFont(TTFont('ShantellSans-ExtraBold', os.path.join(font_dir, 'ShantellSans-ExtraBold.ttf')))
+                self.font_regular = 'ShantellSans-Regular'
+                self.font_bold = 'ShantellSans-Bold'
+                self.font_italic = 'ShantellSans-Italic'
+                self.font_title = 'ShantellSans-ExtraBold'
+        except Exception as e:
+            logger.warning(f"Could not load custom fonts: {e}. Using default Helvetica.")
 
-    def generate(self):
-        """
-        Generate the PDF report with all sections, visuals, and model benchmarks.
+    def _create_custom_styles(self):
+        """Defines the visual theme."""
+        self.styles.add(ParagraphStyle(
+            name='OctoTitle',
+            parent=self.styles['Heading1'],
+            fontName=self.font_title,
+            fontSize=26,
+            leading=32,
+            textColor=COLOR_DARK,
+            spaceAfter=20,
+            alignment=1
+        ))
 
-        Returns:
-            str: Path to the generated PDF file.
-        """
-        filename = f"octolearn_report_{self.profile.dataset_hash}.pdf"
+        self.styles.add(ParagraphStyle(
+            name='OctoHeading',
+            parent=self.styles['Heading2'],
+            fontName=self.font_bold,
+            fontSize=18,
+            leading=22,
+            textColor=COLOR_PRIMARY,
+            spaceBefore=15,
+            spaceAfter=10
+        ))
+
+        self.styles.add(ParagraphStyle(
+            name='OctoNormal',
+            parent=self.styles['Normal'],
+            fontName=self.font_regular,
+            fontSize=11,
+            leading=14,
+            textColor=COLOR_TEXT,
+            spaceAfter=8
+        ))
+
+        self.styles.add(ParagraphStyle(
+            name='OctoTableText',
+            parent=self.styles['Normal'],
+            fontName=self.font_regular,
+            fontSize=9,
+            leading=11,
+            textColor=colors.black
+        ))
+
+    def generate(self, filename: Optional[str] = None) -> str:
+        """Builds the PDF report."""
+        self._validate_profile()
+
+        if not filename:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"octolearn_report_{timestamp}.pdf"
+
         doc = SimpleDocTemplate(
             filename,
             pagesize=A4,
-            rightMargin=40,
-            leftMargin=40,
-            topMargin=40,
-            bottomMargin=40
+            rightMargin=50, leftMargin=50,
+            topMargin=50, bottomMargin=50
         )
 
-        elements = []
-        styles = getSampleStyleSheet()
+        story = []
 
-        # ---------- Custom Styles ----------
-        title_style = ParagraphStyle(
-            "TitleStyle",
-            parent=styles["Heading1"],
-            fontSize=26,
-            textColor=colors.HexColor("#FF0000"),
-            fontName=self.fonts["title"],
-            spaceAfter=20,
-            backColor=colors.black,
-            alignment=1
-        )
+        story.append(Spacer(1, 40))
+        story.append(Paragraph("Octolearn Analysis Report", self.styles['OctoTitle']))
+        story.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y')}", self.styles['OctoNormal']))
+        story.append(Spacer(1, 20))
 
-        section_style = ParagraphStyle(
-            "SectionStyle",
-            parent=styles["Heading1"],
-            fontSize=18,
-            textColor=colors.HexColor("#FF0000"),
-            fontName=self.fonts["section"],
-            spaceAfter=10,
-            backColor=colors.black
-        )
+        self._add_executive_summary(story)
+        self._add_data_profile(story)
 
-        normal_style = ParagraphStyle(
-            "NormalStyle",
-            parent=styles["Normal"],
-            fontName=self.fonts["normal"],
-            fontSize=10,
-            textColor=colors.HexColor("#FF0000"),
-            backColor=colors.black
-        )
+        story.append(PageBreak())
+        self._add_model_benchmarks(story)
 
-        # ---------- Title Page ----------
-        elements.append(Paragraph("Octolearn Intelligence Report", title_style))
-        elements.append(Spacer(1, 0.3 * inch))
-        elements.append(Paragraph(
-            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-            normal_style
-        ))
-        elements.append(Spacer(1, 0.2 * inch))
-        elements.append(Paragraph(
-            f"Dataset Hash: {self.profile.dataset_hash}",
-            normal_style
-        ))
+        self._add_feature_importance(story)
+        self._add_recommendations(story)
 
-        # ---------- Risk Score ----------
+        story.append(PageBreak())
+        self._add_visualizations(story)
+
+        try:
+            doc.build(story, onFirstPage=self._footer_page, onLaterPages=self._footer_page)
+            return filename
+        except Exception as e:
+            logger.error(f"Failed to build PDF: {e}")
+            raise RuntimeError(f"PDF generation failed: {e}")
+
+    def _validate_profile(self):
+        """Ensures profile has required attributes."""
+        required_attrs = ["shape", "task_type", "numeric_columns", "categorical_columns"]
+        for attr in required_attrs:
+            if not hasattr(self.profile, attr):
+                raise ValueError(f"Profile object missing required attribute: {attr}")
+
+    def _footer_page(self, canvas, doc):
+        """Adds footer with page number."""
+        canvas.saveState()
+        canvas.setFont(self.font_regular, 9)
+        canvas.setFillColor(colors.grey)
+        page_num = canvas.getPageNumber()
+        canvas.drawRightString(A4[0] - 50, 30, f"Octolearn AutoML Report | Page {page_num}")
+        canvas.restoreState()
+
+    def _add_executive_summary(self, story):
+        story.append(Paragraph("Executive Summary", self.styles['OctoHeading']))
+
         if self.risk_score is not None:
-            if self.risk_score <= 30:
-                risk_color = colors.HexColor("#27AE60")
-            elif self.risk_score <= 60:
-                risk_color = colors.HexColor("#F39C12")
-            else:
-                risk_color = colors.HexColor("#E74C3C")
+            health_score = max(0, 100 - self.risk_score)
+            story.append(Paragraph(f"Dataset Health Score: {health_score}/100", self.styles['Heading3']))
 
-            banner_style = ParagraphStyle(
-                "RiskBanner",
-                parent=normal_style,
-                fontSize=14,
-                textColor=risk_color,
-                alignment=1
-            )
-            elements.append(Paragraph(
-                f"DATASET RISK SCORE: {self.risk_score}/100  |  {self.risk_category}",
-                banner_style
-            ))
+    def _add_data_profile(self, story):
+        story.append(Paragraph("Dataset Profile", self.styles['OctoHeading']))
+        rows, cols = self.profile.shape
+        txt = f"<b>Rows:</b> {rows:,} | <b>Columns:</b> {cols} | <b>Task Type:</b> {self.profile.task_type.title()}"
+        story.append(Paragraph(txt, self.styles['OctoNormal']))
+        story.append(Spacer(1, 10))
 
-        elements.append(PageBreak())
+    # =========================
+    # IMPROVEMENT #1
+    # =========================
+    def _add_model_benchmarks(self, story):
+        story.append(Paragraph("Model Performance Leaderboard", self.styles['OctoHeading']))
 
-        # ---------- Executive Summary ----------
-        elements.append(Paragraph("Executive Summary", section_style))
-        elements.append(Spacer(1, 0.2 * inch))
+        if not self.model_benchmarks:
+            story.append(Paragraph("No models were trained or benchmarks are unavailable.", self.styles['OctoNormal']))
+            story.append(Spacer(1, 15))
+            return
 
-        summary_table_data = [
-            ["Rows", str(self.profile.n_rows)],
-            ["Columns", str(self.profile.n_columns)],
-            ["Task Type", self.profile.task_type],
-            ["Duplicate Rows", str(self.profile.duplicate_rows)],
-        ]
+        if self.best_model_name:
+            story.append(Paragraph(f"Best Performing Model: <b>{self.best_model_name}</b>", self.styles['OctoNormal']))
+            story.append(Spacer(1, 10))
 
-        summary_table = Table(summary_table_data, colWidths=[2.5 * inch, 2.5 * inch])
-        summary_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("FONTNAME", (0, 0), (-1, -1), self.fonts["normal"]),
-            ("FONTSIZE", (0, 0), (-1, -1), 10),
+        data = [['Rank', 'Model Name', 'Score', 'Best Params']]
+
+        for idx, bench in enumerate(self.model_benchmarks):
+            params_para = Paragraph(str(bench.get('params', {})), self.styles['OctoTableText'])
+            data.append([
+                str(idx + 1),
+                bench.get('model', 'Unknown').replace('_', ' ').title(),
+                f"{bench.get('score', 0):.4f}",
+                params_para
+            ])
+
+        t = Table(data, colWidths=[40, 120, 80, 220])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
         ]))
+        story.append(t)
+        story.append(Spacer(1, 20))
 
-        elements.append(summary_table)
-        elements.append(PageBreak())
+    # =========================
+    # IMPROVEMENT #2
+    # =========================
+    def _add_feature_importance(self, story):
+        story.append(Paragraph("Feature Importance Summary", self.styles['OctoHeading']))
 
-        # ---------- Model Benchmarks Table ----------
-        if self.model_benchmarks:
-            elements.append(Paragraph("Model Benchmarks & Results", section_style))
-            elements.append(Spacer(1, 0.2 * inch))
-            # Table header
-            header = ["Rank", "Model", "Score", "Parameters", "Metrics"]
-            data = [header]
-            for idx, entry in enumerate(self.model_benchmarks, 1):
-                params_str = ", ".join(f"{k}={v}" for k, v in (entry.get('params') or {}).items())
-                metrics_str = ", ".join(f"{k}={round(v,4) if isinstance(v, float) else v}" for k, v in (entry.get('metrics') or {}).items())
-                row = [
-                    str(idx),
-                    entry.get('model', ''),
-                    entry.get('score', ''),
-                    params_str,
-                    metrics_str
-                ]
-                data.append(row)
-            table = Table(data, colWidths=[0.5*inch, 1.2*inch, 0.8*inch, 2.2*inch, 2.2*inch])
-            table.setStyle(TableStyle([
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
-                ("FONTNAME", (0, 0), (-1, -1), self.fonts["normal"]),
-                ("FONTSIZE", (0, 0), (-1, -1), 8),
-                ("TEXTCOLOR", (0, 1), (-1, 1), colors.HexColor("#FFD700")),  # Highlight best model row
-                ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#222222")),
-            ]))
-            elements.append(table)
-            elements.append(PageBreak())
-        elements.append(Paragraph("Feature Overview", section_style))
-        elements.append(Spacer(1, 0.2 * inch))
+        if not self.feature_importance:
+            story.append(Paragraph("Feature importance could not be computed.", self.styles['OctoNormal']))
+            story.append(Spacer(1, 15))
+            return
 
-        elements.append(Paragraph(
-            f"<b>Numeric Features:</b> {', '.join(self.profile.numeric_features) or 'None'}",
-            normal_style
-        ))
-        elements.append(Spacer(1, 0.1 * inch))
+        data = [['Feature', 'Importance']]
+        for feat, score in sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)[:10]:
+            data.append([feat, f"{score:.4f}"])
 
-        elements.append(Paragraph(
-            f"<b>Categorical Features:</b> {', '.join(self.profile.categorical_features) or 'None'}",
-            normal_style
-        ))
-        elements.append(Spacer(1, 0.1 * inch))
+        t = Table(data, colWidths=[250, 150])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), COLOR_ACCENT),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('FONTNAME', (0,0), (-1,0), self.font_bold),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 20))
 
-        elements.append(Paragraph(
-            f"<b>Skewed Columns:</b> {', '.join(self.profile.skewed_columns) or 'None'}",
-            normal_style
-        ))
+    def _add_recommendations(self, story):
+        story.append(Paragraph("Strategic Recommendations", self.styles['OctoHeading']))
 
-        elements.append(PageBreak())
-
-        # ---------- Data Quality ----------
-        if self.risk_factors:
-            elements.append(Paragraph("Data Quality Assessment", section_style))
-            elements.append(Spacer(1, 0.2 * inch))
-
-            for desc in self.risk_factors.values():
-                elements.append(Paragraph(f"• {desc}", normal_style))
-                elements.append(Spacer(1, 0.1 * inch))
-
-            elements.append(PageBreak())
-
-        # ---------- Preprocessing ----------
         if self.preprocessing_suggestions:
-            elements.append(Paragraph("Preprocessing Strategy", section_style))
-            elements.append(Spacer(1, 0.2 * inch))
+            for cat, details in self.preprocessing_suggestions.items():
+                story.append(Paragraph(f"{cat.title()}: {details}", self.styles['OctoNormal']))
 
-            for section, suggestions in self.preprocessing_suggestions.items():
-                elements.append(Paragraph(
-                    f"<b>{section.replace('_', ' ').title()}</b>",
-                    styles["Heading2"]
-                ))
-                elements.append(Spacer(1, 0.1 * inch))
+        if self.recommendations:
+            for rec in self.recommendations[:5]:
+                story.append(Paragraph(f"- {rec}", self.styles['OctoNormal']))
 
-                for suggestion in suggestions:
-                    elements.append(Paragraph(f"• {suggestion}", normal_style))
-                    elements.append(Spacer(1, 0.1 * inch))
+        story.append(Spacer(1, 20))
 
-                elements.append(Spacer(1, 0.2 * inch))
+    def _add_visualizations(self, story):
+        story.append(Paragraph("Visual Analysis", self.styles['OctoHeading']))
 
-            elements.append(PageBreak())
+        def add_img(path, width, height, title=None):
+            if path and os.path.exists(path):
+                if title:
+                    story.append(Paragraph(title, self.styles['Heading3']))
+                img = Image(path, width=width, height=height)
+                story.append(img)
+                story.append(Spacer(1, 15))
 
-        # ---------- Feature Importance ----------
-        if self.feature_importance and "error" not in self.feature_importance:
+        if self.shap_path:
+            add_img(self.shap_path, IMG_WIDTH_LARGE, IMG_HEIGHT_LARGE, "Model Explainability (SHAP)")
 
-            elements.append(Paragraph("Top Feature Importance", section_style))
-            elements.append(Spacer(1, 0.2 * inch))
+        if self.heatmap_plot:
+            add_img(self.heatmap_plot, IMG_WIDTH_MED, 300, "Correlation Matrix")
 
-            importance_data = [["Rank", "Feature", "Importance"]]
-
-            sorted_feats = sorted(
-                self.feature_importance.items(),
-                key=lambda x: x[1],
-                reverse=True
-            )[:10]
-
-            for idx, (feat, imp) in enumerate(sorted_feats, 1):
-                importance_data.append([str(idx), feat, f"{imp:.4f}"])
-
-            table = Table(importance_data, colWidths=[0.8 * inch, 2.5 * inch, 1.5 * inch])
-            table.setStyle(TableStyle([
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
-                ("FONTNAME", (0, 0), (-1, -1), self.fonts["normal"]),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ]))
-
-            elements.append(table)
-            elements.append(PageBreak())
-
-        # ---------- Visual Analysis ----------
-        if self.plot_paths or self.heatmap_path or self.shap_path:
-
-            elements.append(Paragraph("Visual Insights", section_style))
-            elements.append(Spacer(1, 0.2 * inch))
-
-            image_extensions = (".png", ".jpg", ".jpeg", ".gif", ".bmp")
-
-            # --- Plot paths ---
-            for path in self.plot_paths:
-                if (
-                    path
-                    and os.path.exists(path)
-                    and path.lower().endswith(image_extensions)
-                ):
-                    elements.append(Image(path, width=5.5 * inch, height=3.5 * inch))
-                    elements.append(Spacer(1, 0.3 * inch))
-
-            # --- Heatmap ---
-            if (
-                self.heatmap_path
-                and os.path.exists(self.heatmap_path)
-                and self.heatmap_path.lower().endswith(image_extensions)
-            ):
-                elements.append(Image(self.heatmap_path, width=5.5 * inch, height=4 * inch))
-                elements.append(Spacer(1, 0.3 * inch))
-
-            # --- SHAP ---
-            if (
-                self.shap_path
-                and os.path.exists(self.shap_path)
-                and self.shap_path.lower().endswith(image_extensions)
-            ):
-                elements.append(Image(self.shap_path, width=6 * inch, height=4 * inch))
-
-            elements.append(PageBreak())
-
-        # ---------- Strategic Recommendations ----------
-        elements.append(Paragraph("Strategic Recommendations", section_style))
-        elements.append(Spacer(1, 0.2 * inch))
-
-        for rec in self.recommendations:
-            elements.append(Paragraph(f"• {rec}", normal_style))
-            elements.append(Spacer(1, 0.15 * inch))
-
-        # ---------- Build ----------
-        doc.build(elements)
-
-        return filename
+        if self.dist_plots:
+            for path in self.dist_plots[:4]:
+                add_img(path, IMG_WIDTH_MED, IMG_HEIGHT_MED)

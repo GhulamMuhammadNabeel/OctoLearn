@@ -1,0 +1,162 @@
+{
+  "logistic_regression_v1": {
+    "name": "logistic_regression",
+    "version": 1,
+    "model_path": "trained_models\\logistic_regression_v1.pkl",
+    "task_type": "classification",
+    "metrics": {
+      "score": 1.0
+    },
+    "parameters": {
+      "C": 3.7460266483547775
+    },
+    "timestamp": "2026-02-16T16:03:43.161031"
+  },
+  "random_forest_v1": {
+    "name": "random_forest",
+    "version": 1,
+    "model_path": "trained_models\\random_forest_v1.pkl",
+    "task_type": "classification",
+    "metrics": {
+      "score": 0.9666
+    },
+    "parameters": {
+      "n_estimators": 128,
+      "max_depth": 11,
+      "min_samples_split": 10
+    },
+    "timestamp": "2026-02-16T16:03:43.192400"
+  },
+  "gradient_boosting_v1": {
+    "name": "gradient_boosting",
+    "version": 1,
+    "model_path": "trained_models\\gradient_boosting_v1.pkl",
+    "task_type": "classification",
+    "metrics": {
+      "score": 0.9666
+    },
+    "parameters": {},
+    "timestamp": "2026-02-16T16:03:43.223715"
+  },
+  "xgboost_v1": {
+    "name": "xgboost",
+    "version": 1,
+    "model_path": "trained_models\\xgboost_v1.pkl",
+    "task_type": "classification",
+    "metrics": {
+      "score": 0.9666
+    },
+    "parameters": {
+      "n_estimators": 179,
+      "max_depth": 7,
+      "learning_rate": 0.014888673403279318
+    },
+    "timestamp": "2026-02-16T16:03:43.256623"
+  },
+  "lightgbm_v1": {
+    "name": "lightgbm",
+    "version": 1,
+    "model_path": "trained_models\\lightgbm_v1.pkl",
+    "task_type": "classification",
+    "metrics": {
+      "score": 0.8997
+    },
+    "parameters": {
+      "n_estimators": 144,
+      "max_depth": 10,
+      "learning_rate": 0.2198661886016101
+    },
+    "timestamp": "2026-02-16T16:03:43.297017"
+  },
+  "svm_v1": {
+    "name": "svm",
+    "version": 1,
+    "model_path": "trained_models\\svm_v1.pkl",
+    "task_type": "classification",
+    "metrics": {
+      "score": 0.9666
+    },
+    "parameters": {},
+    "timestamp": "2026-02-16T16:03:43.320357"
+  },
+  "logistic_regression_v2": {
+    "name": "logistic_regression",
+    "version": 2,
+    "model_path": "trained_models\\logistic_regression_v2.pkl",
+    "task_type": "classification",
+    "metrics": {
+      "score": 1.0
+    },
+    "parameters": {
+      "C": 8.619690687006049
+    },
+    "timestamp": "2026-02-16T16:24:48.892467"
+  },
+  "random_forest_v2": {
+    "name": "random_forest",
+    "version": 2,
+    "model_path": "trained_models\\random_forest_v2.pkl",
+    "task_type": "classification",
+    "metrics": {
+      "score": 0.9666
+    },
+    "parameters": {
+      "n_estimators": 121,
+      "max_depth": 5,
+      "min_samples_split": 2
+    },
+    "timestamp": "2026-02-16T16:24:48.915368"
+  },
+  "gradient_boosting_v2": {
+    "name": "gradient_boosting",
+    "version": 2,
+    "model_path": "trained_models\\gradient_boosting_v2.pkl",
+    "task_type": "classification",
+    "metrics": {
+      "score": 0.9666
+    },
+    "parameters": {},
+    "timestamp": "2026-02-16T16:24:48.944009"
+  },
+  "xgboost_v2": {
+    "name": "xgboost",
+    "version": 2,
+    "model_path": "trained_models\\xgboost_v2.pkl",
+    "task_type": "classification",
+    "metrics": {
+      "score": 0.9333
+    },
+    "parameters": {
+      "n_estimators": 208,
+      "max_depth": 7,
+      "learning_rate": 0.286363295591412
+    },
+    "timestamp": "2026-02-16T16:24:48.971333"
+  },
+  "lightgbm_v2": {
+    "name": "lightgbm",
+    "version": 2,
+    "model_path": "trained_models\\lightgbm_v2.pkl",
+    "task_type": "classification",
+    "metrics": {
+      "score": 0.8997
+    },
+    "parameters": {
+      "n_estimators": 134,
+      "max_depth": 9,
+      "learning_rate": 0.2428068992960214
+    },
+    "timestamp": "2026-02-16T16:24:48.998063"
+  },
+  "svm_v2": {
+    "name": "svm",
+    "version": 2,
+    "model_path": "trained_models\\svm_v2.pkl",
+    "task_type": "classification",
+    "metrics": {
+      "score": 0.9333
+    },
+    "parameters": {},
+    "timestamp": "2026-02-16T16:24:49.015483"
+  }
+}

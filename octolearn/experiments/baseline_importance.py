@@ -59,7 +59,7 @@ class BaselineImportance:
         X_copy = X.copy()
         X_copy = X_copy.fillna(X_copy.mean(numeric_only=True))
 
-        for col in self.profile.categorical_features:
+        for col in self.profile.categorical_columns:
             le = LabelEncoder()
             X_copy[col] = le.fit_transform(X_copy[col].astype(str))
 

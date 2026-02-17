@@ -1,294 +1,104 @@
-# Helper utilities module
+"""
+Helper Utilities Module - Modern & Complete
+"""
 
 import logging
 import sys
-from typing import Any, List, Dict, Optional
-from functools import wraps
+import time
 import traceback
+from typing import Any, List, Dict, Optional, Callable
+from functools import wraps
+
+import pandas as pd
+import numpy as np
 from ..config import LOGGING_CONFIG
 
-# ============================================================================
+# ====================================================================
 # CUSTOM EXCEPTIONS
-# ============================================================================
+# ====================================================================
 
 class OctolearnError(Exception):
-    """
-    Base exception for all Octolearn errors.
-    """
+    """Base exception for Octolearn errors."""
     pass
 
-class ProfilingError(OctolearnError):
-    """
-    Raised when dataset profiling fails.
-    """
-    pass
+class ProfilingError(OctolearnError): pass
+class RiskScoringError(OctolearnError): pass
+class PreprocessingError(OctolearnError): pass
+class FeatureEngineeringError(OctolearnError): pass
+class ModelTrainingError(OctolearnError): pass
+class OptimizationError(OctolearnError): pass
+class EvaluationError(OctolearnError): pass
+class ReportGenerationError(OctolearnError): pass
 
-class RiskScoringError(OctolearnError):
-    """
-    Raised when risk scoring fails.
-    """
-    pass
-
-class PreprocessingError(OctolearnError):
-    """
-    Raised when preprocessing fails.
-    """
-    pass
-
-class FeatureEngineeringError(OctolearnError):
-    """
-    Raised when feature engineering fails.
-    """
-    pass
-
-class ModelTrainingError(OctolearnError):
-    """
-    Raised when model training fails.
-    """
-    pass
-
-class OptimizationError(OctolearnError):
-    """
-    Raised when hyperparameter optimization fails.
-    """
-    pass
-
-class EvaluationError(OctolearnError):
-    """
-    Raised when evaluation fails.
-    """
-    pass
-
-class ReportGenerationError(OctolearnError):
-    """
-    Raised when report generation fails.
-    """
-    pass
-
-# ============================================================================
+# ====================================================================
 # LOGGING SETUP
-# ============================================================================
+# ====================================================================
 
 def setup_logger(name: str) -> logging.Logger:
-    """
-    Setup logger for Octolearn modules.
-
-    Args:
-        name (str): Logger name (usually __name__).
-
-    Returns:
-        logging.Logger: Configured logger instance.
-    """
+    """Set up a logger with console and optional file output."""
     logger = logging.getLogger(name)
-    
     if not logger.handlers:
-        # Console handler
+        logger.setLevel(LOGGING_CONFIG.get('level', logging.INFO))
+
+        # Console Handler
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(getattr(logging, LOGGING_CONFIG['level']))
-        
-        # Formatter
-        formatter = logging.Formatter(LOGGING_CONFIG['format'])
+        formatter = logging.Formatter(LOGGING_CONFIG.get('format', '%(asctime)s - %(levelname)s - %(message)s'))
         console_handler.setFormatter(formatter)
-        
         logger.addHandler(console_handler)
-        logger.setLevel(getattr(logging, LOGGING_CONFIG['level']))
-    
+
+        # Optional File Handler
+        log_file = LOGGING_CONFIG.get('file')
+        if log_file:
+            try:
+                file_handler = logging.FileHandler(log_file)
+                file_handler.setFormatter(formatter)
+                logger.addHandler(file_handler)
+            except IOError:
+                logger.warning(f"Cannot write log file: {log_file}")
+
     return logger
 
-# ============================================================================
-# DECORATORS FOR ERROR HANDLING & LOGGING
-# ============================================================================
+# ====================================================================
+# DECORATORS
+# ====================================================================
 
 def handle_exceptions(raise_error: bool = False, logger_obj: Optional[logging.Logger] = None):
-    """
-    Decorator to handle exceptions gracefully.
-    
-    Parameters
-    ----------
-    raise_error : bool
-        Whether to raise exception or return None
-    logger_obj : logging.Logger, optional
-        Logger object for logging
-    """
-    def decorator(func):
+    """Decorator to handle exceptions gracefully."""
+    def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                error_msg = f"Error in {func.__name__}: {str(e)}"
-                error_traceback = traceback.format_exc()
-                
+                msg = f"Error in {func.__name__}: {e}"
+                tb = traceback.format_exc()
                 if logger_obj:
-                    logger_obj.error(f"{error_msg}\n{error_traceback}")
-                
+                    logger_obj.error(f"{msg}\n{tb}")
                 if raise_error:
-                    raise OctolearnError(error_msg) from e
+                    raise OctolearnError(msg) from e
                 return None
         return wrapper
     return decorator
 
 def log_execution(logger_obj: Optional[logging.Logger] = None):
-    """
-    Decorator to log function execution.
-    
-    Parameters
-    ----------
-    logger_obj : logging.Logger, optional
-        Logger object for logging
-    """
-    def decorator(func):
+    """Decorator to log function execution time."""
+    def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            func_name = func.__name__
-            
+            start = time.time()
             if logger_obj:
-                logger_obj.info(f"Starting {func_name}...")
-            
+                logger_obj.info(f"Starting {func.__name__}...")
             result = func(*args, **kwargs)
-            
+            end = time.time()
             if logger_obj:
-                logger_obj.info(f"Completed {func_name}.")
-            
+                logger_obj.info(f"{func.__name__} completed in {end - start:.2f}s")
             return result
         return wrapper
     return decorator
 
-# ============================================================================
-# UTILITY FUNCTIONS
-# ============================================================================
-
-def validate_dataframe(X: Any, name: str = "X") -> bool:
-    """
-    Validate that input is a pandas DataFrame.
-    
-    Parameters
-    ----------
-    X : Any
-        Input to validate
-    name : str
-        Name for error messages
-        
-    Returns
-    -------
-    bool
-        True if valid
-        
-    Raises
-    ------
-    ValueError
-        If not a DataFrame
-    """
-    import pandas as pd
-    
-    if not isinstance(X, pd.DataFrame):
-        raise ValueError(f"{name} must be a pandas DataFrame, got {type(X)}")
-    
-    if X.empty:
-        raise ValueError(f"{name} is empty")
-    
-    return True
-
-def validate_series(y: Any, name: str = "y") -> bool:
-    """
-    Validate that input is a pandas Series.
-    
-    Parameters
-    ----------
-    y : Any
-        Input to validate
-    name : str
-        Name for error messages
-        
-    Returns
-    -------
-    bool
-        True if valid
-        
-    Raises
-    ------
-    ValueError
-        If not a Series
-    """
-    import pandas as pd
-    
-    if not isinstance(y, (pd.Series, pd.DataFrame)):
-        raise ValueError(f"{name} must be a pandas Series/DataFrame, got {type(y)}")
-    
-    if len(y) == 0:
-        raise ValueError(f"{name} is empty")
-    
-    return True
-
-def flatten_dict(d: Dict, parent_key: str = '', sep: str = '_') -> Dict:
-    """
-    Flatten nested dictionary.
-    
-    Parameters
-    ----------
-    d : dict
-        Dictionary to flatten
-    parent_key : str
-        Parent key for recursion
-    sep : str
-        Separator for keys
-        
-    Returns
-    -------
-    dict
-        Flattened dictionary
-    """
-    items = []
-    
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    
-    return dict(items)
-
-def get_memory_usage(obj: Any) -> str:
-    """
-    Get memory usage of an object.
-    
-    Parameters
-    ----------
-    obj : Any
-        Object to measure
-        
-    Returns
-    -------
-    str
-        Memory usage string (e.g., "50.2 MB")
-    """
-    import sys
-    
-    bytes_used = sys.getsizeof(obj)
-    
-    for unit in ['B', 'KB', 'MB', 'GB']:
-        if bytes_used < 1024:
-            return f"{bytes_used:.1f} {unit}"
-        bytes_used /= 1024
-    
-    return f"{bytes_used:.1f} TB"
-
 def retry_with_backoff(max_retries: int = 3, backoff: str = 'exponential'):
-    """
-    Decorator to retry function with backoff.
-    
-    Parameters
-    ----------
-    max_retries : int
-        Maximum number of retries
-    backoff : str
-        'linear' or 'exponential' backoff
-    """
-    import time
-    
-    def decorator(func):
+    """Retry function execution with backoff on failure."""
+    def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
             for attempt in range(max_retries):
@@ -297,60 +107,68 @@ def retry_with_backoff(max_retries: int = 3, backoff: str = 'exponential'):
                 except Exception as e:
                     if attempt == max_retries - 1:
                         raise
-                    
-                    # Calculate wait time
-                    if backoff == 'exponential':
-                        wait_time = 2 ** attempt
-                    else:
-                        wait_time = attempt + 1
-                    
-                    print(f"Attempt {attempt + 1} failed. Retrying in {wait_time}s...")
-                    time.sleep(wait_time)
-        
+                    wait = (2 ** attempt) if backoff == 'exponential' else (attempt + 1)
+                    print(f"Attempt {attempt + 1} failed: {e}. Retrying in {wait}s...")
+                    time.sleep(wait)
         return wrapper
     return decorator
 
-def dict_to_table(data: Dict[str, List], max_rows: int = 10) -> str:
-    """
-    Convert dictionary to formatted table string.
-    
-    Parameters
-    ----------
-    data : dict
-        Dictionary with columns as keys and lists as values
-    max_rows : int
-        Maximum rows to show
-        
-    Returns
-    -------
-    str
-        Formatted table
-    """
-    # Limit rows
-    for key in data:
-        if isinstance(data[key], list):
-            data[key] = data[key][:max_rows]
-    
-    # Find column widths
-    col_widths = {}
-    for col, values in data.items():
-        col_widths[col] = max(len(str(col)), max(len(str(v)) for v in values))
-    
-    # Build table
-    result = []
-    
-    # Header
-    header = " | ".join(f"{col.ljust(col_widths[col])}" for col in data.keys())
-    result.append(header)
-    result.append("-" * len(header))
-    
-    # Rows
+# ====================================================================
+# VALIDATION UTILITIES
+# ====================================================================
+
+def validate_dataframe(df: Any, name: str = "df") -> bool:
+    """Validate that input is a non-empty pandas DataFrame."""
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"{name} must be a pandas DataFrame, got {type(df)}")
+    if df.empty:
+        raise ValueError(f"{name} is empty")
+    return True
+
+def validate_series(series: Any, name: str = "series") -> bool:
+    """Validate that input is a non-empty pandas Series or DataFrame."""
+    if not isinstance(series, (pd.Series, pd.DataFrame)):
+        raise TypeError(f"{name} must be a pandas Series/DataFrame, got {type(series)}")
+    if len(series) == 0:
+        raise ValueError(f"{name} is empty")
+    return True
+
+# ====================================================================
+# UTILITY FUNCTIONS
+# ====================================================================
+
+def flatten_dict(d: Dict, parent_key: str = '', sep: str = '_') -> Dict:
+    """Flatten a nested dictionary."""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+def get_memory_usage(obj: Any) -> str:
+    """Return memory usage of an object in human-readable format."""
+    import sys
+    bytes_used = sys.getsizeof(obj)
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if bytes_used < 1024:
+            return f"{bytes_used:.1f} {unit}"
+        bytes_used /= 1024
+    return f"{bytes_used:.1f} TB"
+
+def dict_to_table(data: Dict[str, List[Any]], max_rows: int = 10) -> str:
+    """Convert dictionary of lists to a formatted table string."""
+    for k in data:
+        if isinstance(data[k], list):
+            data[k] = data[k][:max_rows]
+
+    col_widths = {col: max(len(str(col)), max(len(str(v)) for v in data[col])) for col in data}
+    header = " | ".join(f"{col.ljust(col_widths[col])}" for col in data)
+    lines = [header, "-" * len(header)]
     num_rows = len(next(iter(data.values())))
     for i in range(num_rows):
-        row = " | ".join(
-            f"{str(data[col][i]).ljust(col_widths[col])}"
-            for col in data.keys()
-        )
-        result.append(row)
-    
-    return "\n".join(result)
+        row = " | ".join(f"{str(data[col][i]).ljust(col_widths[col])}" for col in data)
+        lines.append(row)
+    return "\n".join(lines)

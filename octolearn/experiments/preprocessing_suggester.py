@@ -3,37 +3,12 @@ Advanced Preprocessing Suggestions Engine
 Context-aware, task-aware, intelligence-driven
 """
 
-
-
 class PreprocessingSuggester:
-    """
-    Suggests advanced, context-aware preprocessing strategies for a dataset.
-
-    Attributes:
-        profile: Dataset profile object.
-        X: Feature dataframe.
-    """
-
     def __init__(self, profile, X):
-        """
-        Initialize PreprocessingSuggester with profile and data.
-
-        Args:
-            profile: Dataset profile object.
-            X: Feature dataframe.
-        """
         self.profile = profile
         self.X = X
 
-
     def generate_suggestions(self) -> dict:
-        """
-        Generate a dictionary of preprocessing suggestions for the dataset.
-
-        Returns:
-            dict: Suggestions for missing values, encoding, scaling, feature engineering, etc.
-        """
-
         return {
             "missing_value_strategy": self._suggest_missing_handling(),
             "categorical_encoding": self._suggest_categorical_encoding(),
@@ -44,112 +19,63 @@ class PreprocessingSuggester:
         }
 
     # --------------------------------------------------------
-    # Missing Handling (Task-aware)
+    # Missing Values
     # --------------------------------------------------------
-
     def _suggest_missing_handling(self):
-        """
-        Suggest strategies for handling missing values in the dataset.
-
-        Returns:
-            list: Suggestions for each column with missing values.
-        """
-
-        if not self.profile.missing_report:
-            return ["No missing values detected."]
-
-        max_missing = max(self.profile.missing_report.values())
-
-        if max_missing == 0:
+        if not self.profile.missing_ratio:
             return ["No missing values detected."]
 
         suggestions = []
-
-        for col, pct in self.profile.missing_report.items():
-
-            if pct == 0:
-                continue
-
-            if pct > 50:
-                suggestions.append(
-                    f"'{col}': Extremely high missing rate ({pct}%). Consider dropping."
-                )
-
-            elif pct > 20:
-                if self.profile.task_type == "regression":
-                    suggestions.append(
-                        f"'{col}': Use IterativeImputer or model-based imputation ({pct}%)."
-                    )
+        for col, ratio in self.profile.missing_ratio.items():
+            if ratio > 0.5:
+                suggestions.append(f"Drop '{col}' (>50% missing).")
+            elif ratio > 0:
+                dtype = self.profile.feature_types.get(col, 'unknown')
+                if dtype == 'numeric':
+                    suggestions.append(f"Impute '{col}' with mean/median.")
                 else:
-                    suggestions.append(
-                        f"'{col}': Use KNN or class-conditional imputation ({pct}%)."
-                    )
+                    suggestions.append(f"Impute '{col}' with mode.")
 
-            elif pct <= 5:
-                suggestions.append(
-                    f"'{col}': Mean/Median imputation sufficient ({pct}%)."
-                )
-
-        return suggestions or ["No significant missing issues detected."]
+        return suggestions or ["No missing values to handle."]
 
     # --------------------------------------------------------
-    # Categorical Encoding (Cardinality-aware)
+    # Categorical Encoding
     # --------------------------------------------------------
-
     def _suggest_categorical_encoding(self):
-        """
-        Suggest encoding strategies for categorical features based on cardinality.
-
-        Returns:
-            list: Suggestions for each categorical column.
-        """
-
-        if not self.profile.categorical_features:
-            return ["No categorical features."]
-
         suggestions = []
-
-        for col in self.profile.categorical_features:
-
-            n_unique = self.X[col].nunique()
-
-            if n_unique <= 5:
-                suggestions.append(
-                    f"'{col}': One-Hot Encoding recommended ({n_unique} categories)."
-                )
-
-            elif n_unique <= 20:
-                suggestions.append(
-                    f"'{col}': Ordinal or Target Encoding suitable ({n_unique} categories)."
-                )
-
+        for col in self.profile.categorical_columns:
+            n_unique = self.profile.unique_counts.get(col, 0)
+            if n_unique <= 2:
+                suggestions.append(f"Label Encode '{col}' (Binary/Low Cardinality).")
+            elif n_unique < 10:
+                suggestions.append(f"One-Hot Encode '{col}'.")
             else:
-                suggestions.append(
-                    f"'{col}': High cardinality. Prefer Target/Frequency Encoding."
-                )
-
-        return suggestions
+                suggestions.append(f"Target/Frequency Encode '{col}' (High Cardinality).")
+        return suggestions or ["No categorical encoding needed."]
 
     # --------------------------------------------------------
-    # Scaling (Model-aware logic)
+    # Scaling
     # --------------------------------------------------------
-
     def _suggest_scaling(self):
-
-        if not self.profile.numeric_features:
+        if not self.profile.numeric_columns:
             return ["No numeric features to scale."]
 
         suggestions = []
 
-        if self.profile.skewed_columns:
+        # Identify skewed numeric columns dynamically
+        skewed_columns = [
+            col for col, stat in self.profile.stats.items()
+            if "skew" in stat and abs(stat["skew"]) > 1
+        ]
+
+        if skewed_columns:
             suggestions.append(
-                f"Apply log transformation to skewed features: {self.profile.skewed_columns}"
+                f"Apply log or Box-Cox transformation to skewed features: {skewed_columns}"
             )
 
         suggestions.append(
             "Scaling required for linear models, SVM, KNN, and neural networks."
         )
-
         suggestions.append(
             "Scaling NOT required for tree-based models (RandomForest, XGBoost)."
         )
@@ -157,52 +83,36 @@ class PreprocessingSuggester:
         return suggestions
 
     # --------------------------------------------------------
-    # Feature Engineering (Intelligent triggers)
+    # Feature Engineering
     # --------------------------------------------------------
-
     def _suggest_feature_engineering(self):
-
         suggestions = []
 
-        if len(self.profile.numeric_features) >= 2:
-            suggestions.append(
-                "Explore feature interactions (ratios, products, differences)."
-            )
+        if len(self.profile.numeric_columns) >= 2:
+            suggestions.append("Explore feature interactions (ratios, products, differences).")
 
-        if self.profile.datetime_features:
-            suggestions.append(
-                "Extract temporal features (month, weekday, quarter, trend indicators)."
-            )
+        if self.profile.date_columns:
+            suggestions.append("Extract temporal features (month, weekday, quarter, trend indicators).")
 
-        if self.profile.n_rows > 50000:
-            suggestions.append(
-                "Consider dimensionality reduction (PCA) if training speed becomes issue."
-            )
+        if self.profile.shape[0] > 50000:
+            suggestions.append("Consider dimensionality reduction (PCA) if training speed becomes an issue.")
 
         return suggestions or ["No immediate feature engineering requirements."]
 
     # --------------------------------------------------------
-    # Column Actions (Now includes ID + variance)
+    # Column Actions
     # --------------------------------------------------------
-
     def _suggest_column_actions(self):
-
         suggestions = []
 
         if self.profile.id_like_columns:
-            suggestions.append(
-                f"Remove identifier columns: {self.profile.id_like_columns}"
-            )
+            suggestions.append(f"Remove identifier columns: {self.profile.id_like_columns}")
 
         if self.profile.constant_columns:
-            suggestions.append(
-                f"Remove constant columns: {self.profile.constant_columns}"
-            )
+            suggestions.append(f"Remove constant columns: {self.profile.constant_columns}")
 
         if self.profile.low_variance_columns:
-            suggestions.append(
-                f"Remove near-zero variance columns: {self.profile.low_variance_columns}"
-            )
+            suggestions.append(f"Remove near-zero variance columns: {self.profile.low_variance_columns}")
 
         if self.profile.high_cardinality_cols:
             suggestions.append(
@@ -212,11 +122,9 @@ class PreprocessingSuggester:
         return suggestions or ["No column-level structural issues detected."]
 
     # --------------------------------------------------------
-    # Risk Mitigation (NEW SECTION)
+    # Risk Mitigation
     # --------------------------------------------------------
-
     def _suggest_risk_controls(self):
-
         suggestions = []
 
         if self.profile.leakage_suspects:
@@ -224,12 +132,10 @@ class PreprocessingSuggester:
                 f"Investigate potential target leakage in: {self.profile.leakage_suspects}"
             )
 
-        if self.profile.imbalance_ratio and self.profile.imbalance_ratio > 0.85:
-            suggestions.append(
-                "Apply class balancing (SMOTE, class_weight, focal loss)."
-            )
+        if getattr(self.profile, "imbalance_ratio", None) is not None and self.profile.imbalance_ratio < 0.85:
+            suggestions.append("Apply class balancing (SMOTE, class_weight, focal loss).")
 
-        if not suggestions:
-            suggestions.append("No critical risk controls required.")
+        if getattr(self.profile, "duplicate_rows", 0) > 0:
+            suggestions.append(f"Handle {self.profile.duplicate_rows} duplicate rows.")
 
-        return suggestions
+        return suggestions or ["No critical risk controls required."]

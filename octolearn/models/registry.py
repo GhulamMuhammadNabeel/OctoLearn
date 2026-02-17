@@ -1,25 +1,18 @@
 """
 Model Registry Module
 
-Manages model storage, versioning, and retrieval
+Manages model versioning, metadata storage, and artifact retrieval.
+Uses JSON as a backend and handles NumPy/Pandas serialization safely.
 """
 
+import os
 import json
-import pickle
+import joblib
+import pandas as pd
+import numpy as np
+import copy
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from pathlib import Path
-import warnings
-import csv
-
-warnings.filterwarnings('ignore')
-
-# Try to import sqlite3, but don't fail if unavailable
-try:
-    import sqlite3
-    SQLITE_AVAILABLE = True
-except ImportError:
-    SQLITE_AVAILABLE = False
+from typing import Dict, Any, Optional
 
 from ..config import MODEL_REGISTRY_CONFIG
 from ..utils.helpers import setup_logger
@@ -27,498 +20,245 @@ from ..utils.helpers import setup_logger
 logger = setup_logger(__name__)
 
 
+class NumpyEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder for NumPy and Pandas objects.
+
+    This encoder converts NumPy numeric types, arrays, and Pandas timestamps
+    into native Python types so they can be serialized into JSON.
+    """
+
+    def default(self, obj):
+        if isinstance(obj, (np.integer, np.int64, np.int32)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float64, np.float32)):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, (datetime, pd.Timestamp)):
+            return obj.isoformat()
+        return super().default(obj)
+
+
 class ModelRegistry:
     """
-    Registry for storing and managing trained models, their metadata, and versioning.
+    Local Model Registry using JSON storage.
 
-    Supports JSON, SQLite, and CSV backends for model persistence and retrieval.
+    Stores:
+    - Model artifacts on disk (joblib format)
+    - Model metadata (metrics, parameters, timestamps) in JSON
 
-    Attributes:
-        storage_type (str): Backend type ('json', 'sqlite', 'csv').
-        db_path (str): Path to storage file or database.
+    Supports:
+    - Automatic versioning
+    - Best model retrieval
+    - Safe serialization of NumPy/Pandas values
     """
-    
-    def __init__(self, storage_type: str = None, db_path: str = None):
-        """
-        Initialize ModelRegistry with backend and storage path.
 
-        Args:
-            storage_type (str, optional): Storage backend: 'json' (default), 'sqlite', or 'csv'.
-            db_path (str, optional): Path to storage database/file.
+    def __init__(self):
         """
-        requested_storage = storage_type or MODEL_REGISTRY_CONFIG['storage']
-        self.db_path = db_path or MODEL_REGISTRY_CONFIG['db_path']
-        
-        # Validate and set storage type with fallback
-        self.storage_type = self._validate_storage_type(requested_storage)
-        
-        # Create storage directory if needed
-        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        
-        # Initialize storage
-        if self.storage_type == 'sqlite':
-            self._init_sqlite()
-        elif self.storage_type == 'json':
-            self._init_json()
-        elif self.storage_type == 'csv':
-            self._init_csv()
-        
-        logger.info(f"ModelRegistry initialized with {self.storage_type} storage at {self.db_path}")
-    
-    def _validate_storage_type(self, requested_type: str) -> str:
+        Initialize ModelRegistry and ensure required directories and files exist.
         """
-        Validate storage type and fallback to JSON if needed.
+        self.config = MODEL_REGISTRY_CONFIG
+        self.db_path = self.config["db_path"]
 
-        Args:
-            requested_type (str): Requested storage type.
+        self.storage_dir = os.path.dirname(self.db_path)
+        self.models_dir = os.path.join(self.storage_dir, "trained_models")
 
-        Returns:
-            str: Valid storage type to use.
+        self._initialize_registry()
+
+    def _initialize_registry(self) -> None:
         """
-        if requested_type == 'sqlite':
-            if not SQLITE_AVAILABLE:
-                logger.warning(
-                    "sqlite3 not available. Falling back to JSON storage. "
-                    "Install python-dev for sqlite3 support if needed."
-                )
-                return 'json'
-            return 'sqlite'
-        
-        elif requested_type == 'csv':
-            return 'csv'
-        
-        elif requested_type == 'json':
-            return 'json'
-        
-        else:
-            logger.warning(f"Unknown storage type '{requested_type}'. Using JSON.")
-            return 'json'
-    
-    def _init_sqlite(self):
-        """Initialize SQLite database."""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS models (
-                    id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    version INTEGER NOT NULL,
-                    model_path TEXT NOT NULL,
-                    task_type TEXT,
-                    metrics TEXT,
-                    parameters TEXT,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(name, version)
-                )
-            ''')
-            
-            conn.commit()
-            conn.close()
-            
-            logger.info("SQLite database initialized")
-        
-        except Exception as e:
-            logger.error(f"Failed to initialize SQLite: {str(e)}")
-    
-    def _init_json(self):
-        """Initialize JSON storage."""
-        try:
-            if not Path(self.db_path).exists():
-                with open(self.db_path, 'w') as f:
-                    json.dump({}, f, indent=2)
-            
-            logger.info("JSON storage initialized")
-        
-        except Exception as e:
-            logger.error(f"Failed to initialize JSON storage: {str(e)}")
-    
-    def _init_csv(self):
-        """Initialize CSV storage."""
-        try:
-            csv_path = str(self.db_path).replace('.json', '.csv')
-            if not Path(csv_path).exists():
-                with open(csv_path, 'w', newline='') as f:
-                    writer = csv.writer(f)
-                    writer.writerow(['model_id', 'name', 'version', 'task_type', 'timestamp', 'model_path'])
-            
-            logger.info("CSV storage initialized")
-        
-        except Exception as e:
-            logger.error(f"Failed to initialize CSV storage: {str(e)}")
-    
+        Ensure registry directories and JSON database file exist.
+
+        Creates:
+        - Storage directory
+        - trained_models directory
+        - JSON registry file (if missing)
+        """
+        os.makedirs(self.storage_dir, exist_ok=True)
+        os.makedirs(self.models_dir, exist_ok=True)
+
+        if not os.path.exists(self.db_path):
+            with open(self.db_path, "w") as f:
+                json.dump({"models": {}, "experiments": []}, f, indent=4)
+
     def register_model(
         self,
         name: str,
         model: Any,
         task_type: str,
-        metrics: Dict = None,
-        parameters: Dict = None,
-        auto_version: bool = True
-    ) -> str:
+        metrics: Dict[str, float],
+        parameters: Optional[Dict[str, Any]] = None
+    ) -> Optional[int]:
         """
-        Register a trained model in the registry.
-        
+        Register a trained model and save its artifact and metadata.
+
         Parameters
         ----------
         name : str
-            Model name
+            Model name.
         model : Any
-            Trained model object
+            Trained ML model object.
         task_type : str
-            'classification' or 'regression'
-        metrics : dict, optional
-            Model metrics
-        parameters : dict, optional
-            Model hyperparameters
-        auto_version : bool
-            Auto-increment version
-            
+            Task type ('classification' or 'regression').
+        metrics : Dict[str, float]
+            Evaluation metrics for the model.
+        parameters : Dict[str, Any], optional
+            Hyperparameters used during training.
+
         Returns
         -------
-        str
-            Model ID/version
+        int or None
+            Assigned model version number if successful, else None.
         """
         try:
-            version = 1
-            if auto_version:
-                version = self._get_next_version(name)
-            
-            if self.storage_type == 'sqlite':
-                return self._register_sqlite(name, model, task_type, metrics, parameters, version)
-            elif self.storage_type == 'json':
-                return self._register_json(name, model, task_type, metrics, parameters, version)
-            elif self.storage_type == 'csv':
-                return self._register_csv(name, model, task_type, metrics, parameters, version)
-        
-        except Exception as e:
-            logger.error(f"Failed to register model: {str(e)}")
-            return None
-    
-    def _register_sqlite(
-        self, name: str, model: Any, task_type: str, metrics: Dict, parameters: Dict, version: int
-    ) -> str:
-        """Register model in SQLite."""
-        try:
-            # Save model to file in trained_models/
-            model_dir = Path('trained_models')
-            model_dir.mkdir(exist_ok=True)
-            model_path = str(model_dir / f"{name}_v{version}.pkl")
-            with open(model_path, 'wb') as f:
-                pickle.dump(model, f)
-            # Store metadata in database
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO models (name, version, model_path, task_type, metrics, parameters)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (
-                name,
-                version,
-                model_path,
-                task_type,
-                json.dumps(metrics or {}),
-                json.dumps(parameters or {})
-            ))
-            conn.commit()
-            conn.close()
-            logger.info(f"Model {name} v{version} registered")
-            return f"{name}_v{version}"
-        except Exception as e:
-            logger.error(f"SQLite registration failed: {str(e)}")
-            return None
-    
-    def _register_json(
-        self, name: str, model: Any, task_type: str, metrics: Dict, parameters: Dict, version: int
-    ) -> str:
-        """Register model in JSON."""
-        try:
-            # Save model to file in trained_models/
-            model_dir = Path('trained_models')
-            model_dir.mkdir(exist_ok=True)
-            model_path = str(model_dir / f"{name}_v{version}.pkl")
-            with open(model_path, 'wb') as f:
-                pickle.dump(model, f)
-            # Load registry
-            with open(self.db_path, 'r') as f:
-                registry = json.load(f)
-            # Add model entry
-            model_id = f"{name}_v{version}"
-            registry[model_id] = {
-                'name': name,
-                'version': version,
-                'model_path': model_path,
-                'task_type': task_type,
-                'metrics': metrics or {},
-                'parameters': parameters or {},
-                'timestamp': datetime.now().isoformat()
+            registry_data = self._load_registry()
+
+            timestamp = datetime.now().isoformat()
+            version = len(registry_data["models"].get(name, [])) + 1
+
+            model_filename = f"{name}_v{version}.pkl"
+            model_path = os.path.join(self.models_dir, model_filename)
+
+            # Save model artifact
+            joblib.dump(model, model_path)
+
+            entry = {
+                "version": version,
+                "timestamp": timestamp,
+                "task_type": task_type,
+                "path": model_path,
+                "metrics": metrics,
+                "parameters": parameters or {}
             }
-            # Save registry
-            with open(self.db_path, 'w') as f:
-                json.dump(registry, f, indent=2)
-            logger.info(f"Model {name} v{version} registered")
-            return model_id
+
+            registry_data["models"].setdefault(name, []).append(entry)
+
+            self._save_registry(registry_data)
+
+            logger.info(f"Registered model: {name} (v{version})")
+            return version
+
         except Exception as e:
-            logger.error(f"JSON registration failed: {str(e)}")
+            logger.error(f"Failed to register model {name}: {str(e)}")
             return None
-    
-    def _register_csv(
-        self, name: str, model: Any, task_type: str, metrics: Dict, parameters: Dict, version: int
-    ) -> str:
-        """Register model in CSV."""
-        try:
-            # Save model to file in trained_models/
-            model_dir = Path('trained_models')
-            model_dir.mkdir(exist_ok=True)
-            model_path = str(model_dir / f"{name}_v{version}.pkl")
-            with open(model_path, 'wb') as f:
-                pickle.dump(model, f)
-            csv_path = str(self.db_path).replace('.json', '.csv')
-            model_id = f"{name}_v{version}"
-            # Append to CSV
-            with open(csv_path, 'a', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow([
-                    model_id,
-                    name,
-                    version,
-                    task_type,
-                    datetime.now().isoformat(),
-                    model_path
-                ])
-            logger.info(f"Model {name} v{version} registered in CSV")
-            return model_id
-        except Exception as e:
-            logger.error(f"CSV registration failed: {str(e)}")
-            return None
-    
+
+    def get_best_model(
+        self,
+        metric: str = "score",
+        mode: str = "max"
+    ) -> Optional[Any]:
+        """
+        Retrieve the best performing model across all registered models.
+
+        Parameters
+        ----------
+        metric : str
+            Metric name to compare (default: 'score').
+        mode : str
+            'max' to maximize metric, 'min' to minimize metric.
+
+        Returns
+        -------
+        Any or None
+            Loaded model object if found, else None.
+        """
+        registry_data = self._load_registry()
+
+        best_model_path = None
+        best_value = -float("inf") if mode == "max" else float("inf")
+
+        for name, versions in registry_data.get("models", {}).items():
+            for entry in versions:
+                val = entry.get("metrics", {}).get(metric)
+
+                if val is None:
+                    continue
+
+                if (mode == "max" and val > best_value) or (mode == "min" and val < best_value):
+                    best_value = val
+                    best_model_path = entry["path"]
+
+        if best_model_path and os.path.exists(best_model_path):
+            logger.info(f"Loaded best model from {best_model_path}")
+            return joblib.load(best_model_path)
+
+        logger.warning("No suitable best model found.")
+        return None
+
+    def list_models(self) -> Dict[str, Any]:
+        """
+        List all registered models and their metadata.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Dictionary of model names and their version metadata.
+        """
+        registry_data = self._load_registry()
+        # FIX: return deep copy so callers cannot mutate internal registry state by accident
+        return copy.deepcopy(registry_data.get("models", {}))
+
     def load_model(self, name: str, version: Optional[int] = None) -> Optional[Any]:
         """
-        Load a model from registry.
-        
+        Load a specific model by name and version.
+
         Parameters
         ----------
         name : str
-            Model name
+            Model name.
         version : int, optional
-            Model version. Loads latest if None
-            
+            Model version. If None, loads the latest version.
+
         Returns
         -------
-        model or None
-            Loaded model
+        Any or None
+            Loaded model object if found, else None.
         """
-        try:
-            if version is None:
-                version = self._get_latest_version(name)
-            
-            model_path = f"{name}_v{version}.pkl"
-            
-            with open(model_path, 'rb') as f:
-                model = pickle.load(f)
-            
-            logger.info(f"Loaded model {name} v{version}")
-            return model
-        
-        except Exception as e:
-            logger.error(f"Failed to load model: {str(e)}")
+        registry_data = self._load_registry()
+
+        if name not in registry_data.get("models", {}):
+            logger.warning(f"Model {name} not found in registry.")
             return None
-    
-    def _get_next_version(self, name: str) -> int:
-        """Get next version number for model."""
-        try:
-            if self.storage_type == 'sqlite':
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('SELECT MAX(version) FROM models WHERE name = ?', (name,))
-                result = cursor.fetchone()
-                conn.close()
-                
-                max_version = result[0] if result[0] is not None else 0
-                return max_version + 1
-            
-            elif self.storage_type == 'json':
-                with open(self.db_path, 'r') as f:
-                    registry = json.load(f)
-                
-                versions = [
-                    int(v.split('_v')[1]) for v in registry.keys()
-                    if v.startswith(f"{name}_v")
-                ]
-                
-                return max(versions) + 1 if versions else 1
-            
-            elif self.storage_type == 'csv':
-                csv_path = str(self.db_path).replace('.json', '.csv')
-                versions = []
-                with open(csv_path, 'r', newline='') as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        if row['name'] == name:
-                            versions.append(int(row['version']))
-                
-                return max(versions) + 1 if versions else 1
-        
-        except:
-            return 1
-    
-    def _get_latest_version(self, name: str) -> int:
-        """Get latest version of model."""
-        try:
-            if self.storage_type == 'sqlite':
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('SELECT MAX(version) FROM models WHERE name = ?', (name,))
-                result = cursor.fetchone()
-                conn.close()
-                
-                return result[0] if result[0] is not None else 1
-            
-            elif self.storage_type == 'json':
-                with open(self.db_path, 'r') as f:
-                    registry = json.load(f)
-                
-                versions = [
-                    int(v.split('_v')[1]) for v in registry.keys()
-                    if v.startswith(f"{name}_v")
-                ]
-                
-                return max(versions) if versions else 1
-            
-            elif self.storage_type == 'csv':
-                csv_path = str(self.db_path).replace('.json', '.csv')
-                versions = []
-                with open(csv_path, 'r', newline='') as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        if row['name'] == name:
-                            versions.append(int(row['version']))
-                
-                return max(versions) if versions else 1
-        
-        except:
-            return 1
-    
-    def list_models(self) -> List[Dict]:
+
+        versions = registry_data["models"][name]
+
+        if version is None:
+            entry = versions[-1]
+        else:
+            entry = next((v for v in versions if v["version"] == version), None)
+
+        if entry and os.path.exists(entry["path"]):
+            logger.info(f"Loaded model {name} v{entry['version']}")
+            return joblib.load(entry["path"])
+
+        logger.error(f"Model file not found for {name} v{version}")
+        return None
+
+    def _load_registry(self) -> Dict[str, Any]:
         """
-        List all registered models.
-        
+        Load registry JSON file safely.
+
         Returns
         -------
-        list
-            List of model metadata
+        Dict[str, Any]
+            Registry dictionary.
         """
         try:
-            if self.storage_type == 'sqlite':
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('SELECT name, version, task_type, timestamp FROM models ORDER BY timestamp DESC')
-                results = cursor.fetchall()
-                conn.close()
-                
-                return [
-                    {
-                        'name': r[0],
-                        'version': r[1],
-                        'task_type': r[2],
-                        'timestamp': r[3]
-                    }
-                    for r in results
-                ]
-            
-            elif self.storage_type == 'json':
-                with open(self.db_path, 'r') as f:
-                    registry = json.load(f)
-                
-                return [
-                    {
-                        'model_id': k,
-                        'name': v['name'],
-                        'version': v['version'],
-                        'task_type': v['task_type'],
-                        'timestamp': v['timestamp']
-                    }
-                    for k, v in registry.items()
-                ]
-            
-            elif self.storage_type == 'csv':
-                csv_path = str(self.db_path).replace('.json', '.csv')
-                models = []
-                with open(csv_path, 'r', newline='') as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        models.append({
-                            'model_id': row['model_id'],
-                            'name': row['name'],
-                            'version': int(row['version']),
-                            'task_type': row['task_type'],
-                            'timestamp': row['timestamp']
-                        })
-                return models
-        
-        except Exception as e:
-            logger.error(f"Failed to list models: {str(e)}")
-            return []
-    
-    def delete_model(self, name: str, version: int) -> bool:
+            with open(self.db_path, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            logger.warning("Registry file corrupted or missing. Reinitializing.")
+            return {"models": {}, "experiments": []}
+
+    def _save_registry(self, data: Dict[str, Any]) -> None:
         """
-        Delete a model from registry.
-        
+        Save registry data to JSON file using NumpyEncoder.
+
         Parameters
         ----------
-        name : str
-            Model name
-        version : int
-            Model version
-            
-        Returns
-        -------
-        bool
-            Success status
+        data : Dict[str, Any]
+            Registry data to save.
         """
-        try:
-            model_path = f"{name}_v{version}.pkl"
-            
-            if Path(model_path).exists():
-                Path(model_path).unlink()
-            
-            if self.storage_type == 'sqlite':
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('DELETE FROM models WHERE name = ? AND version = ?', (name, version))
-                conn.commit()
-                conn.close()
-            
-            elif self.storage_type == 'json':
-                with open(self.db_path, 'r') as f:
-                    registry = json.load(f)
-                
-                model_id = f"{name}_v{version}"
-                if model_id in registry:
-                    del registry[model_id]
-                
-                with open(self.db_path, 'w') as f:
-                    json.dump(registry, f, indent=2)
-            
-            elif self.storage_type == 'csv':
-                csv_path = str(self.db_path).replace('.json', '.csv')
-                models = []
-                with open(csv_path, 'r', newline='') as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        if not (row['name'] == name and int(row['version']) == version):
-                            models.append(row)
-                
-                with open(csv_path, 'w', newline='') as f:
-                    if models:
-                        writer = csv.DictWriter(f, fieldnames=['model_id', 'name', 'version', 'task_type', 'timestamp', 'model_path'])
-                        writer.writeheader()
-                        writer.writerows(models)
-            
-            logger.info(f"Deleted model {name} v{version}")
-            return True
-        
-        except Exception as e:
-            logger.error(f"Failed to delete model: {str(e)}")
-            return False
+        with open(self.db_path, "w") as f:
+            json.dump(data, f, indent=4, cls=NumpyEncoder)

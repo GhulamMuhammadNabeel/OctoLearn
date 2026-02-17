@@ -205,7 +205,7 @@ Get raw profile dataclass.
 
 ## 🏗 Architecture
 
-```
+
 
 # Octolearn 🐙 — The Ultimate User-Driven AutoML & Data Intelligence Suite
 
@@ -275,7 +275,7 @@ automl = AutoML()
 automl.fit(X, y)
 pdf = automl.generate_report()
 print(f"Report: {pdf}")
-
+```
 
 ---
 
@@ -296,6 +296,7 @@ automl = AutoML(
 automl.fit(X, y)
 results = automl.train_auto_models()
 pdf = automl.generate_report()
+```
 - **Dataset Profiling**: `profiling/data_profiler.py` performs automatic type detection (numeric, categorical, datetime), missing-value summaries, duplicate detection, skewness and constant-column checks, high-cardinality detection, and produces a stable dataset hash.
 
 ---
@@ -381,7 +382,7 @@ octolearn/
 ├── core.py                      ← Main AutoML class
 ├── config.py                    ← Configuration
 ├── profiling/
-│   └── data_profiler.py        ← Dataset analysis (16 metrics)
+│     └── data_profiler.py        ← Dataset analysis (16 metrics)
 ├── experiments/
 │   ├── risk_scorer.py          ← Risk assessment (0-100)
 │   ├── preprocessing_suggester.py  ← Preprocessing strategy
@@ -564,32 +565,7 @@ These components are designed to work together end-to-end: run `AutoML().fit(X,y
 
 ---
 
-## 🚀 Roadmap
 
-### Phase 2 ✅ Complete
-- [x] Dataset profiling
-- [x] Risk scoring
-- [x] Preprocessing suggestions
-- [x] Feature importance
-- [x] SHAP analysis
-- [x] PDF generation
-
-### Phase 3 (Coming Soon)
-- [ ] Model performance prediction
-- [ ] Outlier detection & visualization
-- [ ] Feature interaction analysis
-- [ ] Automatic data cleaning
-- [ ] Cross-validation strategy recommendation
-- [ ] Ensemble model selection
-- [ ] MLflow integration
-
-### Phase 4 (Roadmap)
-- [ ] AutoML model training
-- [ ] Hyperparameter optimization
-- [ ] Automated pipeline building
-- [ ] Production model deployment
-
----
 
 ## 🧪 Testing
 
@@ -655,7 +631,7 @@ Octolearn follows modular, automated principles:
 
 **Made with ☕ and 🐙 Logic.**
 
-*Octolearn v0.5.0 — Intelligent AutoML for Everyone*
+*Octolearn v0.5.1 — Intelligent AutoML for Everyone*
 
 Optional distributed execution: if you need scalable runs with large datasets or parallel Optuna trials, install the `distributed` extras:
 

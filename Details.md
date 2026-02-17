@@ -1,6 +1,6 @@
 # Octolearn: Complete Development Details
 
-**Version**: 0.5.1  
+**Version**: 0.5.2  
 **Author**: Ghulam Muhammad Nabeel  
 **License**: MIT  
 **Status**: Ready for publication (Phase 4 ✅)
@@ -209,7 +209,7 @@ octolearn/
 **Lines**: ~10  
 **Exports**: 
 - `AutoML` class
-- `__version__` (0.5.1)
+- `__version__` (0.5.2)
 
 **Returns**: Nothing directly; acts as namespace
 
@@ -1992,7 +1992,7 @@ Time/Date:
 
 ✅ **Distribution Ready**
 - PyPI setup configured
-- Version management (v0.5.1)
+- Version management (v0.5.2)
 - MIT License
 - README + ARCHITECTURE guide
 - Comprehensive Details.md documentation
@@ -2224,7 +2224,7 @@ automl = AutoML(
 
 ---
 
-**Octolearn v0.5.1: Complete AutoML Intelligence Pipeline 🐙**
+**Octolearn v0.5.2: Complete AutoML Intelligence Pipeline 🐙**
 
 *Now featuring Phase 3-4: Intelligent Preprocessing + Model Training*
 

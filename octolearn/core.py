@@ -280,21 +280,20 @@ class AutoML:
             if metric is None:
                 metric = 'f1' if self.profile_.task_type == 'classification' else 'rmse'
 
-            # --- FIX: Pass pre-split data to avoid double splitting ---
+            # --- FIX: Pass pre-split data via Constructor to avoid immediate error ---
             if self.X_train_ is not None and self.X_test_ is not None:
                 trainer = ModelTrainer(
                     X=None, y=None,  # X/y handled via splits
                     profile=self.profile_,
                     task_type=self.profile_.task_type,
-                    evaluation_metric=metric
+                    evaluation_metric=metric,
+                    X_train=self.X_train_,  # <--- Passed HERE
+                    X_test=self.X_test_,    # <--- Passed HERE
+                    y_train=self.y_train_,  # <--- Passed HERE
+                    y_test=self.y_test_     # <--- Passed HERE
                 )
-                # Inject the splits directly
-                trainer.X_train = self.X_train_
-                trainer.X_test = self.X_test_
-                trainer.y_train = self.y_train_
-                trainer.y_test = self.y_test_
             else:
-                # fallback if no split exists
+                # fallback if no split exists (e.g. auto_clean=False)
                 trainer = ModelTrainer(
                     self.X_, self.y_, self.profile_,
                     task_type=self.profile_.task_type,

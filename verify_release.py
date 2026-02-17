@@ -23,11 +23,11 @@ def check_version():
     try:
         import octolearn
         version = octolearn.__version__
-        if version == "0.5.1":
+        if version == "0.5.2":
             print(f"✅ Version Check: {version}")
             return True
         else:
-            print(f"⚠️  Version Check: {version} (expected 0.5.1)")
+            print(f"⚠️  Version Check: {version} (expected 0.5.2)")
             return False
     except Exception as e:
         print(f"❌ Version Check Failed: {e}")

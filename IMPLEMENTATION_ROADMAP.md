@@ -1,4 +1,4 @@
-# Octolearn v0.5.1 - Implementation Roadmap & Code Examples
+# Octolearn v0.5.2 - Implementation Roadmap & Code Examples
 
 **Status:** Ready for development  
 **Priority:** High-impact UX improvements  
@@ -939,10 +939,10 @@ After implementing these changes:
 ## Next Steps
 
 1. **Discuss with team** on implementation details
-2. **Create feature branch** for v0.5.1 development
+2. **Create feature branch** for v0.5.2 development
 3. **Implement in order:** Presets → Validation → Logging → Examples
 4. **Test thoroughly** with real users
-5. **Release v0.5.1** with announcement
+5. **Release v0.5.2** with announcement
 
 ---
 

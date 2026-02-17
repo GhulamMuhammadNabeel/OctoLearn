@@ -631,7 +631,7 @@ Octolearn follows modular, automated principles:
 
 **Made with ☕ and 🐙 Logic.**
 
-*Octolearn v0.5.3 — Intelligent AutoML for Everyone*
+*Octolearn v0.7.0 — Intelligent AutoML for Everyone*
 
 Optional distributed execution: if you need scalable runs with large datasets or parallel Optuna trials, install the `distributed` extras:
 

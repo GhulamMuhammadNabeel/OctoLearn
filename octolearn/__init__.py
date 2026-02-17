@@ -25,7 +25,7 @@ Note:
     See HOW_TO_USE.md and README.md for full usage details and advanced options.
 """
 
-__version__ = "0.5.3"
+__version__ = "0.7.0"
 __author__ = "Ghulam Muhammad Nabeel"
 __license__ = "MIT"
 

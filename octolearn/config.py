@@ -97,6 +97,32 @@ INTERACTION_CONFIG = {
 }
 
 # ============================================================================
+# FEATURE GENERATION CONFIG
+# ============================================================================
+
+FEATURE_GENERATION_CONFIG = {
+    'enabled': True,
+    
+    'date_features': {
+        'enabled': True,
+        'parts': ['year', 'month', 'day', 'weekday', 'is_weekend'], 
+        'drop_original': True
+    },
+    
+    'skewed_features': {
+        'enabled': True,
+        'threshold': 1.0,           # Skew threshold for log transform
+        'method': 'log1p',          # Transformation method
+        'drop_original': False      # Keep original features?
+    },
+    
+    'interaction_features': {
+        'enabled': True,            # Add top interactions
+        'top_n': 5,                 # Number of interactions to add
+    }
+}
+
+# ============================================================================
 # AUTO CLEANING CONFIG
 # ============================================================================
 

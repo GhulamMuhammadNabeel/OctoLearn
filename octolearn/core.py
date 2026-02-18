@@ -83,7 +83,10 @@ from .experiments.outlier_detector import OutlierDetector
 
 # Phase 3 modules
 from .feature.interaction_analyzer import FeatureInteractionAnalyzer
+from .feature.generator import FeatureGenerator
 from .preprocessing.auto_cleaner import AutoCleaner
+
+
 
 # Phase 4 modules
 from .models.model_trainer import ModelTrainer
@@ -958,7 +961,31 @@ class AutoML:
         self.clean_profile_ = self.profiler.profile(self.X_, self.y_)
     
     def _feature_engineering(self) -> None:
-        """Perform feature engineering."""
+        """Perform intelligent feature engineering."""
+        # 1. Feature Generation (New in v0.7.8)
+        # We use analyzing_interactions flag as proxy, or it should be enabled by default
+        if self.profiling_config.analyze_interactions:
+             try:
+                 generator = FeatureGenerator(self.clean_profile_)
+                 # Fit on training data ONLY to prevent leakage
+                 generator.fit(self.X_train_, self.y_train_)
+                 
+                 # Transform both
+                 self.X_train_ = generator.transform(self.X_train_)
+                 self.X_test_ = generator.transform(self.X_test_)
+                 
+                 # Update combined data for downstream tasks
+                 self.X_ = pd.concat([self.X_train_, self.X_test_], axis=0).sort_index()
+                 
+                 # Re-profile if features were added
+                 if generator.skewed_feats_ or generator.date_cols_ or generator.interaction_names_:
+                     logger.info("Features generated. Re-profiling...")
+                     self.clean_profile_ = self.profiler.profile(self.X_, self.y_)
+                     
+             except Exception as e:
+                 logger.warning(f"Feature generation failed: {str(e)}")
+
+        # 2. Outlier Detection
         if self.profiling_config.detect_outliers:
             try:
                 outlier_detector = OutlierDetector(self.X_, self.clean_profile_)
@@ -966,6 +993,7 @@ class AutoML:
             except Exception as e:
                 logger.warning(f"Outlier detection failed: {str(e)}")
         
+        # 3. Interaction Analysis (for reporting)
         if self.profiling_config.analyze_interactions:
             try:
                 interaction_analyzer = FeatureInteractionAnalyzer(self.X_, self.y_, self.clean_profile_)

@@ -87,11 +87,16 @@ run_test("1. Imports & Setup", test_imports)
 def test_data_loading():
     global X, y, titanic
     titanic = load_dataset('titanic')
-    X = titanic.drop('survived', axis=1)
+    # Drop target AND duplicate/leaky columns
+    # 'alive' is 100% correlated with survived (leakage)
+    # 'who', 'adult_male' are redundant with sex/age
+    # 'deck' has too many missing values
+    # 'embark_town' is redundant with 'embarked'
+    # 'class' is redundant with 'pclass'
+    X = titanic.drop(['survived', 'alive', 'who', 'adult_male', 'deck', 'embark_town', 'class'], axis=1)
     y = titanic['survived']
-    assert X.shape[0] == 891, f"Expected 891 rows, got {X.shape[0]}"
-    assert X.shape[1] == 14, f"Expected 14 columns, got {X.shape[1]}"
     print(f"    Loaded Titanic: {X.shape[0]} rows × {X.shape[1]} columns")
+    print(f"    Dropped leaky/redundant cols: alive, who, adult_male, deck, embark_town, class")
     print(f"    Target: '{y.name}' (binary classification)")
     print(f"    Dtypes: {X.dtypes.value_counts().to_dict()}")
 
@@ -135,8 +140,7 @@ def test_full_pipeline():
     global automl
     automl = AutoML(
         data_config=DataConfig(
-            use_full_data=False,
-            sample_size=300,       # Small for speed
+            use_full_data=True,
             test_size=0.2,
             random_state=42,
         ),

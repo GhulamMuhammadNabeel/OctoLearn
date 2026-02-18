@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="octolearn",
-    version="0.7.6",
+    version="0.7.7",
     description="Structured AutoML Pipeline with Intelligent Dataset Profiling",
     long_description=long_description,
     long_description_content_type="text/markdown",

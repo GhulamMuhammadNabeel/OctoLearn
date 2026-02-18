@@ -56,7 +56,7 @@ License:
     MIT
 
 Version:
-    0.7.6
+    0.7.7
 """
 
 import pandas as pd
@@ -64,6 +64,7 @@ import numpy as np
 from typing import Optional, Dict, Tuple, List, Any, Union
 import warnings
 import os
+from pathlib import Path
 from dataclasses import dataclass
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -473,7 +474,7 @@ class AutoML:
         AutoML() and customize only what you need.
     
     Version:
-        0.7.6
+        0.7.7
     """
     
     def __init__(
@@ -572,7 +573,7 @@ class AutoML:
         self.registry_ = None
         
         if self.show_progress:
-            logger.info(f"AutoML initialized (v0.7.6)")
+            logger.info(f"AutoML initialized (v0.7.7)")
             self._log_configuration()
     
     def _validate_configs(self):
@@ -1106,7 +1107,7 @@ class AutoML:
         results = self._generate_report_components()
         
         # Create report
-# Create report with enhanced ReportGenerator (v0.7.6)
+# Create report with enhanced ReportGenerator (v0.7.7)
         # Determine report mode from config
         report_mode = getattr(self.reporting_config, 'report_detail', 'detailed')
         if report_mode == 'brief':
@@ -1132,7 +1133,7 @@ class AutoML:
             cleaning_log=self.cleaning_log_,
             outlier_results=getattr(self, 'outlier_results_', {}),
             interaction_results=getattr(self, 'interaction_results_', {}),
-            logo_path=getattr(self, 'logo_path', None),
+            logo_path=getattr(self, 'logo_path', None) or str(Path(__file__).parent / 'images' / 'logo.png'),
             title=getattr(self, 'report_title', 'OctoLearn Intelligence Report'),
             author=getattr(self, 'author', 'OctoLearn AutoML'),
             company=getattr(self, 'report_company', 'Data Science Team')

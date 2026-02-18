@@ -37,7 +37,7 @@ Usage Examples:
     automl.fit(X, y)
 
 Author: OctoLearn Development Team
-Version: 0.7.6
+Version: 0.7.7
 License: MIT
 """
 

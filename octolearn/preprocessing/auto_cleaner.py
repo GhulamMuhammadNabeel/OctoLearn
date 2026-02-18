@@ -114,18 +114,37 @@ class AutoCleaner:
             (X_clean, y_clean, log_dict)
         """
         # Fit the cleaner (learn imputation stats, encoder mappings on training data)
+        original_len = len(X)
         self.fit(X, y)
         
         # Transform training data
         X_clean = self.transform(X)
+        if y is not None:
+            n_rows_clean = len(X_clean)
+            
+            # Use positional indexing (iloc) instead of label-based (loc)
+            # This ensures alignment regardless of index values
+            y_clean = y.iloc[:n_rows_clean].copy()
+            
+            # Reset index to match X_clean
+            y_clean.index = X_clean.index
+        else:
+            y_clean = None
+        cleaning_log = {
+            'duplicates_removed': getattr(self, '_duplicates_removed', 0),
+            'id_columns_removed': len(getattr(self, 'removed_id_columns_', [])),
+            'constant_columns_removed': len(getattr(self, 'constant_columns_removed_', [])),
+            'low_variance_removed': len(getattr(self, 'low_variance_columns_removed_', [])),
+            'rows_after_cleaning': len(X_clean),
+            'cols_after_cleaning': len(X_clean.columns),
+            'numeric_imputation_method': self.imputer_strategy.get('numeric', 'mean'),
+            'categorical_imputation_method': self.imputer_strategy.get('categorical', 'mode'),
+            'encoding_method': self.encoder_strategy.get('strategy', 'auto'),
+            'scaling_method': self.scaler or 'none',
+        }
         
-        # Ensure index alignment
-        if len(y) != len(X_clean):
-            y = y.loc[X_clean.index]
-        
-        log = self._build_log()
-        
-        return X_clean, y, log
+        logger.info(f"Fit_transform completed: {len(X_clean)} rows, {len(X_clean.columns)} columns")
+        return X_clean, y_clean, cleaning_log
 
     @log_execution(logger_obj=logger)
     def fit(self, X: pd.DataFrame, y: pd.Series):
@@ -437,7 +456,7 @@ class AutoCleaner:
                     out[c] = 0
             out = out[self.output_columns_]
 
-        out = out.apply(pd.to_numeric, errors='ignore')
+        out = out.apply(pd.to_numeric, errors='coerce')
         
         return out
 

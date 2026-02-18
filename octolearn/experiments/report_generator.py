@@ -15,7 +15,7 @@ Features:
 - Actionable recommendations
 
 Author: OctoLearn Development Team
-Version: 0.7.4 (Patched)
+Version: 0.7.6 (Patched)
 License: MIT
 """
 
@@ -63,26 +63,27 @@ logger = setup_logger(__name__)
 # ============================================================================
 
 class ReportColors:
-    """Color scheme for reports with accessibility in mind."""
+    """Color scheme for reports with 'Outta World' Cyberpunk theme."""
     # Primary colors
-    PRIMARY = colors.HexColor('#2E86C1')      # Professional blue
-    ACCENT_RED = colors.HexColor('#E74C3C')    # Warning/highlight red
-    ACCENT_ORANGE = colors.HexColor('#F39C12')  # Caution orange
-    ACCENT_GREEN = colors.HexColor('#27AE60')   # Success green
+    PRIMARY = colors.HexColor('#00F0FF')      # Neon Cyan
+    ACCENT_RED = colors.HexColor('#FF0055')    # Neon Pink/Red
+    ACCENT_ORANGE = colors.HexColor('#FFB800')  # Neon Orange
+    ACCENT_GREEN = colors.HexColor('#00FF9F')   # Neon Green
     
     # Backgrounds
-    DARK_BG = colors.HexColor('#1B1B1B')      # Dark background
-    LIGHT_BG = colors.HexColor('#F8F9F9')     # Light background
+    DARK_BG = colors.HexColor('#0D0D15')      # Deep Cyberpunk Black
+    LIGHT_BG = colors.HexColor('#1B1B25')     # Lighter Dark for cards
     WHITE = colors.HexColor('#FFFFFF')
     
     # Text colors
-    TEXT_DARK = colors.HexColor('#2C3E50')    # Dark text
-    TEXT_LIGHT = colors.HexColor('#ECF0F1')   # Light text
+    TEXT_DARK = colors.HexColor('#E0E0E0')    # Light text for dark bg
+    TEXT_LIGHT = colors.HexColor('#E0E0E0')   # Light text
+    TEXT_DIM = colors.HexColor('#8888AA')     # Dimmed text
     
     # Risk levels
-    RISK_LOW = colors.HexColor('#27AE60')     # Green
-    RISK_MODERATE = colors.HexColor('#F39C12')  # Orange
-    RISK_HIGH = colors.HexColor('#E74C3C')    # Red
+    RISK_LOW = colors.HexColor('#00FF9F')     # Neon Green
+    RISK_MODERATE = colors.HexColor('#FFB800')  # Neon Orange
+    RISK_HIGH = colors.HexColor('#FF0055')    # Neon Pink/Red
     
     @staticmethod
     def get_risk_color(score: int) -> colors.Color:
@@ -132,6 +133,8 @@ class ReportGenerator:
         best_model_name: Optional[str] = None,
         logo_path: Optional[str] = None,
         cleaning_log: Optional[Dict] = None,
+        outlier_results: Optional[Dict] = None,      # Added
+        interaction_results: Optional[Dict] = None,  # Added
         title: str = "OctoLearn Intelligence Report",
         author: str = "OctoLearn AutoML",
         company: str = "Data Science Team"
@@ -159,6 +162,8 @@ class ReportGenerator:
         self.best_model_name = best_model_name or "N/A"
         self.logo_path = logo_path
         self.cleaning_log = cleaning_log or {}
+        self.outlier_results = outlier_results or {}          # Stored
+        self.interaction_results = interaction_results or {}  # Stored
         self.title = title
         self.author = author
         self.company = company
@@ -171,105 +176,119 @@ class ReportGenerator:
         logger.info(f"Report initialized in {mode.upper()} mode")
 
     def _register_fonts(self):
-        """Register custom fonts with safe fallback."""
-        font_paths = {
-            'ShantellSans-Regular': ['fonts/ShantellSans-Regular.ttf', 'ShantellSans-Regular.ttf'],
-            'ShantellSans-Bold': ['fonts/ShantellSans-Bold.ttf', 'ShantellSans-Bold.ttf'],
-        }
+        """Robust font loading with multi-location fallback."""
+        from pathlib import Path
         
+        # Default to Helvetica (always available in reportlab)
         self.font_regular = 'Helvetica'
         self.font_bold = 'Helvetica-Bold'
         self.font_title = 'Helvetica-Bold'
         
-        for font_name, possible_paths in font_paths.items():
-            for path in possible_paths:
-                try:
-                    if os.path.exists(path):
-                        pdfmetrics.registerFont(TTFont(font_name, path))
+        # Check these locations in order
+        possible_dirs = [
+            Path(__file__).parent.parent / 'fonts',
+            Path('octolearn') / 'fonts',
+            Path('fonts'),
+            Path.cwd() / 'octolearn' / 'fonts',
+        ]
+        
+        font_files = {
+            'ShantellSans-Regular': 'ShantellSans-Regular.ttf',
+            'ShantellSans-Bold': 'ShantellSans-Bold.ttf',
+            'ShantellSans-ExtraBold': 'ShantellSans-ExtraBold.ttf',
+        }
+        
+        for font_name, filename in font_files.items():
+            for font_dir in possible_dirs:
+                font_path = font_dir / filename
+                if font_path.exists():
+                    try:
+                        pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
+                        # Update font attribute mappings on success
                         if 'Regular' in font_name:
                             self.font_regular = font_name
+                        elif 'ExtraBold' in font_name:
+                            self.font_title = font_name
                         elif 'Bold' in font_name:
                             self.font_bold = font_name
-                            self.font_title = font_name
-                        logger.debug(f"Registered font: {font_name}")
+                        logger.info(f"Loaded font: {font_name}")
                         break
-                except Exception as e:
-                    logger.debug(f"Could not register {font_name}: {e}")
-                    continue
+                    except Exception as e:
+                        logger.debug(f"Could not load {font_name}: {e}")
 
     def _create_custom_styles(self):
-        """Create professional paragraph styles."""
+        """Create professional 'Outta World' styles."""
         # Title style
         self.styles.add(ParagraphStyle(
             name='ReportTitle',
             parent=self.styles['Heading1'],
-            fontName=self.font_title,
-            fontSize=28,
-            leading=34,
-            textColor=ReportColors.TEXT_DARK,
+            fontName='ShantellSans-ExtraBold',
+            fontSize=32,
+            leading=38,
+            textColor=ReportColors.PRIMARY,
             spaceAfter=20,
             alignment=TA_CENTER,
-            bold=True
+            args=[('glow', ReportColors.PRIMARY, 10)] # Theoretical glow support if lib allowed
         ))
         
         # Section heading
         self.styles.add(ParagraphStyle(
             name='SectionHeading',
             parent=self.styles['Heading2'],
-            fontName=self.font_bold,
-            fontSize=16,
-            leading=20,
+            fontName='ShantellSans-Bold',
+            fontSize=18,
+            leading=22,
             textColor=ReportColors.PRIMARY,
-            spaceBefore=15,
-            spaceAfter=10,
+            spaceBefore=20,
+            spaceAfter=15,
             borderPadding=10,
-            borderWidth=2,
-            borderColor=ReportColors.PRIMARY
+            borderWidth=0, # No border, just text
+            # borderColor=ReportColors.PRIMARY # Removed box border for cleaner look
         ))
         
         # Subsection heading
         self.styles.add(ParagraphStyle(
             name='SubsectionHeading',
             parent=self.styles['Heading3'],
-            fontName=self.font_bold,
-            fontSize=13,
-            leading=16,
-            textColor=ReportColors.TEXT_DARK,
-            spaceBefore=10,
-            spaceAfter=8
+            fontName='ShantellSans-Bold',
+            fontSize=14,
+            leading=18,
+            textColor=ReportColors.ACCENT_ORANGE,
+            spaceBefore=12,
+            spaceAfter=10
         ))
         
         # Normal text
         self.styles.add(ParagraphStyle(
             name='ReportBody',
             parent=self.styles['Normal'],
-            fontName=self.font_regular,
+            fontName='ShantellSans-Regular',
             fontSize=11,
-            leading=14,
+            leading=15,
             textColor=ReportColors.TEXT_DARK,
-            spaceAfter=8,
-            alignment=TA_JUSTIFY
+            spaceAfter=10,
+            alignment=TA_LEFT # Left align looks better in tech/code style
         ))
         
         # Table text
         self.styles.add(ParagraphStyle(
             name='TableText',
             parent=self.styles['Normal'],
-            fontName=self.font_regular,
-            fontSize=9,
-            leading=11,
-            textColor=colors.black
+            fontName='ShantellSans-Regular',
+            fontSize=10,
+            leading=12,
+            textColor=ReportColors.TEXT_DARK
         ))
         
         # Highlight/insight text
         self.styles.add(ParagraphStyle(
             name='Insight',
             parent=self.styles['Normal'],
-            fontName=self.font_bold,
+            fontName='ShantellSans-Bold',
             fontSize=11,
-            leading=14,
+            leading=15,
             textColor=ReportColors.ACCENT_RED,
-            spaceAfter=8
+            spaceAfter=10
         ))
 
     def _add_watermark_to_page(self, canvas_obj: canvas.Canvas, logo_path: str, opacity: float = 0.15):
@@ -310,57 +329,45 @@ class ReportGenerator:
         except Exception as e:
             logger.warning(f"Could not add watermark: {e}")
 
-    def _add_cover_page(self, story: list):
-        """Add professional cover page."""
-        story.append(Spacer(1, 1 * inch))
+    def _add_cover_page(self, story):
+        """Add a professional Cyberpunk cover page."""
+        story.append(Spacer(1, 2*inch))
         
-        # Title
-        story.append(Paragraph(
-            self.title,
-            self.styles['ReportTitle']
-        ))
-        story.append(Spacer(1, 0.3 * inch))
+        # Logo if available
+        if self.logo_path and os.path.exists(self.logo_path):
+            im = Image(self.logo_path, width=2*inch, height=2*inch)
+            story.append(im)
         
-        # Subtitle
-        story.append(Paragraph(
-            f"Comprehensive Data Intelligence Report | {self.mode.upper()} MODE",
-            self.styles['SubsectionHeading']
-        ))
-        story.append(Spacer(1, 0.5 * inch))
+        story.append(Spacer(1, 1*inch))
         
-        # Risk Score Card
-        risk_color = ReportColors.get_risk_color(self.risk_score)
-        risk_table_data = [
-            [
-                Paragraph(
-                    f"<b>RISK SCORE</b><br/><font size=24>{self.risk_score}/100</font><br/>{self.risk_category}",
-                    self.styles['ReportBody']
-                )
-            ]
+        # Title with Glow effect simulation (using color)
+        story.append(Paragraph(self.title, self.styles['ReportTitle']))
+        story.append(Spacer(1, 0.5*inch))
+        
+        # Metadata card
+        data_table = [
+            ["Generated By:", self.author],
+            ["Date:", datetime.now().strftime("%Y-%m-%d %H:%M")],
+            ["Task Type:", self.raw_profile.task_type.title() if self.raw_profile else "N/A"],
+            ["Dataset Shape:", f"{self.raw_profile.n_rows} rows × {self.raw_profile.n_columns} cols" if self.raw_profile else "N/A"]
         ]
-        risk_table = Table(risk_table_data, colWidths=[6 * inch])
-        risk_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), risk_color),
-            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('FONTNAME', (0, 0), (-1, -1), self.font_bold),
-            ('FONTSIZE', (0, 0), (-1, -1), 14),
-            ('PADDING', (0, 0), (-1, -1), 20),
-            ('ROUNDED_CORNERS', (0, 0), (-1, -1), 10),
-        ]))
-        story.append(risk_table)
-        story.append(Spacer(1, 0.5 * inch))
         
-        # Metadata
-        metadata = f"""
-        <b>Generated:</b> {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}<br/>
-        <b>Company:</b> {self.company}<br/>
-        <b>Author:</b> {self.author}<br/>
-        <b>Dataset Rows:</b> {getattr(self.raw_profile, 'n_rows', 'N/A')}<br/>
-        <b>Features Analyzed:</b> {getattr(self.raw_profile, 'n_cols', 'N/A')}
-        """
-        story.append(Paragraph(metadata, self.styles['ReportBody']))
+        t = Table(data_table, colWidths=[2*inch, 3*inch])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), ReportColors.LIGHT_BG),
+            ('TEXTCOLOR', (0,0), (-1,-1), ReportColors.TEXT_LIGHT),
+            ('FONTNAME', (0,0), (-1,-1), 'ShantellSans-Regular'),
+            ('FONTSIZE', (0,0), (-1,-1), 12),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+            ('TOPPADDING', (0,0), (-1,-1), 10),
+            ('ALIGN', (0,0), (0,-1), 'RIGHT'),
+            ('ALIGN', (1,0), (1,-1), 'LEFT'),
+            ('FONTNAME', (0,0), (0,-1), 'ShantellSans-Bold'),
+            ('TEXTCOLOR', (0,0), (0,-1), ReportColors.PRIMARY),
+            ('GRID', (0,0), (-1,-1), 0.5, ReportColors.DARK_BG),
+        ]))
+        story.append(t)
+        story.append(PageBreak())
 
     def _add_executive_summary(self, story: list):
         """Add executive summary section."""
@@ -457,6 +464,134 @@ class ReportGenerator:
         else:
             story.append(Paragraph("No significant risk factors identified.", self.styles['ReportBody']))
 
+    def _add_preprocessing_details(self, story: list):
+        """Add preprocessing strategy and cleaning log section."""
+        story.append(PageBreak())
+        story.append(Paragraph("Preprocessing Strategy & Cleaning Log", self.styles['SectionHeading']))
+        story.append(Spacer(1, 0.2 * inch))
+        
+        if self.cleaning_log:
+            story.append(Paragraph("Data Cleaning Actions Performed:", self.styles['SubsectionHeading']))
+            story.append(Spacer(1, 0.1 * inch))
+            
+            cleaning_items = [
+                ('Duplicate Rows Removed', self.cleaning_log.get('duplicates_removed', 0)),
+                ('ID-Like Columns Removed', self.cleaning_log.get('id_columns_removed', 0)),
+                ('Constant Columns Removed', self.cleaning_log.get('constant_columns_removed', 0)),
+                ('Low Variance Columns Removed', self.cleaning_log.get('low_variance_removed', 0)),
+                ('Missing Values Imputed', self.cleaning_log.get('missing_imputed', 0)),
+            ]
+            
+            for label, count in cleaning_items:
+                if count and count > 0:
+                    story.append(Paragraph(f"• {label}: {count}", self.styles['ReportBody']))
+            
+            story.append(Spacer(1, 0.2 * inch))
+
+    def _add_analysis_results(self, story: list):
+        """Add feature analysis results section."""
+        story.append(PageBreak())
+        story.append(Paragraph("Feature Analysis Results", self.styles['SectionHeading']))
+        story.append(Spacer(1, 0.2 * inch))
+        
+        if self.outlier_results and self.outlier_results.get('summary'):
+            story.append(Paragraph("Outlier Detection Summary:", self.styles['SubsectionHeading']))
+            story.append(Spacer(1, 0.1 * inch))
+            
+            outlier_info = self.outlier_results.get('summary', {})
+            for method, count in outlier_info.items():
+                story.append(Paragraph(f"• <b>{method}:</b> {count} outliers detected", self.styles['ReportBody']))
+            
+            story.append(Spacer(1, 0.15 * inch))
+        
+        if self.interaction_results and self.interaction_results.get('strong_interactions'):
+            story.append(Paragraph("Strong Feature Interactions:", self.styles['SubsectionHeading']))
+            story.append(Spacer(1, 0.1 * inch))
+            
+            interactions = self.interaction_results.get('strong_interactions', [])
+            for idx, interaction in enumerate(interactions[:5], 1):
+                if isinstance(interaction, (tuple, list)) and len(interaction) >= 2:
+                    story.append(Paragraph(f"• <b>{interaction[0]}</b> ↔ <b>{interaction[1]}</b>", self.styles['ReportBody']))
+            
+            story.append(Spacer(1, 0.2 * inch))
+
+    def _add_feature_importance(self, story: list):
+        """Add feature importance section if available."""
+        if not self.feature_importance:
+            return
+        
+        story.append(PageBreak())
+        story.append(Paragraph("Feature Importance", self.styles['SectionHeading']))
+        story.append(Spacer(1, 0.2 * inch))
+        
+        # Show top features
+        sorted_features = sorted(
+            self.feature_importance.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:10]
+        
+        if sorted_features:
+            fi_data = [['Feature', 'Importance']]
+            for feat, score in sorted_features:
+                fi_data.append([
+                    Paragraph(str(feat), self.styles['TableText']),
+                    Paragraph(f"{score:.4f}", self.styles['TableText']),
+                ])
+            
+            fi_table = Table(fi_data, colWidths=[3.5 * inch, 2 * inch])
+            fi_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), ReportColors.PRIMARY),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), self.font_bold),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('PADDING', (0, 0), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, ReportColors.LIGHT_BG])
+            ]))
+            story.append(fi_table)
+        
+        # SHAP plot if available
+        if self.shap_path and os.path.exists(self.shap_path):
+            story.append(Spacer(1, 0.3 * inch))
+            story.append(Paragraph("SHAP Feature Impact", self.styles['SubsectionHeading']))
+            try:
+                shap_img = Image(self.shap_path, width=5 * inch, height=3.5 * inch)
+                story.append(shap_img)
+            except Exception as e:
+                logger.warning(f"Could not add SHAP plot: {e}")
+
+    def _add_visual_insights(self, story: list):
+        """Add distribution plots and heatmap visualizations."""
+        if not self.dist_plots and not self.heatmap_plot:
+            return
+        
+        story.append(PageBreak())
+        story.append(Paragraph("Visual Insights", self.styles['SectionHeading']))
+        story.append(Spacer(1, 0.2 * inch))
+        
+        # Correlation heatmap
+        if self.heatmap_plot and os.path.exists(self.heatmap_plot):
+            story.append(Paragraph("Correlation Matrix", self.styles['SubsectionHeading']))
+            try:
+                hm_img = Image(self.heatmap_plot, width=5 * inch, height=4 * inch)
+                story.append(hm_img)
+                story.append(Spacer(1, 0.3 * inch))
+            except Exception as e:
+                logger.warning(f"Could not add heatmap: {e}")
+        
+        # Distribution plots (limit to avoid oversized reports)
+        limit = 3 if self.mode == 'brief' else 8
+        for plot_path in self.dist_plots[:limit]:
+            if os.path.exists(plot_path):
+                try:
+                    dist_img = Image(plot_path, width=5 * inch, height=3 * inch)
+                    story.append(dist_img)
+                    story.append(Spacer(1, 0.2 * inch))
+                except Exception as e:
+                    logger.warning(f"Could not add plot {plot_path}: {e}")
+
     def _add_recommendations(self, story: list):
         """Add actionable recommendations (Handles both List and Dict inputs)."""
         if not self.recommendations:
@@ -530,12 +665,11 @@ class ReportGenerator:
         story.append(model_table)
 
     def generate(self, filename: Optional[str] = None) -> str:
-        """
-        Generate the complete PDF report.
-        """
+        """Generate the complete PDF report."""
+        
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"octolearn_report_{self.mode}_{timestamp}.pdf"
+            filename = f"octolearn_report_{timestamp}.pdf"
         
         try:
             doc = SimpleDocTemplate(
@@ -549,84 +683,89 @@ class ReportGenerator:
             
             story = []
             
-            # Build report based on mode
+            # Build comprehensive report with all sections
             self._add_cover_page(story)
             story.append(PageBreak())
             
             self._add_executive_summary(story)
             self._add_risk_analysis(story)
-            self._add_recommendations(story)
+            self._add_preprocessing_details(story)      # NEW
+            self._add_analysis_results(story)             # NEW
+            self._add_feature_importance(story)
+            self._add_visual_insights(story)
             self._add_model_results(story)
+            self._add_recommendations(story)
             
             # Build PDF
             doc.build(story)
-            logger.info(f"Report generated: {filename} (Mode: {self.mode})")
+            logger.info(f"✓ Report generated: {filename}")
             return filename
             
         except Exception as e:
-            logger.error(f"Failed to generate PDF: {e}")
-            raise RuntimeError(f"PDF generation failed: {e}")
+            logger.error(f"✗ Failed to generate PDF: {str(e)}")
+            raise RuntimeError(f"PDF generation failed: {str(e)}")
+
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
 
-    def create_brief_report(
-        raw_profile: Any,
-        clean_profile: Any,
-        **kwargs
-    ) -> str:
-        """
-        Convenience function to create a brief report.
+def create_brief_report(
+    raw_profile: Any,
+    clean_profile: Any,
+    **kwargs
+) -> str:
+    """
+    Convenience function to create a brief report.
+    
+    Parameters
+    ----------
+    raw_profile : DatasetProfile
+        Raw data profile
+    clean_profile : DatasetProfile
+        Cleaned data profile
+    **kwargs
+        Additional arguments passed to ReportGenerator
         
-        Parameters
-        ----------
-        raw_profile : DatasetProfile
-            Raw data profile
-        clean_profile : DatasetProfile
-            Cleaned data profile
+    Returns
+    -------
+    str
+        Path to generated PDF
+    """
+    generator = ReportGenerator(
+        raw_profile=raw_profile,
+        clean_profile=clean_profile,
+        mode='brief',
         **kwargs
-            Additional arguments passed to ReportGenerator
-            
-        Returns
-        -------
-        str
-            Path to generated PDF
-        """
-        generator = ReportGenerator(
-            raw_profile=raw_profile,
-            clean_profile=clean_profile,
-            mode='brief',
-            **kwargs
-        )
-        return generator.generate()
+    )
+    return generator.generate()
 
 
-    def create_detailed_report(
-        raw_profile: Any,
-        clean_profile: Any,
-        **kwargs
-    ) -> str:
-        """
-        Convenience function to create a detailed report.
+def create_detailed_report(
+    raw_profile: Any,
+    clean_profile: Any,
+    **kwargs
+) -> str:
+    """
+    Convenience function to create a detailed report.
+    
+    Parameters
+    ----------
+    raw_profile : DatasetProfile
+        Raw data profile
+    clean_profile : DatasetProfile
+        Cleaned data profile
+    **kwargs
+        Additional arguments passed to ReportGenerator
         
-        Parameters
-        ----------
-        raw_profile : DatasetProfile
-            Raw data profile
-        clean_profile : DatasetProfile
-            Cleaned data profile
+    Returns
+    -------
+    str
+        Path to generated PDF
+    """
+    generator = ReportGenerator(
+        raw_profile=raw_profile,
+        clean_profile=clean_profile,
+        mode='detailed',
         **kwargs
-            Additional arguments passed to ReportGenerator
-            
-        Returns
-        -------
-        str
-            Path to generated PDF
-        """
-        generator = ReportGenerator(
-            raw_profile=raw_profile,
-            clean_profile=clean_profile,
-            mode='detailed',
-            **kwargs
-        )
-        return generator.generate()
+    )
+    return generator.generate()

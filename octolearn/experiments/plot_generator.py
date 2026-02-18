@@ -31,40 +31,38 @@ class PlotGenerator:
         self.output_dir = ".octolearn/plots"
         os.makedirs(self.output_dir, exist_ok=True)
         
-        # Set professional theme
-        sns.set_theme(style="whitegrid", palette="muted")
+        # Set professional dark theme
+        plt.style.use('dark_background')
+        sns.set_theme(style="darkgrid", palette="deep", rc={
+            "axes.facecolor": "#1B1B1B",
+            "figure.facecolor": "#0D0D15",
+            "grid.color": "#333333",
+            "text.color": "#E0E0E0",
+            "xtick.color": "#E0E0E0",
+            "ytick.color": "#E0E0E0",
+            "axes.labelcolor": "#00F0FF",
+            "axes.titlecolor": "#00F0FF"
+        })
 
     def generate_smart_visuals(self, limit: int = 10) -> List[str]:
-        """
-        Generates visuals for top features based on mode.
-        """
+        """Generate distribution plots for top numeric features"""
         paths = []
         numeric_cols = self.X.select_dtypes(include=[np.number]).columns.tolist()
         
         if not numeric_cols:
+            logger.warning("No numeric columns for visualization")
             return []
-
-        # 1. Rank features
+        
         ranked_cols = self._rank_features(numeric_cols)
-        
-        # 2. Limit features
-        cols_to_plot = ranked_cols[:limit]
-        
-        # 3. Generate Plots
-        for col in cols_to_plot:
+        for col in ranked_cols[:limit]:
             try:
-                if self.mode == 'dashboard':
-                    path = self._plot_feature_dashboard(col)
-                else:
-                    path = self._plot_feature_simple(col)
-                    
+                path = self._plot_feature_distribution(col)
                 if path:
                     paths.append(path)
             except Exception as e:
                 logger.warning(f"Failed to plot {col}: {e}")
         
         return paths
-
     def _rank_features(self, cols: List[str]) -> List[str]:
         """
         Ranks columns based on importance.
@@ -147,25 +145,92 @@ class PlotGenerator:
         plt.close()
         return path
 
-    def generate_correlation_heatmap(self) -> Optional[str]:
-        """
-        Generates a smart correlation heatmap.
-        """
-        numeric_df = self.X.select_dtypes(include=[np.number])
-        if numeric_df.empty: return None
+    def _plot_feature_distribution(self, col: str):
+        """Create histogram with mean/median lines"""
+        try:
+            fig, ax = plt.subplots(figsize=(8, 4))
+            self.X[col].hist(bins=30, ax=ax, alpha=0.7, color='#2E86C1')
+            ax.set_title(f'Distribution of {col}', fontweight='bold')
+            
+            mean_val = self.X[col].mean()
+            median_val = self.X[col].median()
+            ax.axvline(mean_val, color='red', linestyle='--', label=f'Mean: {mean_val:.2f}')
+            ax.axvline(median_val, color='green', linestyle='--', label=f'Median: {median_val:.2f}')
+            ax.legend()
+            
+            filename = os.path.join(self.output_dir, f'dist_{col.replace(" ", "_")}.png')
+            plt.tight_layout()
+            plt.savefig(filename, dpi=150, bbox_inches='tight')
+            plt.close()
+            
+            return filename
+        except Exception as e:
+            logger.warning(f"Failed to generate plot: {e}")
+            return None
 
-        plt.figure(figsize=(10, 8))
-        if numeric_df.shape[1] > 15:
-             # Smart filtering logic... (omitted for brevity, same as before)
-             pass 
-
-        sns.heatmap(numeric_df.corr(), annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
-        plt.title("Correlation Matrix")
-        
-        path = os.path.join(self.output_dir, "heatmap.png")
-        plt.savefig(path, bbox_inches='tight')
-        plt.close()
-        return path
+    def generate_correlation_heatmap(self):
+        """Create correlation matrix heatmap"""
+        try:
+            numeric_df = self.X.select_dtypes(include=[np.number])
+            if numeric_df.shape[1] < 2:
+                return None
+            
+            fig, ax = plt.subplots(figsize=(10, 8))
+            corr_matrix = numeric_df.corr()
+            sns.heatmap(corr_matrix, annot=True, fmt='.2f', 
+                    cmap='coolwarm', center=0, ax=ax)
+            ax.set_title('Feature Correlation Matrix', fontweight='bold')
+            
+            filename = os.path.join(self.output_dir, 'correlation_heatmap.png')
+            plt.savefig(filename, dpi=150, bbox_inches='tight')
+            plt.close()
+            return filename
+        except Exception as e:
+            logger.warning(f"Failed to generate heatmap: {e}")
+            return None
 
     def generate_shap_plot(self, model=None) -> Optional[str]:
-        return None
+        """
+        Generate SHAP summary plot for feature importance.
+        """
+        if model is None or self.X is None:
+            return None
+
+        try:
+            # Create object-only explainer if needed, or TreeExplainer if tree-based
+            # For simplicity using basic TreeExplainer as most models in OctoLearn are tree-based
+            # or LinearExplainer for linear models.
+            
+            # Simple heuristic for explainer type
+            model_type = type(model).__name__.lower()
+            
+            if 'linear' in model_type or 'regression' in model_type and 'tree' not in model_type and 'forest' not in model_type and 'boost' not in model_type:
+                 explainer = shap.LinearExplainer(model, self.X)
+                 shap_values = explainer.shap_values(self.X)
+            else:
+                # Tree based defaults
+                explainer = shap.TreeExplainer(model)
+                shap_values = explainer.shap_values(self.X)
+
+            # Handle binary classification case (shap returns list of arrays)
+            if isinstance(shap_values, list):
+                shap_values = shap_values[1]
+
+            plt.figure(figsize=(10, 6))
+            # Use a dark background compatible style
+            plt.style.use('dark_background')
+            
+            shap.summary_plot(shap_values, self.X, show=False, color_bar=True, cmap='cool')
+            
+            filename = os.path.join(self.output_dir, 'shap_summary.png')
+            plt.savefig(filename, dpi=100, bbox_inches='tight', facecolor='#0D0D15') # Match report BG
+            plt.close()
+            
+            # Reset style
+            plt.style.use('default')
+            sns.set_theme(style="whitegrid", palette="muted")
+            
+            return filename
+        except Exception as e:
+            logger.warning(f"Failed to generate SHAP plot: {e}")
+            return None

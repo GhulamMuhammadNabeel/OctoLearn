@@ -1,642 +1,457 @@
-# Octolearn 🐙
+<p align="center">
+  <img src="octolearn/logo/octolearn_logo.png" alt="OctoLearn Logo" width="200"/>
+</p>
 
-**Structured AutoML Pipeline with Intelligent Dataset Profiling**
+<h1 align="center">🐙 OctoLearn</h1>
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<p align="center">
+  <strong>Enterprise-Grade AutoML for Python</strong><br>
+  Profile → Clean → Engineer → Train → Report — in one line of code.
+</p>
 
-Octolearn generates **professional-grade intelligence dossiers** on your datasets automatically. In under 1 second, you get:
-
-- 📊 **Risk Score** (0-100 data quality assessment)
-- 📈 **Feature Importance** (baseline model + SHAP analysis)
-- 🔧 **Preprocessing Strategy** (imputation, encoding, scaling recommendations)
-- 📉 **Visual Analysis** (distributions, correlations, SHAP plots)
-- 💡 **Strategic Recommendations** (machine learning insights)
-- 📄 **Professional PDF Report** (ready for stakeholders)
-
-No code. No notebooks. Just intelligence.
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-installation">Installation</a> •
+  <a href="#-advanced-usage">Advanced Usage</a> •
+  <a href="#-api-reference">API Reference</a> •
+  <a href="#-architecture">Architecture</a>
+</p>
 
 ---
 
-## ⚡ Quick Start
+## ✨ Features
 
-### Installation
+| Feature | Description |
+|---------|-------------|
+| **🔍 Smart Profiling** | Auto-detects column types, task type, leakage suspects, class imbalance |
+| **🧹 Auto Cleaning** | Imputation, encoding, scaling — all learned on train, applied to test |
+| **⚠️ Risk Scoring** | 0–100 data quality risk score with detailed factor breakdown |
+| **🔧 Feature Engineering** | Outlier detection (IQR, Z-score, Isolation Forest) + interaction analysis |
+| **🤖 Model Training** | Trains 5+ models with Optuna hyperparameter optimization |
+| **📊 PDF Reports** | Professional cyberpunk-themed reports with charts & SHAP analysis |
+| **💾 Model Registry** | Version-controlled model storage with metadata tracking |
+| **⚡ Parallel Processing** | Multi-core support for faster training and optimization |
+
+---
+
+## 📦 Installation
+
+### From Source (Development)
 
 ```bash
-pip install octolearn
+git clone https://github.com/GhulamMuhammadNabeel/OctoLearn.git
+cd OctoLearn
+python -m venv .venv
+
+# Windows
+.\.venv\Scripts\activate
+
+# macOS/Linux
+source .venv/bin/activate
+
+pip install -e .
 ```
 
+### Dependencies
 
-### Basic Usage
+OctoLearn requires Python 3.8+ and installs the following:
 
-```python
-from octolearn import AutoML
-from sklearn.datasets import load_iris
-
-# Load your dataset
-data = load_iris(as_frame=True)
-X, y = data.data, data.target
-
-# User-driven preprocessing: override imputer, encoder, scaler, and ID columns
-user_params = {
-   'imputer_strategy': {'numeric': 'median', 'categorical': 'mode'},
-   'encoder_strategy': {'ordinal_cols': ['petal length (cm)'], 'bool_cols': ['sex']},
-   'scaler': 'standard',
-   'id_columns': ['sample_id']
-}
-
-# Initialize and fit with user params
-automl = AutoML(**user_params)
-automl.fit(X, y)
-
-# Generate comprehensive report (modern black/red PDF)
-pdf_file = automl.generate_report()
-print(f"Report saved: {pdf_file}")
-# Output: octolearn_report_<hash>.pdf
-
-# All trained models are saved in trained_models/ and tracked in the registry
-```
-
-### Access Individual Analyses
-
-```python
-# Get dataset risk score
-risk = automl.get_risk_score()
-print(f"Risk Score: {risk['score']}/100")
-print(f"Category: {risk['category']}")
-
-# Get feature importance
-importance = automl.get_feature_importance()
-for feature, score in list(importance.items())[:5]:
-    print(f"{feature}: {score:.4f}")
-
-# Get preprocessing suggestions
-suggestions = automl.get_preprocessing_suggestions()
-for strategy, recs in suggestions.items():
-    print(f"{strategy}: {recs}")
-```
+| Package | Purpose |
+|---------|---------|
+| `pandas`, `numpy` | Data manipulation |
+| `scikit-learn` | ML models & preprocessing |
+| `optuna` | Hyperparameter optimization |
+| `reportlab` | PDF report generation |
+| `matplotlib`, `seaborn` | Visualization |
+| `shap` | Model explainability |
+| `joblib` | Model serialization |
 
 ---
 
-## 🎯 Features
+## 🚀 Quick Start
 
-### 1. Dataset Intelligence (16 Metrics)
-- Row/column count
-- Feature type detection (numeric, categorical, datetime)
-- Missing value analysis
-- Duplicate detection
-- Cardinality assessment
-- Skewness detection
-- Task type auto-detection
-
-### 2. Risk Scoring (0-100)
-Comprehensive data quality assessment including:
-- Missing data impact (0-20 points)
-- Duplicate rows (0-15 points)
-- Class imbalance (0-15 points)
-- Feature skewness (0-10 points)
-- Constant columns (0-10 points)
-- High cardinality features (0-10 points)
-- Feature-to-sample ratio (0-10 points)
-- Sample size penalty (0-5 points)
-
-**Risk Categories:**
-- ✅ 0-30: Low Risk
-- ⚠️ 31-60: Moderate Risk
-- ❌ 61-100: High Risk
-
-### 3. Preprocessing Recommendations
-Auto-generated strategy for:
-- **Missing Values**: Mean, median, KNN, or iterative imputation
-- **Categorical Encoding**: One-Hot, Ordinal, or Target Encoding
-- **Feature Scaling**: StandardScaler vs RobustScaler vs MinMaxScaler
-- **Feature Engineering**: Polynomial features, interactions, temporal features
-- **Column Actions**: Removal of constants, cardinality handling
-
-### 4. Feature Importance
-- **Baseline Model**: Fast Random Forest (~150ms)
-- **SHAP Analysis**: TreeExplainer Shapley values
-- **Ranking**: Top features identified automatically
-
-### 5. Visual Analysis
-6 professional visualizations embedded in PDF:
-- Feature distributions (histograms with KDE)
-- Correlation heatmap
-- SHAP feature importance bar chart
-
-### 6. Professional Reports
-177KB PDF with:
-- Color-coded risk assessment
-- Executive summary
-- Detailed diagnostics
-- Visual analysis
-- Actionable recommendations
-- Professional formatting
-
----
-
-
-## 📊 Example Output
-
-```
-DATASET PROFILE:
-   Rows: 150
-   Columns: 4
-   Task Type: classification
-   Hash: 8145f023f195
-
-RISK SCORE: 10/100 (Low Risk)
-   Risk Factors:
-   • 0.7% duplicate rows
-   • Features/samples ratio: 0.03
-
-FEATURE IMPORTANCE (Top 3):
-   1. petal length (cm): 0.4442
-   2. petal width (cm): 0.4181
-   3. sepal length (cm): 0.1099
-
-PREPROCESSING SUGGESTIONS:
-   Missing Values: No missing values detected
-   Categorical Encoding: petal length (cm): Ordinal Encoding, sex: Label Encoding (0/1), others: One-Hot Encoding
-   Scaling: StandardScaler applied
-   Feature Engineering: Consider polynomial features
-
-All model files are saved in trained_models/ and tracked in the registry.
-PDF and all plots use a modern black background with red accents and modern font.
-```
-
----
-
-## 🔬 API Reference
-
-### `AutoML()`
-
-Main orchestrator class.
-
-#### Methods
-
-##### `fit(X, y)`
-Train profiler on dataset.
-- **Parameters**: X (DataFrame), y (Series or array)
-- **Returns**: self
-
-##### `generate_report()`
-Create comprehensive PDF report.
-- **Returns**: filename (str)
-- **Output**: Saves PDF with hash-based name
-
-##### `get_risk_score()`
-Get data quality assessment without full report.
-- **Returns**: `{"score": int, "category": str, "factors": dict}`
-
-##### `get_preprocessing_suggestions()`
-Get preprocessing strategy without full report.
-- **Returns**: dict with 5 recommendation categories
-
-##### `get_feature_importance()`
-Get baseline feature importance without full report.
-- **Returns**: dict of `{feature: score}`
-
-##### `report()`
-Get raw profile dataclass.
-- **Returns**: DatasetProfile
-
----
-
-## 🏗 Architecture
-
-
-
-# Octolearn 🐙 — The Ultimate User-Driven AutoML & Data Intelligence Suite
-
-**Production-Ready, Fully User-Param Driven, Transparent, and Extensible AutoML for Real-World Data Science**
-
-[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-Octolearn generates **professional-grade intelligence dossiers** on your datasets automatically. In under 1 second, you get:
-
-- **Full user control at every step** — All preprocessing, modeling, and evaluation is user-param driven, with sensible defaults and full override capability.
-- **Professional, modern PDF reports** — Black background, red accents, modern font, and a model benchmarks/results table with all metrics and parameters.
-- **Robust model registry** — Every trained model is saved, versioned, and tracked with full metadata in `trained_models/` and the registry.
-- **Transparent, modular architecture** — Every phase is accessible, extensible, and documented. You can access, override, or extend any step.
-- **Lightning-fast, production-grade outputs** — Full pipeline (profiling, cleaning, modeling, reporting) in under 1 second for most datasets.
-- **Zero configuration, but infinite customization** — Works out of the box, but you can control every detail.
-
-No code. No notebooks. Just intelligence.
-
-
-## 🚀 What is Octolearn?
-
-Octolearn is a next-generation AutoML and data intelligence library that gives you:
-
-- **Full user control at every step** — All preprocessing, modeling, and evaluation is user-param driven, with sensible defaults and full override capability.
-- **Professional, modern PDF reports** — Black background, red accents, modern font, and a model benchmarks/results table with all metrics and parameters.
-- **Robust model registry** — Every trained model is saved, versioned, and tracked with full metadata in `trained_models/` and the registry.
-- **Transparent, modular architecture** — Every phase is accessible, extensible, and documented. You can access, override, or extend any step.
-- **Lightning-fast, production-grade outputs** — Full pipeline (profiling, cleaning, modeling, reporting) in under 1 second for most datasets.
-- **Zero configuration, but infinite customization** — Works out of the box, but you can control every detail.
-
----
-
-## 💡 Why Octolearn?
-
-- **User-param driven**: You control imputation, encoding, scaling, ID columns, model selection, evaluation metric, and more.
-- **No data leakage**: Specify ID columns and they are never used in modeling or predictions.
-- **Model registry**: All models are saved, versioned, and tracked for reproducibility and deployment.
-- **Professional reporting**: PDF reports are modern, beautiful, and include a full model benchmarks/results table.
-- **API-first, notebook-friendly**: Use as a script, in notebooks, or as a backend for your own tools.
-- **Extensible**: Add your own models, metrics, or reporting sections easily.
-- **Transparent**: Access every intermediate result, log, and artifact.
-- **Production-ready**: Used in real-world projects, with robust error handling and logging.
-
----
-
-## ⚡ Quick Start
-
-### Installation
-
-```bash
-pip install octolearn
-```
-
-### Minimal Usage
+### For Beginners — One Line Pipeline
 
 ```python
 from octolearn import AutoML
 import pandas as pd
 
-df = pd.read_csv('your_data.csv')
-X = df.drop('target', axis=1)
-y = df['target']
+# Load your data
+data = pd.read_csv("your_data.csv")
+X = data.drop("target_column", axis=1)
+y = data["target_column"]
 
-# All defaults, full pipeline
+# Run the entire pipeline
 automl = AutoML()
 automl.fit(X, y)
-pdf = automl.generate_report()
-print(f"Report: {pdf}")
+
+# Get results
+print(automl.raw_profile_)          # Dataset profiling results
+print(automl.get_risk_score())      # Data quality risk score
+print(automl.get_recommendations()) # ML recommendations
 ```
 
----
-
-## 🛠️ Full User-Param Control
+### Profile Only (No Training)
 
 ```python
-automl = AutoML(
-    imputer_strategy={"numeric": "median", "categorical": "mode"},
-    encoder_strategy={"ordinal_cols": ["grade"], "default": "ohe"},
-    scaler="minmax",
-    id_columns=["id", "customer_id"],
-    train_models=True,
-    use_registry=True,
-    n_models=3,
-    evaluation_metric="f1",
-    parallel_processing=True
-)
+automl = AutoML(train_models=False)
 automl.fit(X, y)
-results = automl.train_auto_models()
-pdf = automl.generate_report()
+
+# Access insights
+profile = automl.raw_profile_
+print(f"Rows: {profile.n_rows}, Columns: {profile.n_columns}")
+print(f"Task type: {profile.task_type}")
+print(f"Missing values: {profile.missing_ratio}")
+
+# Risk assessment
+risk = automl.get_risk_score()
+print(f"Risk: {risk['score']}/100 ({risk['category']})")
 ```
-- **Dataset Profiling**: `profiling/data_profiler.py` performs automatic type detection (numeric, categorical, datetime), missing-value summaries, duplicate detection, skewness and constant-column checks, high-cardinality detection, and produces a stable dataset hash.
 
----
+### Generate a PDF Report
 
-## 🔥 Key Features & Power
-
-- **User-param driven preprocessing**: Imputer, encoder, scaler, and ID columns are all user-overridable at any point.
-- **ID column handling**: Any columns listed in `id_columns` are never used for modeling or predictions, but are preserved for merging and reference.
-- **Model registry**: Every trained model is saved in `trained_models/` and tracked in the registry with full metadata (parameters, metrics, version, hash).
-- **Model benchmarks/results table**: PDF report includes a table of all trained models, their parameters, and all metrics, with the best model at the top (by your chosen metric).
-- **User-param driven evaluation metric**: Select the metric (e.g., F1, RMSE, accuracy, etc.) for best model selection and benchmarking.
-- **Professional PDF reporting**: Black background, red accents, modern font, and full transparency of all results.
-- **Access at every point**: Access cleaned data, profile, outlier analysis, feature interactions, cleaning log, all trained models, best model, and model benchmarks at any time.
-- **Extensible and modular**: Add your own models, metrics, or reporting sections with minimal code changes.
-- **API-first**: All phases and results are accessible via the API.
-- **Production-grade error handling and logging**: Robust, clear, and debug-friendly.
-
----
-
-## 📊 Example Output
-
-```
-DATASET PROFILE:
-   Rows: 150
-   Columns: 4
-   Task Type: classification
-   Hash: 8145f023f195
-
-RISK SCORE: 10/100 (Low Risk)
-   Risk Factors:
-   • 0.7% duplicate rows
-   • Features/samples ratio: 0.03
-
-FEATURE IMPORTANCE (Top 3):
-   1. petal length (cm): 0.4442
-   2. petal width (cm): 0.4181
-   3. sepal length (cm): 0.1099
-
-PREPROCESSING SUGGESTIONS:
-   Missing Values: No missing values detected
-   Categorical Encoding: petal length (cm): Ordinal Encoding, sex: Label Encoding (0/1), others: One-Hot Encoding
-   Scaling: StandardScaler applied
-   Feature Engineering: Consider polynomial features
-
-All model files are saved in trained_models/ and tracked in the registry.
-PDF and all plots use a modern black background with red accents and modern font.
+```python
+automl = AutoML()
+automl.fit(X, y)
+automl.generate_report()  # Creates a professional PDF report
 ```
 
 ---
 
-## 🧑‍💻 Advanced Usage & API
+## 🔧 Advanced Usage
 
-### Data Access at Any Point
+### Full Configuration Control
 
-- `automl.X_` — Cleaned features (IDs dropped for modeling, but available for merging)
-- `automl.y_` — Cleaned target
-- `automl.profile_` — Full dataset profile (metrics, types, etc.)
-- `automl.outlier_results_` — Outlier analysis
-- `automl.interaction_results_` — Feature interaction analysis
-- `automl.cleaning_log_` — Step-by-step cleaning log
-- `automl.trained_models_` — All trained model objects
-- `automl.best_model_` — Best model object
-- `automl.model_benchmarks_` — List of all model results/benchmarks
+Every aspect of OctoLearn is configurable through dataclass objects:
 
-### API Reference
+```python
+from octolearn import (
+    AutoML,
+    DataConfig,
+    ProfilingConfig,
+    PreprocessingConfig,
+    ModelingConfig,
+    OptimizationConfig,
+    ReportingConfig,
+    ParallelConfig,
+)
 
-- `fit(X, y, ...)` — Run the full pipeline with user-param overrides
-- `generate_report()` — Create a professional PDF report
-- `train_auto_models(evaluation_metric=...)` — Train all models and select best by your metric
-- `get_risk_score()` — Get risk score and factors
-- `get_preprocessing_suggestions()` — Get preprocessing plan
-- `get_feature_importance()` — Get feature ranking
-- `get_trained_models()` — Dict of all trained models
-- `get_best_model()` — Best model object
-- `report()` — Get the full dataset profile
+automl = AutoML(
+    # Data handling
+    data_config=DataConfig(
+        use_full_data=False,     # Sample large datasets
+        sample_size=1000,        # Rows to sample
+        test_size=0.2,           # Train/test split ratio
+        random_state=42,         # Reproducibility
+    ),
+
+    # Profiling behavior
+    profiling_config=ProfilingConfig(
+        detect_outliers=True,
+        analyze_interactions=True,   # Enable interaction analysis
+        generate_risk_score=True,
+        calculate_feature_importance=True,
+    ),
+
+    # Preprocessing strategy
+    preprocessing_config=PreprocessingConfig(
+        auto_clean=True,
+        imputer_strategy={"numeric": "median", "categorical": "mode"},
+        scaler="standard",       # "standard", "minmax", "robust", or None
+        id_columns=["user_id"],  # Columns to remove
+    ),
+
+    # Model training
+    modeling_config=ModelingConfig(
+        train_models=True,
+        n_models=5,
+        models_to_train=["random_forest", "xgboost", "logistic_regression"],
+    ),
+
+    # Hyperparameter tuning
+    optimization_config=OptimizationConfig(
+        use_optuna=True,
+        optuna_trials_per_model=30,
+        optuna_timeout_seconds=600,
+    ),
+
+    # Report settings
+    reporting_config=ReportingConfig(
+        generate_report=True,
+        report_detail="detailed",   # "brief" or "detailed"
+        include_shap=True,
+        plot_mode="simple",         # "simple" or "dashboard"
+    ),
+
+    # Parallel processing
+    parallel_config=ParallelConfig(
+        parallel_processing=True,
+        n_jobs=-1,               # -1 = all cores
+        backend="threading",
+    ),
+)
+
+automl.fit(X, y)
+```
+
+### Using Individual Components
+
+OctoLearn's components can be used independently:
+
+#### Data Profiling
+
+```python
+from octolearn.profiling import DataProfiler
+
+profiler = DataProfiler()
+profile = profiler.profile(X, y)
+
+print(f"Shape: {profile.shape}")
+print(f"Numeric columns: {profile.numeric_columns}")
+print(f"Categorical columns: {profile.categorical_columns}")
+print(f"ID-like columns: {profile.id_like_columns}")
+print(f"Leakage suspects: {profile.leakage_suspects}")
+print(f"Class imbalance ratio: {profile.imbalance_ratio}")
+```
+
+#### Auto Cleaning
+
+```python
+from octolearn.preprocessing.auto_cleaner import AutoCleaner
+
+cleaner = AutoCleaner(
+    imputer_strategy={"numeric": "median"},
+    scaler="robust"
+)
+X_clean, y_clean, cleaning_log = cleaner.fit_transform(X_train, y_train)
+
+# Apply same cleaning to test data
+X_test_clean = cleaner.transform(X_test)
+```
+
+#### Model Registry
+
+```python
+from octolearn.models.registry import ModelRegistry
+
+registry = ModelRegistry(base_dir="./models")
+registry.register(model, name="xgboost_v1", metrics={"accuracy": 0.95})
+
+# Load best model later
+best = registry.get_best_model(metric="accuracy")
+```
+
+### Backward Compatibility
+
+Legacy parameter names are supported via `**kwargs`:
+
+```python
+# Both of these work identically:
+AutoML(train_models=False)
+AutoML(modeling_config=ModelingConfig(train_models=False))
+```
 
 ---
 
-## 🏗 Architecture & Extensibility
+## 📖 API Reference
+
+### `AutoML` — Main Orchestrator
+
+| Method | Description |
+|--------|-------------|
+| `fit(X, y)` | Run the complete pipeline |
+| `predict(X_new)` | Make predictions using best model |
+| `generate_report()` | Generate PDF report |
+| `get_risk_score()` | Get data quality risk score (0-100) |
+| `get_recommendations()` | Get ML recommendations |
+| `get_feature_importance()` | Get feature importance scores |
+| `get_preprocessing_suggestions()` | Get preprocessing advice |
+| `get_model_benchmarks()` | Get all model metrics |
+
+| Attribute | Description |
+|-----------|-------------|
+| `raw_profile_` | `DatasetProfile` of raw data |
+| `clean_profile_` | `DatasetProfile` of cleaned data |
+| `X_`, `y_` | Cleaned feature matrix and target |
+| `X_train_`, `X_test_` | Train/test splits |
+| `cleaning_log_` | Dictionary of cleaning operations |
+| `outlier_results_` | Outlier detection results |
+| `trained_models_` | Dictionary of trained models |
+| `best_model_` | Best performing model |
+
+### Configuration Dataclasses
+
+<details>
+<summary><strong>DataConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `use_full_data` | `bool` | `False` | Use entire dataset (no sampling) |
+| `sample_size` | `int` | `500` | Rows to sample if not using full data |
+| `test_size` | `float` | `0.2` | Fraction for test split |
+| `random_state` | `int` | `42` | Random seed for reproducibility |
+| `stratify_target` | `bool` | `True` | Stratify split on target |
+</details>
+
+<details>
+<summary><strong>ProfilingConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `detect_outliers` | `bool` | `True` | Run outlier detection |
+| `analyze_interactions` | `bool` | `False` | Analyze feature interactions |
+| `generate_risk_score` | `bool` | `True` | Calculate risk score |
+| `calculate_feature_importance` | `bool` | `True` | Compute importance |
+| `generate_recommendations` | `bool` | `True` | Generate ML recommendations |
+| `include_duplicates_analysis` | `bool` | `True` | Analyze duplicates |
+</details>
+
+<details>
+<summary><strong>PreprocessingConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `auto_clean` | `bool` | `True` | Enable auto cleaning |
+| `imputer_strategy` | `Dict` | `None` | Imputation methods per type |
+| `encoder_strategy` | `Dict` | `None` | Encoding strategy |
+| `scaler` | `str` | `"standard"` | Scaling method |
+| `id_columns` | `List[str]` | `None` | Columns to remove |
+</details>
+
+<details>
+<summary><strong>ModelingConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `train_models` | `bool` | `True` | Whether to train models |
+| `models_to_train` | `List[str]` | `None` | Specific models to train |
+| `evaluation_metric` | `str` | `None` | Primary evaluation metric |
+| `n_models` | `int` | `5` | Number of models to train |
+| `test_size` | `float` | `0.2` | Test split ratio |
+</details>
+
+<details>
+<summary><strong>OptimizationConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `use_optuna` | `bool` | `True` | Enable Optuna tuning |
+| `optuna_trials_per_model` | `int` | `20` | Trials per model |
+| `optuna_timeout_seconds` | `int` | `300` | Timeout per model |
+| `optuna_parallel_jobs` | `int` | `-1` | Parallel Optuna workers |
+| `use_registry` | `bool` | `True` | Save models to registry |
+</details>
+
+<details>
+<summary><strong>ReportingConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `generate_report` | `bool` | `True` | Generate PDF report |
+| `report_detail` | `str` | `"detailed"` | `"brief"` or `"detailed"` |
+| `include_shap` | `bool` | `True` | Include SHAP analysis |
+| `plot_mode` | `str` | `"simple"` | `"simple"` or `"dashboard"` |
+| `visuals_limit` | `int` | `10` | Max plots in report |
+</details>
+
+<details>
+<summary><strong>ParallelConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `parallel_processing` | `bool` | `True` | Enable parallelism |
+| `n_jobs` | `int` | `-1` | Number of cores (-1 = all) |
+| `backend` | `str` | `"threading"` | Joblib backend |
+| `verbose` | `int` | `0` | Verbosity level |
+</details>
+
+---
+
+## 🏗️ Architecture
 
 ```
 octolearn/
-├── core.py                      ← Main AutoML class
-├── config.py                    ← Configuration
+├── __init__.py              # Public API exports
+├── config.py                # Centralized configuration constants
+├── core.py                  # AutoML orchestrator (main entry point)
+│
 ├── profiling/
-│     └── data_profiler.py        ← Dataset analysis (16 metrics)
+│   └── data_profiler.py     # DataProfiler + DatasetProfile
+│
+├── preprocessing/
+│   ├── auto_cleaner.py      # AutoCleaner (impute/encode/scale)
+│   └── pipeline_builder.py  # sklearn Pipeline export
+│
+├── models/
+│   ├── model_trainer.py     # ModelTrainer + Optuna integration
+│   └── registry.py          # ModelRegistry (versioned storage)
+│
+├── evaluation/
+│   └── metrics.py           # ModelEvaluator (classification/regression)
+│
 ├── experiments/
-│   ├── risk_scorer.py          ← Risk assessment (0-100)
-│   ├── preprocessing_suggester.py  ← Preprocessing strategy
-│   ├── baseline_importance.py   ← Feature ranking
-│   ├── plot_generator.py        ← Visualization + SHAP
-│   ├── recommendation_engine.py ← Strategic insights
-│   └── report_generator.py      ← PDF factory
-├── feature/                    ← Feature engineering & selection
-├── models/                     ← Model training, registry, selection
-├── optimization/               ← Optimization & distributed support
-├── evaluation/                 ← Metrics & evaluation
-├── utils/                      ← Logging, helpers, error handling
+│   ├── report_generator.py  # PDF report generation
+│   ├── plot_generator.py    # Visualization engine
+│   ├── recommendation_engine.py  # ML recommendations
+│   ├── risk_scorer.py       # Data quality risk scoring
+│   ├── outlier_detector.py  # Multi-method outlier detection
+│   ├── baseline_importance.py    # Feature importance
+│   └── preprocessing_suggester.py # Preprocessing advice
+│
+├── feature/
+│   └── interaction_analyzer.py   # Feature interaction analysis
+│
+└── utils/
+    └── helpers.py           # Logging, decorators, validation
 ```
 
----
+### Pipeline Flow
 
-## 🌟 Power Features & Philosophy
+```
+Raw Data ──► Profiling ──► Train/Test Split ──► Auto Cleaning ──► Clean Profiling
+                                                      │
+                                                      ▼
+                    PDF Report ◄── Model Training ◄── Feature Engineering
+                                       │
+                                       ▼
+                              Optuna Optimization ──► Model Registry
+```
 
-- **User-param driven at every step**: Override any phase, any time.
-- **No data leakage**: ID columns are never used for modeling or predictions.
-- **Model registry**: All models are saved, versioned, and tracked.
-- **Professional, modern PDF reporting**: Black background, red accents, modern font, and a model benchmarks/results table.
-- **API-first, notebook-friendly, and scriptable**: Use anywhere.
-- **Extensible and modular**: Add your own models, metrics, or reporting sections.
-- **Transparent and debuggable**: Access every intermediate result, log, and artifact.
-- **Production-ready**: Robust error handling, logging, and reproducibility.
+The pipeline executes 6 phases:
 
----
-
-## ⚡ Performance
-
-| Task | Time |
-|------|------|
-| Profile dataset | ~50ms |
-| Calculate risk score | ~30ms |
-| Generate suggestions | ~20ms |
-| Train baseline model | ~150ms |
-| Create visualizations | ~200ms |
-| Generate PDF | ~100ms |
-| **TOTAL** | **~550ms** |
+1. **Profiling** — Infer types, detect quality issues, estimate task type
+2. **Splitting** — Stratified train/test split
+3. **Cleaning** — Impute missing values, encode categoricals, scale numerics
+4. **Clean Profiling** — Re-profile the cleaned dataset
+5. **Feature Engineering** — Outlier detection + interaction analysis
+6. **Model Training** — Train multiple models with optional Optuna HPO
 
 ---
 
-## 📋 Requirements
-
-- Python 3.8+
-- pandas ≥ 1.0.0
-- numpy ≥ 1.19.0
-- scikit-learn ≥ 0.24.0
-- reportlab ≥ 3.6.0
-- matplotlib ≥ 3.3.0
-- seaborn ≥ 0.11.0
-- shap ≥ 0.40.0
-
----
-
-## 🚀 Roadmap
-
-- [x] User-param driven preprocessing (imputer, encoder, scaler, ID columns)
-- [x] Robust model saving and registry
-- [x] Modern black/red PDF/visuals
-- [x] Model benchmarks/results table in PDF
-- [x] User-param driven evaluation metric
-- [x] Full API and data access at every point
-- [x] Concise, up-to-date documentation
-- [ ] Outlier detection & visualization (coming soon)
-- [ ] Feature interaction analysis (coming soon)
-- [ ] Ensemble model selection (coming soon)
-- [ ] MLflow integration (coming soon)
-
----
-
-## 🧪 Testing
-
-### Run Tests
+## 🧪 Running Tests
 
 ```bash
-# Basic test
-python test_octolearn.py
-
-# Validation test
-python validation.py
-
-# Interactive notebook
-jupyter notebook octolearn_demo.ipynb
+# Activate virtual environment first
+python test_complete_pipeline.py
 ```
 
-### Example Notebooks
-
-- `octolearn_demo.ipynb`: Interactive feature showcase
-- `notebooks/test_octolearn_full.ipynb`: Full pipeline test
+This exercises all pipeline phases with the Titanic dataset.
 
 ---
 
-## 📄 License
+## 📝 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit changes
-4. Push to branch
-5. Open a Pull Request
+MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## 📞 Support
+## 👤 Author
 
-**Issues or Questions?**
-
-- Check documentation in [ARCHITECTURE.md](ARCHITECTURE.md)
-- Review [octolearn_demo.ipynb](octolearn_demo.ipynb)
-- Open an issue on GitHub
+**Ghulam Muhammad Nabeel**
 
 ---
 
-## 🐙 Philosophy
-
-> "Build the skeleton first. Then make it breathe."
-
-Octolearn follows modular, automated, and professional principles:
-- ✅ **Modular Architecture** - Each component independent
-- ✅ **Automation First** - Recommendations, not questions
-- ✅ **Professional Quality** - Production-ready outputs
-- ✅ **Reproducible Results** - Hash-based naming
-- ✅ **Zero Configuration** - Works out of the box
-- ✅ **User-Param Driven** - Full control at every step
-
----
-
-**Made with ☕ and 🐙 Logic.**
-- **Risk Scoring**: `experiments/risk_scorer.py` computes a 0–100 data quality risk score and returns contributing factors and a categorical label (Low / Moderate / High).
-- **Preprocessing Suggestions**: `experiments/preprocessing_suggester.py` generates actionable strategies for imputation, encoding, scaling, cardinality handling, and column-specific actions.
-- **Baseline Feature Importance**: `experiments/baseline_importance.py` trains a fast Random Forest baseline to produce feature importances.
-- **Explainability (SHAP)**: `experiments/plot_generator.py` integrates SHAP `TreeExplainer` to produce SHAP summary plots and an importance bar chart for tree-based models.
-- **Visual Diagnostics**: `experiments/plot_generator.py` creates per-feature distribution plots, correlation heatmaps, and saves PNG artifacts (non-interactive `Agg` backend supported).
-- **Automated PDF Report**: `experiments/report_generator.py` composes a professional PDF dossier that embeds executive summary, risk banner, preprocessing suggestions, baseline importance, and visual diagnostics.
-- **Recommendation Engine**: `experiments/recommendation_engine.py` synthesizes profiling and model signals into concise, prioritized recommendations.
-- **Core API / Orchestration**: `core.py` exposes the high-level `AutoML` class with methods `fit(X, y)`, `generate_report()`, `get_risk_score()`, `get_preprocessing_suggestions()`, `get_feature_importance()`, and `report()` (raw profile).
-- **Model & Optimization Utilities**: `models/` (selector & registry) and `optimization/optimizer.py` provide foundations for model selection and future HPO workflows.
-- **Preprocessing Pipeline Builder**: `preprocessing/pipeline_builder.py` offers utilities to construct reproducible sklearn-compatible pipelines from suggested strategies.
-- **Feature Engineering & Selection**: `feature/feature_engineer.py` and `feature/feature_selector.py` include initial helpers for transformations and automatic selection heuristics.
-- **Evaluation & Metrics**: `evaluation/metrics.py` contains common evaluation helpers used by experiments and baseline checks.
-- **Tracking & Utilities**: `experiments/tracker.py` plus `utils/helpers.py` provide lightweight run-tracking, reproducibility helpers, and I/O utilities.
-- **Fonts & Assets**: `fonts/` contains font assets used when rendering the PDF reports for consistent professional typography.
-
-These components are designed to work together end-to-end: run `AutoML().fit(X,y)` to create a `DatasetProfile`, inspect suggestions and risks via the API, and call `generate_report()` to produce a stakeholder-ready PDF report and visual artifacts.
-
-
-## ⚡ Performance
-
-| Task | Time |
-|------|------|
-| Profile dataset | ~50ms |
-| Calculate risk score | ~30ms |
-| Generate suggestions | ~20ms |
-| Train baseline model | ~150ms |
-| Create visualizations | ~200ms |
-| Generate PDF | ~100ms |
-| **TOTAL** | **~550ms** |
-
----
-
-## 📋 Requirements
-
-- Python 3.8+
-- pandas ≥ 1.0.0
-- numpy ≥ 1.19.0
-- scikit-learn ≥ 0.24.0
-- reportlab ≥ 3.6.0
-- matplotlib ≥ 3.3.0
-- seaborn ≥ 0.11.0
-- shap ≥ 0.40.0
-
----
-
-
-
-## 🧪 Testing
-
-### Run Tests
-
-```bash
-# Basic test
-python test_octolearn.py
-
-# Validation test
-python validation.py
-
-# Interactive notebook
-jupyter notebook octolearn_demo.ipynb
-```
-
-### Example Notebooks
-
-- `octolearn_demo.ipynb`: Interactive feature showcase
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit changes
-4. Push to branch
-5. Open a Pull Request
-
----
-
-## 📞 Support
-
-**Issues or Questions?**
-
-- Check documentation in [ARCHITECTURE.md](ARCHITECTURE.md)
-- Review [octolearn_demo.ipynb](octolearn_demo.ipynb)
-- Open an issue on GitHub
-
----
-
-## 🐙 Philosophy
-
-> "Build the skeleton first. Then make it breathe."
-
-Octolearn follows modular, automated principles:
-- ✅ **Modular Architecture** - Each component independent
-- ✅ **Automation First** - Recommendations, not questions
-- ✅ **Professional Quality** - Production-ready outputs
-- ✅ **Reproducible Results** - Hash-based naming
-- ✅ **Zero Configuration** - Works out of the box
-
----
-
-**Made with ☕ and 🐙 Logic.**
-
-*Octolearn v0.7.4 — Intelligent AutoML for Everyone*
-
-Optional distributed execution: if you need scalable runs with large datasets or parallel Optuna trials, install the `distributed` extras:
-
-```bash
-pip install .[distributed]
-```
-
-Benchmarks and reproducible examples are available in the `benchmarks/` and `notebooks/` folders. See `benchmarks/README.md` for details.
+<p align="center">
+  Built with ❤️ by the OctoLearn team
+</p>

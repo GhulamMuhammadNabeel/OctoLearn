@@ -266,33 +266,28 @@ PARALLEL_CONFIG = {
 # ============================================================================
 
 REPORT_CONFIG = {
+    'mode': 'detailed',
     'include_sections': {
         'executive_summary': True,
-        'data_quality': True,
-        'outlier_analysis': True,
-        'feature_interactions': True,
-        'preprocessing_strategy': True,
-        'feature_importance': True,
-        'model_comparison': True,
-        'best_model_details': True,
-        'hyperparameter_tuning': True,
-        'cross_validation_results': True,
+        'risk_analysis': True,
+        'preprocessing_details': True,
+        'feature_analysis': True,
+        'model_benchmarking': True,
         'visual_insights': True,
         'recommendations': True,
     },
-    
     'fonts': {
         'title': 'ShantellSans-ExtraBold',
         'section': 'ShantellSans-Bold',
         'normal': 'ShantellSans-Regular',
-        'italic': 'ShantellSans-Italic',
     },
-    
     'colors': {
-        'primary': '#FF0000',
-        'low_risk': '#27AE60',
-        'moderate_risk': '#F39C12',
-        'high_risk': '#E74C3C',
+        'primary': '#00F0FF',        # Neon Cyan
+        'risk_low': '#00FF9F',       # Neon Green
+        'risk_moderate': '#FFB800',  # Neon Orange
+        'risk_high': '#FF0055',      # Neon Pink/Red
+        'background': '#0D0D15',     # Cyberpunk Dark
+        'text': '#E0E0E0',
     },
 }
 

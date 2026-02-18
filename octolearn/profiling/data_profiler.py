@@ -44,6 +44,16 @@ class DatasetProfile:
     imbalance_ratio: float = None
     duplicate_rows: int = 0
 
+    @property
+    def n_rows(self) -> int:
+        """Number of rows in the dataset."""
+        return self.shape[0]
+
+    @property
+    def n_columns(self) -> int:
+        """Number of columns in the dataset."""
+        return self.shape[1]
+
 
 class DataProfiler:
     """

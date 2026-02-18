@@ -56,7 +56,7 @@ License:
     MIT
 
 Version:
-    0.6.0
+    0.7.6
 """
 
 import pandas as pd
@@ -169,7 +169,7 @@ class ProfilingConfig:
         >>> automl = AutoML(profiling_config=config)
     """
     detect_outliers: bool = True
-    analyze_interactions: bool = True
+    analyze_interactions: bool = False  # Disabled by default for performance
     generate_risk_score: bool = True
     calculate_feature_importance: bool = True
     generate_recommendations: bool = True
@@ -473,7 +473,7 @@ class AutoML:
         AutoML() and customize only what you need.
     
     Version:
-        0.6.0
+        0.7.6
     """
     
     def __init__(
@@ -527,6 +527,12 @@ class AutoML:
         self.reporting_config = reporting_config or ReportingConfig()
         self.parallel_config = parallel_config or ParallelConfig()
         
+        # Backward compatibility: extract legacy kwargs
+        if 'train_models' in kwargs:
+            self.modeling_config.train_models = kwargs.pop('train_models')
+        if 'generate_shap' in kwargs:
+            self.reporting_config.include_shap = kwargs.pop('generate_shap')
+        
         # Validate all config objects
         self._validate_configs()
         
@@ -566,7 +572,7 @@ class AutoML:
         self.registry_ = None
         
         if self.show_progress:
-            logger.info(f"AutoML initialized (v0.6.0)")
+            logger.info(f"AutoML initialized (v0.7.6)")
             self._log_configuration()
     
     def _validate_configs(self):
@@ -724,7 +730,7 @@ class AutoML:
         self._execute_pipeline(X, y)
         
         if self.show_progress:
-            logger.info("AutoML pipeline complete! ✓")
+            logger.info("AutoML pipeline complete! [OK]")
         
         return self
     
@@ -819,7 +825,7 @@ class AutoML:
             )
         
         if self.show_progress:
-            logger.info(f"✓ Input validation passed: X{X.shape}, y{len(y)}")
+            logger.info(f"[OK] Input validation passed: X{X.shape}, y{len(y)}")
     
     def _execute_pipeline(self, X: pd.DataFrame, y: pd.Series) -> None:
         """
@@ -858,9 +864,10 @@ class AutoML:
         self._feature_engineering()
         
         # PHASE 6: Model training
-        if self.show_progress:
-            logger.info("PHASE 6: Model training...")
-        self._train_models()
+        if self.modeling_config.train_models:
+            if self.show_progress:
+                logger.info("PHASE 6: Model training...")
+            self._train_models()
     
     def _profile_raw_data(self, X: pd.DataFrame, y: pd.Series) -> None:
         """Profile raw data before cleaning."""
@@ -935,11 +942,11 @@ class AutoML:
                 self.X_test_ = self.cleaner_.transform(self.X_test_)
                 
                 if self.show_progress:
-                    logger.info("  Data cleaning complete ✓")
+                    logger.info("  Data cleaning complete [OK]")
                     
             except Exception as e:
                 logger.error(f"Data cleaning failed: {str(e)}")
-                raise ValueError(f"Data cleaning failed. Error: {str(e)}")
+                raise ValueError(f"Data cleaning failed. Error: {str(e)}") from e
         
         # Combine for analysis
         self.X_ = pd.concat([self.X_train_, self.X_test_], axis=0).sort_index()
@@ -1006,7 +1013,7 @@ class AutoML:
                     )
             
             if self.show_progress:
-                logger.info(f"Model training complete ✓")
+                logger.info(f"Model training complete [OK]")
                 logger.info(f"  Best model: {results.get('best_model')}")
                 logger.info(f"  Best score: {results.get('best_score'):.4f}")
                 
@@ -1099,7 +1106,7 @@ class AutoML:
         results = self._generate_report_components()
         
         # Create report
-# Create report with enhanced ReportGenerator (v0.7.4)
+# Create report with enhanced ReportGenerator (v0.7.6)
         # Determine report mode from config
         report_mode = getattr(self.reporting_config, 'report_detail', 'detailed')
         if report_mode == 'brief':
@@ -1110,7 +1117,7 @@ class AutoML:
         generator = ReportGenerator(
             raw_profile=self.raw_profile_,
             clean_profile=self.clean_profile_,
-            mode=mode,  # Changed: detail_level -> mode (v0.7.4 enhancement)
+            mode=mode,
             dist_plots=results.get("dist_paths"),
             heatmap_plot=results.get("heatmap_path"),
             recommendations=results.get("recommendations"),
@@ -1123,20 +1130,20 @@ class AutoML:
             model_benchmarks=self.model_benchmarks_,
             best_model_name=self.best_model_.__class__.__name__ if self.best_model_ else None,
             cleaning_log=self.cleaning_log_,
-            # New parameters for enhanced reporting (v0.7.4)
+            outlier_results=getattr(self, 'outlier_results_', {}),
+            interaction_results=getattr(self, 'interaction_results_', {}),
             logo_path=getattr(self, 'logo_path', None),
             title=getattr(self, 'report_title', 'OctoLearn Intelligence Report'),
             author=getattr(self, 'author', 'OctoLearn AutoML'),
             company=getattr(self, 'report_company', 'Data Science Team')
         )
-        
         if self.show_progress:
             logger.info("  Composing PDF...")
         
         pdf_file = generator.generate()
         
         if self.show_progress:
-            logger.info(f"✓ Report saved: {pdf_file}")
+            logger.info(f"[OK] Report saved: {pdf_file}")
         
         return pdf_file
     

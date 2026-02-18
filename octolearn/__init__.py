@@ -25,17 +25,27 @@ Note:
     See HOW_TO_USE.md and README.md for full usage details and advanced options.
 """
 
-__version__ = "0.7.4"
+__version__ = "0.7.6"
 __author__ = "Ghulam Muhammad Nabeel"
 __license__ = "MIT"
 
 
-from .core import AutoML
+from .core import (
+    AutoML, DataConfig, ProfilingConfig, PreprocessingConfig,
+    ModelingConfig, OptimizationConfig, ReportingConfig, ParallelConfig
+)
 from .profiling.data_profiler import DataProfiler
 from .models.registry import ModelRegistry
 
 __all__ = [
     "AutoML",
     "DataProfiler",
-    "ModelRegistry"
+    "ModelRegistry",
+    "DataConfig",
+    "ProfilingConfig", 
+    "PreprocessingConfig",
+    "ModelingConfig",
+    "OptimizationConfig",
+    "ReportingConfig",
+    "ParallelConfig"
 ]

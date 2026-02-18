@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "octolearn"
-version = "0.7.7"
+version = "0.8.0"
 description = "Structured AutoML Pipeline with Intelligent Dataset Profiling"
-readme = "README.md"
+readme = "ARCHITECTURE.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
-    {name = "Ghulam Muhammad Nabeel", email = "ghulam.nabeel@example.com"}
+    {name = "Ghulam Muhammad Nabeel", email = "ghulammuhammadnabeel6@gmail.com"}
 ]
 keywords = ["automl", "machine-learning", "data-science", "profiling", "automation"]
 classifiers = [

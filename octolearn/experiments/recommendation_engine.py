@@ -18,46 +18,73 @@ logger = setup_logger(__name__)
 
 class RecommendationEngine:
     """
-    Generates actionable recommendations based on dataset profile and model results.
-    
+    Generates actionable, prioritized recommendations based on dataset profile
+    and model results.
+
     The engine analyzes various data quality metrics and patterns to produce
-    prioritized recommendations for improving model performance and data handling.
-    
-    Example
-    -------
-    >>> engine = RecommendationEngine(clean_profile)
+    recommendations organized by priority level (critical → informational).
+    It uses the **raw** profile for sample-size checks (so row counts reflect
+    the original dataset before deduplication) and the **clean** profile for
+    feature quality checks.
+
+    Parameters
+    ----------
+    profile : DatasetProfile
+        Profile of the **cleaned** dataset (post-deduplication, post-encoding).
+        Used for feature quality, cardinality, and missing-value checks.
+    raw_profile : DatasetProfile, optional
+        Profile of the **raw** dataset (before any cleaning). When provided,
+        sample-size recommendations reference the original row count rather
+        than the post-cleaning count.
+
+    Examples
+    --------
+    >>> engine = RecommendationEngine(clean_profile, raw_profile=raw_profile)
     >>> recommendations = engine.generate()
-    >>> for priority, rec in recommendations.items():
-    ...     print(f"{priority}: {rec}")
+    >>> for priority, recs in recommendations.items():
+    ...     print(f"{priority}: {recs}")
     """
-    
-    def __init__(self, profile):
+
+    def __init__(self, profile, raw_profile=None):
         """
-        Initialize RecommendationEngine.
-        
+        Initialize the RecommendationEngine.
+
         Parameters
         ----------
         profile : DatasetProfile
-            Profile object from DataProfiler containing dataset statistics
+            Cleaned dataset profile used for feature-level checks.
+        raw_profile : DatasetProfile, optional
+            Raw dataset profile used for original sample-size checks.
+            If None, falls back to ``profile`` for all checks.
         """
         self.profile = profile
+        self.raw_profile = raw_profile  # Used for original row-count checks
         self.recommendations = {}
-        
+
         logger.info("RecommendationEngine initialized")
 
     def generate(self) -> Dict[str, List[str]]:
         """
         Generate recommendations based on profile characteristics.
-        
+
+        Runs all internal check methods and returns a dict of prioritized
+        recommendations. Empty priority buckets are excluded from the result.
+
         Returns
         -------
         dict
             Recommendations organized by priority level:
-            - 'critical': Must address before production
-            - 'high': Should address for better performance
-            - 'medium': Consider for improvements
-            - 'low': Optional optimizations
-            - 'informational': Interesting observations
+
+            - ``'critical'``: Must address before production
+            - ``'high'``: Should address for better performance
+            - ``'medium'``: Consider for improvements
+            - ``'low'``: Optional optimizations
+            - ``'informational'``: Interesting observations
+
+        Examples
+        --------
+        >>> recs = engine.generate()
+        >>> print(recs.get('critical', []))
         """
         self.recommendations = {
             'critical': [],
@@ -66,7 +93,7 @@ class RecommendationEngine:
             'low': [],
             'informational': []
         }
-        
+
         # Generate recommendations from various analyses
         self._check_target_quality()
         self._check_feature_quality()
@@ -77,12 +104,12 @@ class RecommendationEngine:
         self._check_missing_values()
         self._check_feature_engineering()
         self._check_model_considerations()
-        
+
         # Filter out empty categories
         final_recs = {k: v for k, v in self.recommendations.items() if v}
-        
+
         logger.info(f"Generated {sum(len(v) for v in final_recs.values())} recommendations")
-        
+
         return final_recs
 
     def _check_target_quality(self):
@@ -92,10 +119,10 @@ class RecommendationEngine:
                 "Task type could not be determined automatically. "
                 "Verify if this is classification or regression and specify explicitly."
             )
-        
+
         if self.profile.task_type == 'classification':
             unique_classes = len(self.profile.stats.get('target', {}).get('unique', []))
-            
+
             if unique_classes < 2:
                 self.recommendations['critical'].append(
                     "Classification target has only one class. "
@@ -113,7 +140,7 @@ class RecommendationEngine:
         total_features = len(self.profile.columns)
         numeric_features = len(self.profile.numeric_columns or [])
         categorical_features = len(self.profile.categorical_columns or [])
-        
+
         # Check for text columns that might need NLP preprocessing
         if self.profile.text_columns:
             self.recommendations['high'].append(
@@ -121,7 +148,7 @@ class RecommendationEngine:
                 "Consider using text embedding models (TF-IDF, Word2Vec, or transformers) "
                 "for improved performance."
             )
-        
+
         # Check for date columns
         if self.profile.date_columns:
             self.recommendations['medium'].append(
@@ -129,7 +156,7 @@ class RecommendationEngine:
                 "Consider extracting temporal features (day of week, month, year, etc.) "
                 "for better temporal pattern capture."
             )
-        
+
         # Check feature type balance
         if numeric_features == 0 and categorical_features > 0:
             self.recommendations['high'].append(
@@ -137,7 +164,7 @@ class RecommendationEngine:
                 "Consider encoding strategies that preserve ordinal relationships or using "
                 "tree-based models which handle categorical features natively."
             )
-        
+
         if categorical_features == 0 and numeric_features > 0:
             self.recommendations['medium'].append(
                 "Dataset contains only numeric features. "
@@ -148,7 +175,7 @@ class RecommendationEngine:
         """Check for class imbalance in classification tasks."""
         if self.profile.task_type == 'classification':
             imbalance = self.profile.imbalance_ratio
-            
+
             if imbalance is not None and imbalance > 0.8:
                 self.recommendations['high'].append(
                     f"Detected significant class imbalance (ratio: {imbalance:.2%}). "
@@ -163,24 +190,33 @@ class RecommendationEngine:
                 )
 
     def _check_feature_count(self):
-        """Check feature-to-sample ratio."""
-        n_samples = self.profile.shape[0]
-        n_features = self.profile.shape[1]
-        
+        """
+        Check feature-to-sample ratio using the original (raw) row count.
+
+        Uses ``raw_profile`` if available so that deduplication does not
+        artificially reduce the reported sample size in recommendations.
+        """
+        # Use raw profile for row count so deduplication doesn't skew the message
+        ref_profile = self.raw_profile if self.raw_profile is not None else self.profile
+        n_samples = ref_profile.shape[0]
+        n_features = self.profile.shape[1]  # Feature count from clean profile
+
+        origin_note = " (original dataset)" if self.raw_profile is not None else ""
+
         if n_samples < 100:
             self.recommendations['high'].append(
-                f"Very small dataset ({n_samples} samples). "
+                f"Very small dataset ({n_samples:,} samples{origin_note}). "
                 "Risk of overfitting is high. Use cross-validation aggressively, "
                 "consider regularization, and validate on external holdout set."
             )
         elif n_samples < 500:
             self.recommendations['medium'].append(
-                f"Relatively small dataset ({n_samples} samples). "
+                f"Relatively small dataset ({n_samples:,} samples{origin_note}). "
                 "Use k-fold cross-validation (k≥5) and regularization techniques."
             )
-        
+
         feature_ratio = n_features / max(n_samples, 1)
-        
+
         if feature_ratio > 0.1:
             self.recommendations['high'].append(
                 f"High feature-to-sample ratio ({feature_ratio:.2%}). "
@@ -192,6 +228,7 @@ class RecommendationEngine:
                 f"Moderately high feature-to-sample ratio ({feature_ratio:.2%}). "
                 "Monitor model complexity and consider feature selection."
             )
+
 
     def _check_cardinality(self):
         """Check for high cardinality categorical features."""

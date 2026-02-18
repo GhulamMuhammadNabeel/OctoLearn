@@ -135,6 +135,7 @@ class AutoCleaner:
             'id_columns_removed': len(getattr(self, 'removed_id_columns_', [])),
             'constant_columns_removed': len(getattr(self, 'constant_columns_removed_', [])),
             'low_variance_removed': len(getattr(self, 'low_variance_columns_removed_', [])),
+            'missing_imputed': getattr(self, 'numeric_cols_imputed_', 0) + getattr(self, 'cat_cols_imputed_', 0),
             'rows_after_cleaning': len(X_clean),
             'cols_after_cleaning': len(X_clean.columns),
             'numeric_imputation_method': self.imputer_strategy.get('numeric', 'mean'),
@@ -224,6 +225,7 @@ class AutoCleaner:
             
             try:
                 self.numeric_imputer_.fit(X[numeric_cols])
+                self.numeric_cols_imputed_ = len([c for c in numeric_cols if X[c].isnull().any()])
                 logger.info(f"Fitted numeric imputer ({numeric_method}) for {len(numeric_cols)} columns")
             except Exception as e:
                 logger.warning(f"Numeric imputation fit failed: {e}")
@@ -244,6 +246,7 @@ class AutoCleaner:
             
             try:
                 self.categorical_imputer_.fit(X[cat_cols])
+                self.cat_cols_imputed_ = len([c for c in cat_cols if X[c].isnull().any()])
                 logger.info(f"Fitted categorical imputer ({cat_method}) for {len(cat_cols)} columns")
             except Exception as e:
                 logger.warning(f"Categorical imputation fit failed: {e}")

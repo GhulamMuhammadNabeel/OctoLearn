@@ -54,23 +54,41 @@ class ModelTrainer:
         X_train: Optional[pd.DataFrame] = None,
         X_test: Optional[pd.DataFrame] = None,
         y_train: Optional[pd.Series] = None,
-        y_test: Optional[pd.Series] = None
+        y_test: Optional[pd.Series] = None,
+        # New params
+        enable_gpu: bool = False,
+        early_stopping_rounds: Optional[int] = None,
+        hyperparameter_overrides: Optional[Dict] = None,
+        n_trials: Optional[int] = None,
+        timeout_seconds: Optional[int] = None
     ):
         """
         ModelTrainer initialization.
 
-        Supports:
-        - Standard full X/y data
-        - Pre-split X_train, X_test, y_train, y_test
-        - X/y can be None if splits are provided
+        Args:
+            X (pd.DataFrame): Full feature data
+            y (pd.Series): Full target data
+            profile (DatasetProfile): Data profile object
+            task_type (str): 'classification' or 'regression'
+            evaluation_metric (str): Metric to optimize
+            X_train, X_test, y_train, y_test: Pre-split data (optional)
+            enable_gpu (bool): Whether to use GPU acceleration
+            early_stopping_rounds (int): Patience for early stopping
+            hyperparameter_overrides (Dict): Custom search spaces
         """
-
         # store original
         self.X = X
         self.y = y
         self.profile = profile
         self.task_type = task_type or getattr(profile, 'task_type', None)
         self.evaluation_metric = evaluation_metric
+        
+        self.enable_gpu = enable_gpu
+        self.early_stopping_rounds = early_stopping_rounds
+        self.hyperparameter_overrides = hyperparameter_overrides or {}
+        # User-supplied Optuna settings (override global config)
+        self.n_trials = n_trials
+        self.timeout_seconds = timeout_seconds
 
         # containers
         self.trained_models: Dict[str, object] = {}
@@ -249,10 +267,13 @@ class ModelTrainer:
                 # reduce native thread usage inside this trial to avoid oversubscription
                 self._force_single_threading_env()
 
-                if model_name not in OPTUNA_CONFIG.get('hyperparameters', {}):
-                    return 0.0
-
-                hp_config = OPTUNA_CONFIG['hyperparameters'].get(model_name, {})
+                # Check for overrides first
+                hp_config = self.hyperparameter_overrides.get(model_name)
+                if not hp_config:
+                    if model_name not in OPTUNA_CONFIG.get('hyperparameters', {}):
+                        return 0.0
+                    hp_config = OPTUNA_CONFIG['hyperparameters'].get(model_name, {})
+                
                 params = self._create_trial_params(trial, model_name, hp_config)
 
                 # Defensive: remove user-supplied thread keys to avoid collisions
@@ -284,10 +305,14 @@ class ModelTrainer:
             pruner = MedianPruner()
             study = optuna.create_study(sampler=sampler, pruner=pruner, direction='maximize')
 
+            # Prefer instance-level settings (from user's OptimizationConfig), fall back to global config
+            n_trials = self.n_trials if self.n_trials is not None else OPTUNA_CONFIG.get('optimization', {}).get('n_trials', 20)
+            timeout = self.timeout_seconds if self.timeout_seconds is not None else OPTUNA_CONFIG.get('optimization', {}).get('timeout', 120)
             n_jobs_config = OPTUNA_CONFIG.get('optimization', {}).get('n_jobs', 1)
             study.optimize(
                 objective,
-                n_trials=OPTUNA_CONFIG.get('optimization', {}).get('n_trials', 20),
+                n_trials=n_trials,
+                timeout=timeout,
                 n_jobs=n_jobs_config,
                 show_progress_bar=False
             )
@@ -354,15 +379,28 @@ class ModelTrainer:
             if model_name == 'xgboost':
                 # xgboost accepts n_jobs; older versions accept nthread. pass explicit kwargs.
                 kwargs = {'random_state': 42, 'verbosity': 0}
+                if self.enable_gpu:
+                    kwargs['tree_method'] = 'gpu_hist'
+                    kwargs['gpu_id'] = 0  # Default 0
+                
                 if force_single_thread:
                     kwargs['n_jobs'] = 1
                     # some xgb versions accept nthread
                     kwargs['nthread'] = 1
                 kwargs.update(params)
+                
+                # Create validation set if needed for early stopping
+                # Note: XGBClassifier.fit handles early_stopping_rounds via eval_set
+                # but sklearn wrapping can be tricky. We pass it here just in case.
+                if self.early_stopping_rounds:
+                    kwargs['early_stopping_rounds'] = self.early_stopping_rounds
+                    
                 return xgb.XGBClassifier(**kwargs)
 
             if model_name == 'lightgbm':
                 kwargs = {'random_state': 42, 'verbose': -1}
+                if self.enable_gpu:
+                    kwargs['device'] = 'gpu'
                 if force_single_thread:
                     kwargs['n_jobs'] = 1
                 kwargs.update(params)
@@ -392,10 +430,15 @@ class ModelTrainer:
 
             if model_name == 'xgboost':
                 kwargs = {'random_state': 42, 'verbosity': 0}
+                if self.enable_gpu:
+                    kwargs['tree_method'] = 'gpu_hist'
+                    kwargs['gpu_id'] = 0
                 if force_single_thread:
                     kwargs['n_jobs'] = 1
                     kwargs['nthread'] = 1
                 kwargs.update(params)
+                if self.early_stopping_rounds:
+                    kwargs['early_stopping_rounds'] = self.early_stopping_rounds
                 return xgb.XGBRegressor(**kwargs)
 
             if model_name == 'lightgbm':

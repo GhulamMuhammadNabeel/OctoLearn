@@ -21,11 +21,15 @@ License: MIT
 """
 
 import os
+import tempfile
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Union
 from io import BytesIO
 import warnings
+
+import pandas as pd
+import numpy as np
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -48,6 +52,15 @@ try:
     PIL_AVAILABLE = True
 except ImportError:
     PIL_AVAILABLE = False
+
+try:
+    import matplotlib
+    matplotlib.use('Agg')  # Non-interactive backend
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
 
 warnings.filterwarnings("ignore")
 
@@ -186,7 +199,11 @@ class ReportGenerator:
         interaction_results: Optional[Dict] = None,
         title: str = "OctoLearn Intelligence Report",
         author: str = "OctoLearn AutoML",
-        company: str = "Data Science Team"
+        company: str = "Data Science Team",
+        # Raw and cleaned DataFrames for before/after distribution plots
+        raw_X: Optional[Any] = None,
+        clean_X: Optional[Any] = None,
+        corr_summary: Optional[Dict[str, Any]] = None,  # From PlotGenerator.generate_correlation_heatmap
     ):
         if mode not in ['brief', 'detailed']:
             raise ValueError(f"Mode must be 'brief' or 'detailed', got '{mode}'")
@@ -196,6 +213,7 @@ class ReportGenerator:
         self.mode = mode
         self.dist_plots = dist_plots or []
         self.heatmap_plot = heatmap_plot
+        self.corr_summary = corr_summary or {}  # {top_pairs, bottom_pairs, n_features, strategy}
         self.recommendations = recommendations or []
         self.risk_score = risk_score if risk_score is not None else 50
         self.risk_category = risk_category or "Moderate"
@@ -212,6 +230,10 @@ class ReportGenerator:
         self.title = title
         self.author = author
         self.company = company
+        self.raw_X = raw_X
+        self.clean_X = clean_X
+        # Temp files created during report generation (cleaned up after)
+        self._temp_files: List[str] = []
 
         self._register_fonts()
         self.styles = getSampleStyleSheet()
@@ -227,6 +249,7 @@ class ReportGenerator:
         self.font_regular = 'Helvetica'
         self.font_bold = 'Helvetica-Bold'
         self.font_title = 'Helvetica-Bold'
+        self.font_italic = 'Helvetica-Oblique'
 
         possible_dirs = [
             Path(__file__).parent.parent / 'fonts',
@@ -239,6 +262,7 @@ class ReportGenerator:
             'ShantellSans-Regular': 'ShantellSans-Regular.ttf',
             'ShantellSans-Bold': 'ShantellSans-Bold.ttf',
             'ShantellSans-ExtraBold': 'ShantellSans-ExtraBold.ttf',
+            'ShantellSans-Italic': 'ShantellSans-Italic.ttf',
         }
 
         for font_name, filename in font_files.items():
@@ -247,16 +271,18 @@ class ReportGenerator:
                 if font_path.exists():
                     try:
                         pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
-                        if 'Regular' in font_name:
+                        if font_name == 'ShantellSans-Regular':
                             self.font_regular = font_name
-                        elif 'ExtraBold' in font_name:
+                        elif font_name == 'ShantellSans-ExtraBold':
                             self.font_title = font_name
-                        elif 'Bold' in font_name:
+                        elif font_name == 'ShantellSans-Bold':
                             self.font_bold = font_name
+                        elif font_name == 'ShantellSans-Italic':
+                            self.font_italic = font_name
                         break
                     except Exception:
                         pass
-        
+
         if self.font_regular == 'ShantellSans-Regular':
             logger.info("Successfully registered ShantellSans fonts.")
         else:
@@ -290,13 +316,20 @@ class ReportGenerator:
 
         self.styles.add(ParagraphStyle(
             name='SectionHeading',
-            fontName=self.font_bold,
-            fontSize=18,
-            leading=24,
-            textColor=ReportColors.PRIMARY,
-            spaceBefore=16,
-            spaceAfter=10,
+            fontName=self.font_title,
+            fontSize=16,
+            leading=20,
+            textColor=ReportColors.WHITE,
+            backColor=ReportColors.PRIMARY,
+            borderPadding=(10, 5, 10, 5),  # Top, Right, Bottom, Left
+            spaceBefore=18,  # Increased top spacing
+            spaceAfter=12,   # Increased bottom spacing
+            allowWidows=0,
+            allowOrphans=0,
         ))
+
+
+
 
         self.styles.add(ParagraphStyle(
             name='SubsectionHeading',
@@ -475,6 +508,41 @@ class ReportGenerator:
         t.setStyle(TableStyle(style_cmds))
         return t
 
+    def _add_section_header(self, story, title):
+        """Add a professional full-width section header."""
+        # Use a Table to create a full-width colored bar
+        header_style = ParagraphStyle(
+            'SectionHeaderBar',
+            parent=self.styles['SectionHeading'],
+            alignment=TA_LEFT
+        )
+        p = Paragraph(title.upper(), header_style)
+        
+        # 100% width table
+        t = Table([[p]], colWidths=[7.5*inch])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), ReportColors.PRIMARY),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 0.25 * inch))  # Increased spacing after header bar
+
+    def _create_side_by_side(self, left_content, right_content, widths=[3.7*inch, 3.7*inch]):
+        """Create a 2-column layout using a Table."""
+        data = [[left_content, right_content]]
+        t = Table(data, colWidths=widths)
+        t.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 2),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        return t
+
+
     # ==================================================================
     # SECTION 1: COVER PAGE
     # ==================================================================
@@ -556,8 +624,7 @@ class ReportGenerator:
     # SECTION 2: DATA STORY (Narrative)
     # ==================================================================
     def _add_data_story(self, story):
-        story.append(Paragraph("The Data Story", self.styles['SectionHeading']))
-        story.append(self._divider())
+        self._add_section_header(story, "The Data Story")
 
         n_rows = getattr(self.raw_profile, 'n_rows', 0) if self.raw_profile else 0
         n_cols = getattr(self.raw_profile, 'n_columns', 0) if self.raw_profile else 0
@@ -631,35 +698,32 @@ class ReportGenerator:
     # SECTION 3: DATA HEALTH DASHBOARD
     # ==================================================================
     def _add_health_dashboard(self, story):
-        story.append(Paragraph("Data Health Dashboard", self.styles['SectionHeading']))
-        story.append(self._divider())
+        self._add_section_header(story, "Data Health Dashboard")
 
-        # --- Risk Score Card ---
+        # --- Risk Score Card (Left Content) ---
         risk_color = ReportColors.get_risk_color(self.risk_score)
         risk_label = ReportColors.get_risk_label(self.risk_score)
-
+        
+        # Compact Risk Table
         risk_data = [[
-            Paragraph(f'<font size="28" color="{risk_color.hexval()}">{self.risk_score}</font>'
-                      f'<font size="12" color="{ReportColors.TEXT_SECONDARY.hexval()}">/100</font>',
+            Paragraph(f'<font size="24" color="{risk_color.hexval()}">{self.risk_score}</font>'
+                      f'<font size="10" color="{ReportColors.TEXT_SECONDARY.hexval()}">/100</font>',
                       ParagraphStyle('RiskNum', parent=self.styles['ReportBody'], alignment=TA_CENTER)),
-            Paragraph(f'<font size="14" color="{risk_color.hexval()}"><b>{risk_label}</b></font><br/>'
-                      f'<font size="9" color="{ReportColors.TEXT_CAPTION.hexval()}">Data Quality Risk Score</font>',
+            Paragraph(f'<font size="12" color="{risk_color.hexval()}"><b>{risk_label}</b></font><br/>'
+                      f'<font size="8" color="{ReportColors.TEXT_CAPTION.hexval()}">Risk Score</font>',
                       ParagraphStyle('RiskLabel', parent=self.styles['ReportBody'],
-                                     alignment=TA_LEFT, leading=20)),
+                                     alignment=TA_LEFT, leading=14)),
         ]]
-        risk_table = Table(risk_data, colWidths=[1.5 * inch, 4.5 * inch])
+        risk_table = Table(risk_data, colWidths=[1.1 * inch, 1.8 * inch])
         risk_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), ReportColors.CARD_BG),
             ('BOX', (0, 0), (-1, -1), 1, risk_color),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('TOPPADDING', (0, 0), (-1, -1), 12),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-            ('LEFTPADDING', (0, 0), (-1, -1), 15),
         ]))
-        story.append(risk_table)
-        story.append(Spacer(1, 0.2 * inch))
 
-        # --- Metric Cards Row ---
+        # --- Metric Cards (Right Content) ---
         n_rows = getattr(self.raw_profile, 'n_rows', 0) if self.raw_profile else 0
         n_cols = getattr(self.raw_profile, 'n_columns', 0) if self.raw_profile else 0
         missing_pct = 0
@@ -669,35 +733,33 @@ class ReportGenerator:
         dupes = getattr(self.raw_profile, 'duplicate_rows', 0) if self.raw_profile else 0
         dupe_pct = round(dupes / max(n_rows, 1) * 100, 1) if n_rows else 0
 
-        cards = [
-            [
-                Paragraph(f"<b>{n_rows:,}</b>", self.styles['MetricValue']),
-                Paragraph(f"<b>{n_cols}</b>", self.styles['MetricValue']),
-                Paragraph(f"<b>{missing_pct}%</b>", self.styles['MetricValue']),
-                Paragraph(f"<b>{dupe_pct}%</b>", self.styles['MetricValue']),
-            ],
-            [
-                Paragraph("Total Rows", self.styles['MetricLabel']),
-                Paragraph("Features", self.styles['MetricLabel']),
-                Paragraph("Avg Missing", self.styles['MetricLabel']),
-                Paragraph("Duplicates", self.styles['MetricLabel']),
-            ],
+        # Transposed 2x2 Grid for compact side-by-side
+        metric_grid = [
+             [
+                 Paragraph(f"<b>{n_rows:,}</b><br/><font size=8>Rows</font>", ParagraphStyle('M1', parent=self.styles['MetricValue'], leading=12)),
+                 Paragraph(f"<b>{n_cols}</b><br/><font size=8>Features</font>", ParagraphStyle('M2', parent=self.styles['MetricValue'], leading=12)),
+             ],
+             [
+                 Paragraph(f"<b>{missing_pct}%</b><br/><font size=8>Cells Missing</font>", ParagraphStyle('M3', parent=self.styles['MetricValue'], leading=12)),
+                 Paragraph(f"<b>{dupe_pct}%</b><br/><font size=8>Dupes</font>", ParagraphStyle('M4', parent=self.styles['MetricValue'], leading=12)),
+             ]
         ]
-
-        card_table = Table(cards, colWidths=[1.55 * inch] * 4)
+        
+        card_table = Table(metric_grid, colWidths=[1.9 * inch, 1.9 * inch])
         card_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), ReportColors.CARD_BG),
-            ('BOX', (0, 0), (-1, -1), 1, ReportColors.BORDER),
-            ('INNERGRID', (0, 0), (-1, -1), 0.5, ReportColors.BORDER),
+            ('GRID', (0, 0), (-1, -1), 0.5, ReportColors.BORDER),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, 0), 15),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
-            ('TOPPADDING', (0, 1), (-1, 1), 0),
-            ('BOTTOMPADDING', (0, 1), (-1, 1), 12),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
         ]))
-        story.append(card_table)
+
+        # Layout Side-by-Side
+        layout = self._create_side_by_side(risk_table, card_table, widths=[3.0 * inch, 4.0 * inch])
+        story.append(layout)
         story.append(Spacer(1, 0.2 * inch))
+
 
         # --- Risk Factors Table ---
         if self.risk_factors:
@@ -746,22 +808,92 @@ class ReportGenerator:
     # ==================================================================
     # SECTION 4: BEFORE & AFTER — Data Transformation Journey
     # ==================================================================
+    def _generate_before_after_plots(self) -> Optional[str]:
+        """
+        Generate a before/after distribution comparison figure for the top
+        numeric features. Returns path to a temp PNG file, or None if
+        matplotlib is unavailable or no suitable columns exist.
+        """
+        if not MATPLOTLIB_AVAILABLE:
+            return None
+        if self.raw_X is None or self.clean_X is None:
+            return None
+
+        try:
+            raw_df = self.raw_X
+            clean_df = self.clean_X
+
+            # Find numeric columns present in both DataFrames
+            raw_num = [c for c in raw_df.columns
+                       if raw_df[c].dtype.kind in ('i', 'u', 'f')]
+            clean_num = [c for c in clean_df.columns
+                         if clean_df[c].dtype.kind in ('i', 'u', 'f')]
+            # Prefer columns that exist in both (before encoding)
+            shared = [c for c in raw_num if c in clean_num]
+            cols = shared[:4] if shared else raw_num[:4]
+            if not cols:
+                return None
+
+            n_cols = len(cols)
+            fig, axes = plt.subplots(n_cols, 2, figsize=(10, 2.8 * n_cols))
+            if n_cols == 1:
+                axes = [axes]  # Ensure iterable
+
+            NAVY = '#1B3A5C'
+            TEAL = '#27AE60'
+            ALPHA = 0.75
+
+            for i, col in enumerate(cols):
+                ax_raw = axes[i][0]
+                ax_clean = axes[i][1]
+
+                raw_data = raw_df[col].dropna()
+                ax_raw.hist(raw_data, bins=30, color=NAVY, alpha=ALPHA, edgecolor='white', linewidth=0.4)
+                ax_raw.set_title(f'{col}  [RAW]', fontsize=9, fontweight='bold', color=NAVY)
+                ax_raw.set_ylabel('Count', fontsize=8)
+                ax_raw.tick_params(labelsize=7)
+                ax_raw.spines['top'].set_visible(False)
+                ax_raw.spines['right'].set_visible(False)
+
+                if col in clean_df.columns:
+                    clean_data = clean_df[col].dropna()
+                else:
+                    clean_data = raw_data  # Fallback
+                ax_clean.hist(clean_data, bins=30, color=TEAL, alpha=ALPHA, edgecolor='white', linewidth=0.4)
+                ax_clean.set_title(f'{col}  [CLEAN]', fontsize=9, fontweight='bold', color=TEAL)
+                ax_clean.tick_params(labelsize=7)
+                ax_clean.spines['top'].set_visible(False)
+                ax_clean.spines['right'].set_visible(False)
+
+            fig.suptitle('Feature Distributions: Before vs After Cleaning',
+                         fontsize=11, fontweight='bold', color=NAVY, y=1.01)
+            plt.tight_layout()
+
+            tmp = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+            fig.savefig(tmp.name, dpi=130, bbox_inches='tight',
+                        facecolor='white', edgecolor='none')
+            plt.close(fig)
+            self._temp_files.append(tmp.name)
+            return tmp.name
+
+        except Exception as e:
+            logger.warning(f"Before/after plot generation failed: {e}")
+            return None
+
     def _add_before_after(self, story):
-        story.append(Paragraph("Data Transformation Journey", self.styles['SectionHeading']))
-        story.append(self._divider())
+        self._add_section_header(story, "Data Transformation Journey")
 
         story.append(Paragraph(
             "OctoLearn's intelligent cleaning pipeline automatically transforms your raw data "
             "into a clean, model-ready dataset. Here is the before-and-after comparison:",
-            self.styles['BodyText']
+            self.styles['Narrative']
         ))
         story.append(Spacer(1, 0.15 * inch))
 
         raw = self.raw_profile
         clean = self.clean_profile
         if not raw or not clean:
-            story.append(Paragraph("Profile data not available for comparison.", self.styles['BodyText']))
-
+            story.append(Paragraph("Profile data not available for comparison.", self.styles['Narrative']))
             return
 
         # Comparison table
@@ -832,11 +964,58 @@ class ReportGenerator:
             if imputed and imputed > 0:
                 actions.append(f"Imputed missing values across <b>{imputed}</b> columns")
 
+            if imputed and imputed > 0:
+                actions.append(f"Imputed missing values across <b>{imputed}</b> columns")
+            
+            # Add Encoding Narrative
+            ordinal = self.cleaning_log.get('ordinal_encoder')
+            ohe = self.cleaning_log.get('onehot_encoder')
+            if ordinal or ohe:
+                actions.append("Encoded categorical variables (Ordinal/OneHot) for model compatibility")
+            
+            # Add Scaling Narrative
+            scaling = self.cleaning_log.get('scaling_method', 'none')
+            if scaling and scaling != 'none':
+                actions.append(f"Standardized features using <b>{scaling}</b> scaling")
+
             if not actions:
-                actions.append("Data was already clean -- no major transformations needed")
+                actions.append("Data was already clean — no major transformations needed")
 
             for action in actions:
-                story.append(Paragraph(f"  ->  {action}", self.styles['BodyText']))
+                story.append(Paragraph(f"  ➜  {action}", self.styles['Narrative']))
+
+        story.append(Spacer(1, 0.2 * inch))
+
+        # Before/After distribution plots
+        ba_plot_path = self._generate_before_after_plots()
+        if ba_plot_path and os.path.exists(ba_plot_path):
+            story.append(Paragraph("Distribution Comparison: Raw vs Cleaned",
+                                   self.styles['SubsectionHeading']))
+            story.append(Spacer(1, 0.05 * inch))
+            story.append(Paragraph(
+                "The histograms below show how OctoLearn's cleaning pipeline changed the "
+                "distribution of your top numeric features. Navy = raw data, Green = cleaned data.",
+                self.styles['Narrative']
+            ))
+            story.append(Spacer(1, 0.1 * inch))
+            try:
+                ba_img = Image(ba_plot_path, width=7.2 * inch, height=None)
+                # Preserve aspect ratio
+                from PIL import Image as PILImg
+                with PILImg.open(ba_plot_path) as pil_img:
+                    w_px, h_px = pil_img.size
+                aspect = h_px / w_px
+                ba_img = Image(ba_plot_path, width=7.2 * inch, height=7.2 * inch * aspect)
+                ba_img.hAlign = 'CENTER'
+                story.append(ba_img)
+            except Exception:
+                # Fallback without PIL
+                try:
+                    ba_img = Image(ba_plot_path, width=7.2 * inch, height=4.5 * inch)
+                    ba_img.hAlign = 'CENTER'
+                    story.append(ba_img)
+                except Exception as e:
+                    logger.warning(f"Could not embed before/after plot: {e}")
 
 
 
@@ -847,20 +1026,19 @@ class ReportGenerator:
         if not self.feature_importance:
             return
 
-        story.append(Paragraph("Feature Intelligence", self.styles['SectionHeading']))
-        story.append(self._divider())
+        self._add_section_header(story, "Feature Intelligence")
 
         story.append(Paragraph(
             "OctoLearn calculated feature importance scores to identify which variables "
             "have the strongest predictive power. Higher scores indicate greater influence "
             "on the model's decisions.",
-            self.styles['BodyText']
+            self.styles['Narrative']
         ))
         story.append(Spacer(1, 0.1 * inch))
 
         # Sort features
         sorted_feats = sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)
-        limit = 8 if self.mode == 'brief' else 15
+        limit = 10  # Show top 10 in table
         top_feats = sorted_feats[:limit]
 
         if not top_feats:
@@ -868,45 +1046,63 @@ class ReportGenerator:
 
         max_score = top_feats[0][1] if top_feats else 1
 
-        fi_data = [['Rank', 'Feature', 'Score', 'Relative Strength']]
+        fi_data = [['Rank', 'Feature', 'Score']]
         for rank, (feat, score) in enumerate(top_feats, 1):
-            bar_pct = int(score / max(max_score, 0.001) * 100)
-            # Use a text-based bar since reportlab doesn't support inline HTML blocks
-            bar_chars = int(bar_pct / 5)
-            bar_text = '|' * bar_chars
-
-            bar_color = ReportColors.SUCCESS.hexval() if bar_pct >= 60 else (
-                ReportColors.WARNING.hexval() if bar_pct >= 30 else ReportColors.TEXT_CAPTION.hexval()
-            )
-
+            # Truncate long feature names
+            feat_str = str(feat)
+            if len(feat_str) > 20:
+                feat_str = feat_str[:18] + ".."
+            
             fi_data.append([
                 Paragraph(f'<b>{rank}</b>', ParagraphStyle('R', parent=self.styles['TableCell'], alignment=TA_CENTER)),
-                Paragraph(str(feat), self.styles['TableCell']),
+                Paragraph(feat_str, self.styles['TableCell']),
                 Paragraph(f'{score:.4f}', ParagraphStyle('S', parent=self.styles['TableCell'], alignment=TA_CENTER)),
-                Paragraph(f'<font color="{bar_color}">{bar_text}</font> {bar_pct}%',
-                          self.styles['TableCell']),
             ])
 
-        fi_table = self._styled_table(fi_data, [0.5 * inch, 2.2 * inch, 0.9 * inch, 2.6 * inch])
-        story.append(fi_table)
-
-        # SHAP plot
+        # Left Column: Table (Compact)
+        fi_table = self._styled_table(fi_data, [0.4 * inch, 1.8 * inch, 0.8 * inch])
+        
+        # Right Column: SHAP Plot or Placeholder
+        right_content = []
         if self.shap_path and os.path.exists(self.shap_path):
-            story.append(Spacer(1, 0.3 * inch))
-            story.append(Paragraph("SHAP Feature Impact Analysis", self.styles['SubsectionHeading']))
+            right_content.append(Paragraph("SHAP Feature Impact", self.styles['SubsectionHeading']))
             try:
-                # Source (10, 6), Ratio 1.66
-                # Width 7.5 inch -> Height 4.5 inch
-                shap_img = Image(self.shap_path, width=7.5 * inch, height=4.5 * inch)
+                # Resize for column width (approx 3.5 inch)
+                shap_img = Image(self.shap_path, width=3.8 * inch, height=2.8 * inch)
                 shap_img.hAlign = 'CENTER'
-                story.append(shap_img)
-                story.append(Paragraph(
-                    "SHAP values show how each feature contributes to individual predictions. "
-                    "Red indicates features pushing the prediction higher, blue indicates lower.",
+                right_content.append(shap_img)
+                right_content.append(Paragraph(
+                    "Red = Higher prediction<br/>Blue = Lower prediction",
                     self.styles['Caption']
                 ))
             except Exception:
                 pass
+        else:
+            # Generate an inline horizontal bar chart using matplotlib
+            bar_path = self._generate_importance_bar_chart(top_feats, max_score)
+            if bar_path and os.path.exists(bar_path):
+                try:
+                    bar_img = Image(bar_path, width=3.8 * inch, height=2.8 * inch)
+                    bar_img.hAlign = 'CENTER'
+                    right_content.append(bar_img)
+                    right_content.append(Paragraph(
+                        "Feature importance scores (higher = more predictive)",
+                        self.styles['Caption']
+                    ))
+                except Exception:
+                    pass
+            if not right_content:
+                right_content.append(Paragraph(
+                    "<b>Why Feature Intelligence Matters</b><br/><br/>"
+                    "Understanding which features drive your model's predictions is crucial "
+                    "for trust and debugging. The table on the left shows the top contributors.",
+                    self.styles['Narrative']
+                ))
+
+        layout = self._create_side_by_side(fi_table, right_content, widths=[3.2 * inch, 4.0 * inch])
+        story.append(layout)
+        story.append(Spacer(1, 0.2 * inch))
+
 
 
 
@@ -917,8 +1113,8 @@ class ReportGenerator:
         if not self.model_benchmarks:
             return
 
-        story.append(Paragraph("Model Arena", self.styles['SectionHeading']))
-        story.append(self._divider())
+        self._add_section_header(story, "Model Arena")
+
 
         n_models = len(self.model_benchmarks)
         best = self.model_benchmarks[0] if self.model_benchmarks else {}
@@ -938,7 +1134,7 @@ class ReportGenerator:
         champion_data = [[
             Paragraph(f'<font size="10" color="{ReportColors.PRIMARY.hexval()}">CHAMPION</font><br/>'
                       f'<font size="16" color="{ReportColors.PRIMARY.hexval()}"><b>{best_name}</b></font>',
-                      ParagraphStyle('Champ', parent=self.styles['BodyText'], alignment=TA_CENTER, leading=22)),
+                      ParagraphStyle('Champ', parent=self.styles['Narrative'], alignment=TA_CENTER, leading=22)),
         ]]
         champ_table = Table(champion_data, colWidths=[6.2 * inch])
         champ_table.setStyle(TableStyle([
@@ -950,9 +1146,14 @@ class ReportGenerator:
         story.append(champ_table)
         story.append(Spacer(1, 0.2 * inch))
 
-        # Benchmark table
-        # Access the correct keys: 'model', 'score', 'metrics.accuracy', 'metrics.precision', 'metrics.f1'
-        header = ['#', 'Model', 'Score', 'Accuracy', 'Precision', 'F1', 'Recall']
+        # Determine task type from profile or benchmarks
+        task_type = getattr(self.raw_profile, 'task_type', 'classification') if self.raw_profile else 'classification'
+        is_regression = task_type == 'regression'
+
+        if is_regression:
+            header = ['#', 'Model', 'Score', 'RMSE', 'MAE', 'R²', 'MAPE']
+        else:
+            header = ['#', 'Model', 'Score', 'Accuracy', 'Precision', 'F1', 'Recall']
         bench_data = [header]
 
         best_row_idx = None
@@ -961,10 +1162,17 @@ class ReportGenerator:
             model_name = bm.get('model', 'Unknown')
             score = bm.get('score', 0)
             metrics = bm.get('metrics', {})
-            accuracy = metrics.get('accuracy', score)
-            precision = metrics.get('precision', 0)
-            f1 = metrics.get('f1', 0)
-            recall = metrics.get('recall', 0)
+
+            if is_regression:
+                col3 = metrics.get('rmse', score)
+                col4 = metrics.get('mae', 0)
+                col5 = metrics.get('r2', 0)
+                col6 = metrics.get('mape', 0)
+            else:
+                col3 = metrics.get('accuracy', score)
+                col4 = metrics.get('precision', 0)
+                col5 = metrics.get('f1', 0)
+                col6 = metrics.get('recall', 0)
 
             if model_name == best_name or (best_row_idx is None and idx == 1):
                 best_row_idx = idx
@@ -973,10 +1181,10 @@ class ReportGenerator:
                 Paragraph(f'{idx}', ParagraphStyle('Idx', parent=self.styles['TableCell'], alignment=TA_CENTER)),
                 Paragraph(f'<b>{model_name}</b>' if idx == 1 else model_name, self.styles['TableCell']),
                 Paragraph(f'{score:.4f}', ParagraphStyle('Sc', parent=self.styles['TableCell'], alignment=TA_CENTER)),
-                Paragraph(f'{accuracy:.4f}', ParagraphStyle('Ac', parent=self.styles['TableCell'], alignment=TA_CENTER)),
-                Paragraph(f'{precision:.4f}', ParagraphStyle('Pr', parent=self.styles['TableCell'], alignment=TA_CENTER)),
-                Paragraph(f'{f1:.4f}', ParagraphStyle('F1', parent=self.styles['TableCell'], alignment=TA_CENTER)),
-                Paragraph(f'{recall:.4f}', ParagraphStyle('Rc', parent=self.styles['TableCell'], alignment=TA_CENTER)),
+                Paragraph(f'{col3:.4f}', ParagraphStyle('C3', parent=self.styles['TableCell'], alignment=TA_CENTER)),
+                Paragraph(f'{col4:.4f}', ParagraphStyle('C4', parent=self.styles['TableCell'], alignment=TA_CENTER)),
+                Paragraph(f'{col5:.4f}', ParagraphStyle('C5', parent=self.styles['TableCell'], alignment=TA_CENTER)),
+                Paragraph(f'{col6:.4f}', ParagraphStyle('C6', parent=self.styles['TableCell'], alignment=TA_CENTER)),
             ])
 
         bench_table = self._styled_table(
@@ -1000,13 +1208,12 @@ class ReportGenerator:
         if not self.recommendations:
             return
 
-        story.append(Paragraph("Actionable Recommendations", self.styles['SectionHeading']))
-        story.append(self._divider())
+        self._add_section_header(story, "Actionable Recommendations")
 
         story.append(Paragraph(
             "Based on the comprehensive analysis, OctoLearn has generated the following "
             "prioritized recommendations to further improve your data and models:",
-            self.styles['BodyText']
+            self.styles['Narrative']
         ))
         story.append(Spacer(1, 0.1 * inch))
 
@@ -1024,8 +1231,7 @@ class ReportGenerator:
             priority_groups['medium'] = self.recommendations
 
         if not priority_groups:
-            story.append(Paragraph("No specific recommendations at this time.", self.styles['BodyText']))
-
+            story.append(Paragraph("No specific recommendations at this time.", self.styles['Narrative']))
             return
 
         # Priority styling
@@ -1046,7 +1252,7 @@ class ReportGenerator:
 
             story.append(Paragraph(
                 f'<font color="{color.hexval()}" size="11"><b>{priority.upper()} PRIORITY</b></font>',
-                ParagraphStyle('PriorityHeader', parent=self.styles['BodyText'],
+                ParagraphStyle('PriorityHeader', parent=self.styles['Narrative'],
                                spaceBefore=10, spaceAfter=4)
             ))
 
@@ -1069,38 +1275,88 @@ class ReportGenerator:
     # SECTION 8: VISUAL INSIGHTS
     # ==================================================================
     def _add_visual_insights(self, story):
+        """Add correlation visualization and feature distribution plots."""
         has_visuals = bool(self.dist_plots) or bool(self.heatmap_plot)
         if not has_visuals:
             return
 
-        story.append(Paragraph("Visual Insights", self.styles['SectionHeading']))
-        story.append(self._divider())
+        self._add_section_header(story, "Visual Insights")
 
         story.append(Paragraph(
             "The following visualizations provide deeper insight into feature distributions "
             "and correlations within your cleaned dataset.",
-            self.styles['BodyText']
+            self.styles['Narrative']
         ))
         story.append(Spacer(1, 0.1 * inch))
 
-        # Correlation heatmap
+        # ── Correlation narrative paragraph ──────────────────────────────────
+        if self.corr_summary:
+            story.append(Paragraph("Correlation Analysis", self.styles['SubsectionHeading']))
+            n_features = self.corr_summary.get('n_features', 0)
+            strategy = self.corr_summary.get('strategy', 'none')
+            top_pairs = self.corr_summary.get('top_pairs', [])
+            bottom_pairs = self.corr_summary.get('bottom_pairs', [])
+
+            # Build plain-English narrative
+            if n_features >= 2 and top_pairs:
+                # Top correlated pairs
+                top_strs = []
+                for a, b, c in top_pairs[:3]:
+                    direction = "positively" if c > 0 else "negatively"
+                    top_strs.append(f"<b>{a}</b> and <b>{b}</b> ({direction}, r={c:.2f})")
+
+                # Bottom correlated pairs (least correlated = near 0)
+                bottom_strs = []
+                for a, b, c in bottom_pairs[:2]:
+                    bottom_strs.append(f"<b>{a}</b> and <b>{b}</b> (r={c:.2f})")
+
+                top_text = ", ".join(top_strs) if top_strs else "none identified"
+                bottom_text = " and ".join(bottom_strs) if bottom_strs else "none identified"
+
+                if strategy == 'heatmap':
+                    viz_note = (
+                        f"The full correlation matrix is shown below ({n_features} features — "
+                        f"readable at this scale)."
+                    )
+                else:
+                    viz_note = (
+                        f"With {n_features} numeric features, a full heatmap would be unreadable. "
+                        f"The chart below shows the top {len(top_pairs)} most correlated pairs instead."
+                    )
+
+                story.append(Paragraph(
+                    f"Among the {n_features} numeric features, the strongest correlations are: "
+                    f"{top_text}. "
+                    f"The least correlated pairs are {bottom_text} — these features carry "
+                    f"largely independent information. {viz_note}",
+                    self.styles['Narrative']
+                ))
+                story.append(Spacer(1, 0.1 * inch))
+
+        # ── Correlation chart (heatmap or bar chart) ─────────────────────────
         if self.heatmap_plot and os.path.exists(self.heatmap_plot):
-            story.append(Paragraph("Correlation Matrix", self.styles['SubsectionHeading']))
             try:
-                # Source is (10, 8), Ratio 1.25
-                # Page width ~7.6 inch available.
-                # Height should be 7.6 / 1.25 = ~6 inch.
-                hm_img = Image(self.heatmap_plot, width=6.0 * inch, height=4.8 * inch)
+                strategy = self.corr_summary.get('strategy', 'heatmap') if self.corr_summary else 'heatmap'
+                if strategy == 'bar_chart':
+                    # Bar chart is wider/shorter
+                    hm_img = Image(self.heatmap_plot, width=7.0 * inch, height=4.5 * inch)
+                    caption = (
+                        "Ranked correlation chart: blue bars = positive correlation, "
+                        "red bars = negative correlation. Values near ±1.0 indicate "
+                        "strong linear relationships; values near 0 indicate independence."
+                    )
+                else:
+                    hm_img = Image(self.heatmap_plot, width=6.0 * inch, height=4.8 * inch)
+                    caption = (
+                        "Heatmap shows pairwise feature correlations. Strong correlations "
+                        "(near ±1.0) may indicate redundant features or multicollinearity."
+                    )
                 hm_img.hAlign = 'CENTER'
                 story.append(hm_img)
-                story.append(Paragraph(
-                    "Heatmap shows pairwise feature correlations. Strong correlations (near +/- 1.0) "
-                    "may indicate redundant features or multicollinearity.",
-                    self.styles['Caption']
-                ))
+                story.append(Paragraph(caption, self.styles['Caption']))
                 story.append(Spacer(1, 0.3 * inch))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Could not embed correlation chart: {e}")
 
         # Distribution plots
         limit = 3 if self.mode == 'brief' else 8
@@ -1130,8 +1386,7 @@ class ReportGenerator:
         if not has_outliers and not has_interactions:
             return
 
-        story.append(Paragraph("Advanced Analysis", self.styles['SectionHeading']))
-        story.append(self._divider())
+        self._add_section_header(story, "Advanced Analysis")
 
         if has_outliers:
             story.append(Paragraph("Outlier Detection", self.styles['SubsectionHeading']))
@@ -1153,15 +1408,81 @@ class ReportGenerator:
             for inter in interactions[:5]:
                 if isinstance(inter, (tuple, list)) and len(inter) >= 2:
                     story.append(Paragraph(
-                        f"  ->  <b>{inter[0]}</b> <-> <b>{inter[1]}</b>",
-                        self.styles['BodyText']
+                        f"  ➜  <b>{inter[0]}</b> ↔ <b>{inter[1]}</b>",
+                        self.styles['Narrative']
                     ))
 
 
 
     # ==================================================================
+    # HELPER: Feature Importance Bar Chart
+    # ==================================================================
+    def _generate_importance_bar_chart(self, top_feats, max_score) -> Optional[str]:
+        """
+        Generate a horizontal bar chart of feature importance scores.
+        Returns path to a temp PNG file, or None if matplotlib unavailable.
+        """
+        if not MATPLOTLIB_AVAILABLE or not top_feats:
+            return None
+        try:
+            feats = [f[:18] + '..' if len(f) > 20 else f for f, _ in top_feats]
+            scores = [s for _, s in top_feats]
+            n = len(feats)
+
+            fig, ax = plt.subplots(figsize=(4.5, max(2.5, n * 0.38)))
+            NAVY = '#1B3A5C'
+            bars = ax.barh(range(n), scores, color=NAVY, alpha=0.85, height=0.6)
+            ax.set_yticks(range(n))
+            ax.set_yticklabels(feats[::-1] if feats else feats, fontsize=8)
+            ax.invert_yaxis()
+            ax.set_xlabel('Importance Score', fontsize=8)
+            ax.set_xlim(0, max_score * 1.15)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.tick_params(labelsize=7)
+            # Value labels on bars
+            for bar, score in zip(bars, scores):
+                ax.text(bar.get_width() + max_score * 0.01, bar.get_y() + bar.get_height() / 2,
+                        f'{score:.3f}', va='center', fontsize=7, color=NAVY)
+            plt.tight_layout()
+
+            tmp = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+            fig.savefig(tmp.name, dpi=130, bbox_inches='tight',
+                        facecolor='white', edgecolor='none')
+            plt.close(fig)
+            self._temp_files.append(tmp.name)
+            return tmp.name
+        except Exception as e:
+            logger.warning(f"Importance bar chart generation failed: {e}")
+            return None
+
+    # ==================================================================
     # HEADER / FOOTER CALLBACKS
     # ==================================================================
+    def _cover_page_callback(self, canvas_obj, doc):
+        """Draw logo as a large low-opacity watermark on the cover page."""
+        canvas_obj.saveState()
+        w, h = A4
+        if self.logo_path and os.path.exists(self.logo_path):
+            try:
+                # Draw large faded logo as background watermark
+                logo_size = 4.5 * inch
+                x = (w - logo_size) / 2
+                y = (h - logo_size) / 2 - 0.5 * inch
+                canvas_obj.saveState()
+                canvas_obj.setFillAlpha(0.06)  # Very low opacity
+                canvas_obj.drawImage(
+                    self.logo_path,
+                    x, y,
+                    width=logo_size, height=logo_size,
+                    preserveAspectRatio=True,
+                    mask='auto'
+                )
+                canvas_obj.restoreState()
+            except Exception:
+                pass
+        canvas_obj.restoreState()
+
     def _header_footer_callback(self, canvas, doc):
         """Draw header and footer on every page (callback for onLaterPages)."""
         canvas.saveState()
@@ -1202,66 +1523,102 @@ class ReportGenerator:
     # GENERATE — Build the complete PDF
     # ==================================================================
     def generate(self, filename: Optional[str] = None) -> str:
-        """Generate the complete storytelling PDF report."""
+        """
+        Build and save the complete PDF report.
 
+        Orchestrates all report sections in order. Each section is wrapped
+        in an individual ``try/except`` block so that a failure in one section
+        (e.g., malformed model benchmarks) never crashes the entire report.
+        Failed sections are replaced with a graceful "Section unavailable" note.
+
+        Parameters
+        ----------
+        filename : str, optional
+            Output file path. If ``None``, a timestamped filename is generated
+            automatically (e.g., ``octolearn_report_20260218_192700.pdf``).
+
+        Returns
+        -------
+        str
+            Absolute path to the generated PDF file.
+
+        Raises
+        ------
+        RuntimeError
+            If the PDF build itself fails (e.g., disk full, permission denied).
+
+        Examples
+        --------
+        >>> pdf_path = generator.generate("my_report.pdf")
+        >>> print(f"Report saved to: {pdf_path}")
+        """
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"octolearn_report_{timestamp}.pdf"
+
+        def _safe_section(fn, name):
+            """Run a section builder, log and skip on any error."""
+            try:
+                fn()
+            except Exception as exc:
+                logger.warning(f"Report section '{name}' failed: {exc}")
+                story.append(Spacer(1, 0.1 * inch))
+                story.append(Paragraph(
+                    f"[{name} — section unavailable due to an internal error]",
+                    self.styles.get('Caption', self.styles['Normal'])
+                ))
 
         try:
             doc = SimpleDocTemplate(
                 filename,
                 pagesize=A4,
-                rightMargin=20, leftMargin=20,
-                topMargin=30, bottomMargin=30,
+                rightMargin=0.75 * inch, leftMargin=0.75 * inch,
+                topMargin=0.75 * inch, bottomMargin=0.75 * inch,
                 title=self.title,
                 author=self.author
             )
 
             story = []
 
-            # Build the narrative report
-            # 1. Cover (Keep separate)
-            self._add_cover_page(story)
-            story.append(PageBreak()) # Cover gets its own page
+            # 1. Cover page (kept separate — has its own canvas callback)
+            _safe_section(lambda: self._add_cover_page(story), "Cover Page")
 
-            # 2. Executive Summary - Recommendations (Moved to Top)
-            self._add_recommendations(story)
-            story.append(Spacer(1, 0.4*inch))
-            
-            # Continuous Flow Section
-            self._add_data_story(story)
-            story.append(Spacer(1, 0.4*inch))
-            
-            self._add_health_dashboard(story)
-            story.append(Spacer(1, 0.4*inch))
-            
-            self._add_before_after(story)
-            story.append(Spacer(1, 0.4*inch))
-            
-            self._add_feature_intelligence(story)
-            story.append(Spacer(1, 0.4*inch))
-            
-            self._add_model_arena(story)
-            story.append(Spacer(1, 0.4*inch))
-            
-            
-            # Recommendations (Action Plan) - Moved to Top
-            # self._add_recommendations(story) # Removed from here
-            # story.append(Spacer(1, 0.4*inch))
+            # 2. Recommendations (moved to top as executive summary)
+            _safe_section(lambda: self._add_recommendations(story), "Recommendations")
+            story.append(Spacer(1, 0.4 * inch))
 
-            # Advanced Analysis
+            # 3. Data Story narrative
+            _safe_section(lambda: self._add_data_story(story), "Data Story")
+            story.append(Spacer(1, 0.4 * inch))
+
+            # 4. Health Dashboard
+            _safe_section(lambda: self._add_health_dashboard(story), "Health Dashboard")
+            story.append(Spacer(1, 0.4 * inch))
+
+            # 5. Before / After transformation journey
+            _safe_section(lambda: self._add_before_after(story), "Before & After")
+            story.append(Spacer(1, 0.4 * inch))
+
+            # 6. Feature Intelligence
+            _safe_section(lambda: self._add_feature_intelligence(story), "Feature Intelligence")
+            story.append(Spacer(1, 0.4 * inch))
+
+            # 7. Model Arena
+            _safe_section(lambda: self._add_model_arena(story), "Model Arena")
+            story.append(Spacer(1, 0.4 * inch))
+
+            # 8. Advanced Analysis (detailed mode only)
             if self.mode == 'detailed':
-                self._add_analysis_details(story)
-                story.append(Spacer(1, 0.4*inch))
+                _safe_section(lambda: self._add_analysis_details(story), "Advanced Analysis")
+                story.append(Spacer(1, 0.4 * inch))
 
-            # Visuals (Appendix-like but continuous)
-            self._add_visual_insights(story)
+            # 9. Visual Insights (correlation + distributions)
+            _safe_section(lambda: self._add_visual_insights(story), "Visual Insights")
 
-            # Build PDF with standard callbacks
+            # Build PDF with canvas callbacks
             doc.build(
                 story,
-                onFirstPage=lambda c, d: None, # No header/footer on cover
+                onFirstPage=self._cover_page_callback,   # Logo watermark on cover
                 onLaterPages=self._header_footer_callback
             )
             logger.info(f"[OK] Report generated: {filename}")
@@ -1270,6 +1627,17 @@ class ReportGenerator:
         except Exception as e:
             logger.error(f"[FAIL] PDF generation failed: {str(e)}")
             raise RuntimeError(f"PDF generation failed: {str(e)}")
+
+        finally:
+            # Clean up all temp files created during report generation
+            for tmp_path in self._temp_files:
+                try:
+                    if os.path.exists(tmp_path):
+                        os.unlink(tmp_path)
+                except Exception:
+                    pass
+            self._temp_files.clear()
+
 
 
 # ============================================================================

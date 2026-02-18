@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="octolearn/logo/octolearn_logo.png" alt="OctoLearn Logo" width="200"/>
+  <img src="octolearn/images/logo.png" alt="OctoLearn Logo" width="200"/>
 </p>
-
-<h1 align="center">🐙 OctoLearn</h1>
 
 <p align="center">
   <strong>Enterprise-Grade AutoML for Python</strong><br>
@@ -14,6 +12,7 @@
   <a href="#-features">Features</a> •
   <a href="#-installation">Installation</a> •
   <a href="#-advanced-usage">Advanced Usage</a> •
+  <a href="#-user-guide">User Guide</a> •
   <a href="#-api-reference">API Reference</a> •
   <a href="#-architecture">Architecture</a>
 </p>
@@ -29,9 +28,9 @@
 | **⚠️ Risk Scoring** | 0–100 data quality risk score with detailed factor breakdown |
 | **🔧 Feature Engineering** | Outlier detection (IQR, Z-score, Isolation Forest) + interaction analysis |
 | **🤖 Model Training** | Trains 5+ models with Optuna hyperparameter optimization |
-| **📊 PDF Reports** | Professional cyberpunk-themed reports with charts & SHAP analysis |
+| **📊 Industry-Level PDF Reports** | Professional magazine-style reports with 0.75" margins, light-themed plots, before/after distribution plots, feature importance bar charts, model arena, and logo watermark |
 | **💾 Model Registry** | Version-controlled model storage with metadata tracking |
-| **⚡ Parallel Processing** | Multi-core support for faster training and optimization |
+| **⚡ fit() Override Params** | Override Optuna trials, timeout, models, metrics, and more per-call without re-creating AutoML |
 
 ---
 
@@ -66,6 +65,15 @@ OctoLearn requires Python 3.8+ and installs the following:
 | `matplotlib`, `seaborn` | Visualization |
 | `shap` | Model explainability |
 | `joblib` | Model serialization |
+
+---
+
+## 📚 Documentation
+
+For a comprehensive guide on all features, configuration, and advanced usage, please see the **[User Guide](guide.md)**.
+
+- **[User Guide](guide.md)**: Cookbook, detailed config reference, and troubleshooting.
+- **[Architecture Guide](ARCHITECTURE.md)**: Deep dive into the internal design and how to extend OctoLearn.
 
 ---
 
@@ -118,6 +126,48 @@ automl.generate_report()  # Creates a professional PDF report
 ```
 
 ---
+
+## ⚡ Per-Run `fit()` Overrides
+
+You can override key configuration settings for a **single run** without re-creating the `AutoML` instance. This is ideal for rapid experimentation:
+
+```python
+automl = AutoML()  # Create once with default config
+
+# Quick exploration run — no Optuna, fast
+automl.fit(X, y, use_optuna=False, n_models=2)
+
+# Production run — more trials, longer timeout
+automl.fit(X, y, optuna_trials=50, optuna_timeout=600)
+
+# Try a specific metric
+automl.fit(X, y, evaluation_metric='roc_auc')
+
+# Override preprocessing
+automl.fit(X, y, imputer_strategy={'numeric': 'median'}, scaler='robust')
+
+# Specific models only
+automl.fit(X, y, models=['xgboost', 'lightgbm'])
+```
+
+### All Override Parameters
+
+| Parameter | Type | Overrides | Description |
+|-----------|------|-----------|-------------|
+| `optuna_trials` | `int` | `OptimizationConfig.optuna_trials_per_model` | Number of Optuna trials per model |
+| `optuna_timeout` | `int` | `OptimizationConfig.optuna_timeout_seconds` | Max seconds per model for Optuna |
+| `use_optuna` | `bool` | `OptimizationConfig.use_optuna` | Enable/disable Optuna for this run |
+| `test_size` | `float` | `DataConfig.test_size` | Train/test split ratio |
+| `random_state` | `int` | `DataConfig.random_state` | Random seed |
+| `models` | `List[str]` | `ModelingConfig.models_to_train` | Specific models to train |
+| `n_models` | `int` | `ModelingConfig.n_models` | Number of models to train |
+| `evaluation_metric` | `str` | `ModelingConfig.evaluation_metric` | Primary metric to optimize |
+| `imputer_strategy` | `dict` | `PreprocessingConfig.imputer_strategy` | Imputation strategy |
+| `scaler` | `str` | `PreprocessingConfig.scaler` | Scaling method |
+
+> **Note:** Overrides are applied non-destructively. The original config is fully restored after `fit()` completes, so subsequent calls use the original defaults.
+
+
 
 ## 🔧 Advanced Usage
 

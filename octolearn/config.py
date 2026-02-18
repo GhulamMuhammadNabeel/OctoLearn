@@ -185,9 +185,9 @@ OPTUNA_CONFIG = {
     'study_name': 'octolearn_hpo',
     
     'optimization': {
-        'n_trials': 50,                                 # Number of trials
-        'n_jobs': -1,                                   # Parallel trials
-        'timeout': 3600,                                # 1 hour timeout
+        'n_trials': 20,                                 # Number of trials (reduced for speed)
+        'n_jobs': 1,                                    # Sequential trials (avoids CPU oversubscription on Windows)
+        'timeout': 120,                                 # 2 min per-model timeout
         'sampler': 'TPESampler',                        # Sampler type
     },
     
@@ -199,20 +199,43 @@ OPTUNA_CONFIG = {
             'C': [0.001, 10],                           # Regularization
             'solver': ['lbfgs', 'liblinear'],
         },
+        'linear_regression': {
+            'fit_intercept': [True, False],
+        },
         'random_forest': {
-            'n_estimators': [50, 300],
+            'n_estimators': [50, 200],                  # Reduced upper bound for speed
             'max_depth': [3, 15],
             'min_samples_split': [2, 10],
+            'min_samples_leaf': [1, 4],
+        },
+        'gradient_boosting': {
+            'n_estimators': [50, 200],
+            'max_depth': [2, 8],
+            'learning_rate': [0.01, 0.3],
+            'subsample': [0.6, 1.0],
         },
         'xgboost': {
-            'n_estimators': [50, 300],
+            'n_estimators': [50, 200],
             'max_depth': [3, 10],
-            'learning_rate': [0.001, 0.3],
+            'learning_rate': [0.01, 0.3],
+            'subsample': [0.6, 1.0],
+            'colsample_bytree': [0.6, 1.0],
         },
         'lightgbm': {
-            'n_estimators': [50, 300],
+            'n_estimators': [50, 200],
             'max_depth': [3, 10],
-            'learning_rate': [0.001, 0.3],
+            'learning_rate': [0.01, 0.3],
+            'num_leaves': [20, 100],
+        },
+        'svm': {
+            'C': [0.01, 100],
+            'kernel': ['rbf', 'linear'],
+            'gamma': ['scale', 'auto'],
+        },
+        'svr': {
+            'C': [0.01, 100],
+            'kernel': ['rbf', 'linear'],
+            'epsilon': [0.01, 1.0],
         },
     },
 }

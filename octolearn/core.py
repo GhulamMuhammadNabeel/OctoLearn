@@ -56,7 +56,7 @@ License:
     MIT
 
 Version:
-    0.7.7
+    0.8.0
 """
 
 import pandas as pd
@@ -296,6 +296,9 @@ class OptimizationConfig:
     optuna_timeout_seconds: int = 300
     optuna_parallel_jobs: int = -1
     use_registry: bool = True
+    early_stopping_rounds: int = None  # New: Early stopping for XGB/LGBM/CatBoost
+    hyperparameter_overrides: Dict[str, Dict] = None  # New: Custom search spaces
+
 
 
 @dataclass
@@ -349,7 +352,8 @@ class ReportingConfig:
     visuals_limit: int = 10
     plot_mode: str = 'simple'
     include_shap: bool = True
-    color_scheme: str = 'dark'
+    include_shap: bool = True
+    color_scheme: str = 'light'
 
 
 @dataclass
@@ -376,13 +380,15 @@ class ParallelConfig:
         verbose (int): Verbosity level (0-2). Default: 0 (silent).
     
     Example:
-        >>> config = ParallelConfig(n_jobs=4, backend='loky')
+        >>> config = ParallelConfig(n_jobs=4, enable_gpu=True)
         >>> automl = AutoML(parallel_config=config)
     """
     parallel_processing: bool = True
     n_jobs: int = -1
     backend: str = 'threading'
     verbose: int = 0
+    enable_gpu: bool = False  # New: Enable GPU acceleration
+
 
 
 class AutoML:
@@ -477,7 +483,7 @@ class AutoML:
         AutoML() and customize only what you need.
     
     Version:
-        0.7.7
+        0.8.0
     """
     
     def __init__(
@@ -576,7 +582,7 @@ class AutoML:
         self.registry_ = None
         
         if self.show_progress:
-            logger.info(f"AutoML initialized (v0.7.7)")
+            logger.info(f"AutoML initialized (v0.8.0)")
             self._log_configuration()
     
     def _validate_configs(self):
@@ -663,79 +669,165 @@ class AutoML:
         logger.info(f"  - Backend: {self.parallel_config.backend}")
         logger.info("="*70 + "\n")
     
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> 'AutoML':
+    def fit(
+        self,
+        X: pd.DataFrame,
+        y: pd.Series,
+        # ── Optuna / hyperparameter tuning overrides ──────────────────────
+        optuna_trials: Optional[int] = None,
+        optuna_timeout: Optional[int] = None,
+        use_optuna: Optional[bool] = None,
+        # ── Data split overrides ──────────────────────────────────────────
+        test_size: Optional[float] = None,
+        random_state: Optional[int] = None,
+        # ── Model selection overrides ─────────────────────────────────────
+        models: Optional[List[str]] = None,
+        n_models: Optional[int] = None,
+        evaluation_metric: Optional[str] = None,
+        # ── Preprocessing overrides ───────────────────────────────────────
+        imputer_strategy: Optional[Dict[str, str]] = None,
+        scaler: Optional[str] = None,
+    ) -> 'AutoML':
         """
         Execute the complete AutoML pipeline on your data.
-        
-        This is the main entry point that orchestrates all stages of the pipeline:
-        1. Input validation and data exploration
-        2. Raw data profiling (capture missingness, types, anomalies)
-        3. Sampling (if configured) for faster processing
-        4. Preprocessing suggestions generation
-        5. Train/test split with stratification
-        6. Automatic data cleaning (imputation, encoding, scaling)
-        7. Cleaned data profiling
-        8. Feature engineering (outlier detection, interaction analysis)
-        9. Model training with hyperparameter optimization
-        10. Comprehensive report generation
-        
-        After calling fit(), you can:
-        - Access cleaned data: automl.X_train_, automl.X_test_
-        - Make predictions: automl.predict(X_new)
-        - Generate report: automl.generate_report()
-        - Get insights: automl.get_feature_importance(), automl.get_recommendations()
-        
+
+        By default OctoLearn handles everything automatically with sensible
+        defaults. The optional keyword arguments let you override specific
+        settings **for this run only** without touching the stored config
+        objects — so you can experiment freely without re-creating the
+        AutoML instance.
+
+        Pipeline stages:
+            1. Input validation
+            2. Raw data profiling
+            3. Sampling (if configured)
+            4. Train/test split with stratification
+            5. Automatic data cleaning (imputation, encoding, scaling)
+            6. Cleaned data profiling
+            7. Feature engineering (outlier detection, interactions)
+            8. Model training with hyperparameter optimisation
+            9. Artifact saving
+
         Args:
-            X (pd.DataFrame): Feature matrix of shape (n_samples, n_features).
-                All columns should have descriptive names as strings.
-                Can contain numeric, categorical, date, or text columns.
-            
-            y (pd.Series or pd.DataFrame): Target variable of shape (n_samples,).
-                For classification: categorical labels (string or numeric)
-                For regression: continuous numeric values
-                Must have same number of rows as X.
-        
+            X (pd.DataFrame): Feature matrix (n_samples × n_features).
+                Column names must be strings (auto-converted if not).
+            y (pd.Series): Target variable (n_samples,).
+                Classification → labels; Regression → continuous values.
+
+            optuna_trials (int, optional): Override ``OptimizationConfig.
+                optuna_trials_per_model`` for this run.
+                Example: ``automl.fit(X, y, optuna_trials=5)`` for a quick run.
+            optuna_timeout (int, optional): Override per-model Optuna timeout
+                in seconds. ``None`` means no timeout.
+            use_optuna (bool, optional): Override whether Optuna is used.
+                ``False`` → use default hyperparameters (much faster).
+            test_size (float, optional): Override ``DataConfig.test_size``.
+                Must be between 0.05 and 0.5.
+            random_state (int, optional): Override ``DataConfig.random_state``
+                for reproducibility.
+            models (list[str], optional): Override ``ModelingConfig.
+                models_to_train``. E.g. ``['xgboost', 'lightgbm']``.
+            n_models (int, optional): Override ``ModelingConfig.n_models``.
+            evaluation_metric (str, optional): Override the primary metric
+                used to rank models (e.g. ``'roc_auc'``, ``'rmse'``).
+            imputer_strategy (dict, optional): Override imputation strategy,
+                e.g. ``{'numeric': 'median', 'categorical': 'mode'}``.
+            scaler (str, optional): Override feature scaler:
+                ``'standard'``, ``'robust'``, ``'minmax'``, or ``None``.
+
         Returns:
-            AutoML: Returns self to allow method chaining:
-                automl = AutoML().fit(X, y).generate_report()
-        
+            AutoML: Returns *self* for method chaining::
+
+                pdf = AutoML().fit(X, y, optuna_trials=10).generate_report()
+
         Raises:
-            TypeError: If X is not DataFrame or y is not Series
-            ValueError: If X and y have different number of rows
-            ValueError: If X or y are empty
-            ValueError: If columns have all null values
-            ValueError: If X has non-string column names (will auto-convert)
-        
-        Example:
-            >>> automl = AutoML()
-            >>> automl.fit(X_train, y_train)
-            >>> 
-            >>> # Inspect results
-            >>> print(automl.X_train_.shape)  # Cleaned training data
-            >>> print(automl.best_model_)     # Best trained model
-            >>> print(automl.get_risk_score()) # Data quality assessment
-        
-        Note:
-            This method is computationally intensive. Execution time depends on:
-            - Data size: Scales roughly linearly
-            - Number of features: Scales quadratically for interaction analysis
-            - Optuna enabled: Adds 5-10 minutes to model training
-            - Data cleaning complexity: More missing/categorical values = longer
-            
-            Typical times:
-            - Small dataset (1K rows): 30-60 seconds
-            - Medium dataset (100K rows): 3-10 minutes
-            - Large dataset (1M+ rows): 30+ minutes
+            TypeError: If X is not a DataFrame or y is not a Series.
+            ValueError: If X and y have different row counts, or are empty.
+
+        Examples:
+            Quick run — no Optuna, 2 models::
+
+                automl.fit(X, y, use_optuna=False, n_models=2)
+
+            Full run with custom Optuna budget::
+
+                automl.fit(X, y, optuna_trials=50, optuna_timeout=300)
+
+            Custom preprocessing::
+
+                automl.fit(X, y,
+                           imputer_strategy={'numeric': 'median'},
+                           scaler='robust')
         """
-        # Step 1: Validate inputs
-        self._validate_inputs(X, y)
-        
-        # Step 2-10: Execute pipeline
-        self._execute_pipeline(X, y)
-        
-        if self.show_progress:
-            logger.info("AutoML pipeline complete! [OK]")
-        
+        # ── Apply per-call overrides non-destructively ────────────────────
+        # We snapshot the original values and restore them after the run so
+        # the stored config objects are never mutated by fit() kwargs.
+        _orig = {}
+
+        if optuna_trials is not None:
+            _orig['optuna_trials_per_model'] = self.optimization_config.optuna_trials_per_model
+            self.optimization_config.optuna_trials_per_model = optuna_trials
+
+        if optuna_timeout is not None:
+            _orig['optuna_timeout_seconds'] = self.optimization_config.optuna_timeout_seconds
+            self.optimization_config.optuna_timeout_seconds = optuna_timeout
+
+        if use_optuna is not None:
+            _orig['use_optuna'] = self.optimization_config.use_optuna
+            self.optimization_config.use_optuna = use_optuna
+
+        if test_size is not None:
+            if not 0.05 <= test_size <= 0.5:
+                raise ValueError(f"test_size must be between 0.05 and 0.5, got {test_size}")
+            _orig['test_size'] = self.data_config.test_size
+            self.data_config.test_size = test_size
+
+        if random_state is not None:
+            _orig['random_state'] = self.data_config.random_state
+            self.data_config.random_state = random_state
+
+        if models is not None:
+            _orig['models_to_train'] = self.modeling_config.models_to_train
+            self.modeling_config.models_to_train = models
+
+        if n_models is not None:
+            _orig['n_models'] = self.modeling_config.n_models
+            self.modeling_config.n_models = n_models
+
+        if evaluation_metric is not None:
+            _orig['evaluation_metric'] = self.modeling_config.evaluation_metric
+            self.modeling_config.evaluation_metric = evaluation_metric
+
+        if imputer_strategy is not None:
+            _orig['imputer_strategy'] = self.preprocessing_config.imputer_strategy
+            self.preprocessing_config.imputer_strategy = imputer_strategy
+
+        if scaler is not None:
+            _orig['scaler'] = self.preprocessing_config.scaler
+            self.preprocessing_config.scaler = scaler
+
+        try:
+            # Step 1: Validate inputs
+            self._validate_inputs(X, y)
+
+            # Step 2-10: Execute pipeline
+            self._execute_pipeline(X, y)
+
+            if self.show_progress:
+                logger.info("AutoML pipeline complete! [OK]")
+
+        finally:
+            # ── Restore original config values ────────────────────────────
+            for attr, val in _orig.items():
+                if attr in ('optuna_trials_per_model', 'optuna_timeout_seconds', 'use_optuna'):
+                    setattr(self.optimization_config, attr, val)
+                elif attr in ('test_size', 'random_state'):
+                    setattr(self.data_config, attr, val)
+                elif attr in ('models_to_train', 'n_models', 'evaluation_metric'):
+                    setattr(self.modeling_config, attr, val)
+                elif attr in ('imputer_strategy', 'scaler'):
+                    setattr(self.preprocessing_config, attr, val)
+
         return self
     
     def _validate_inputs(self, X: pd.DataFrame, y: pd.Series) -> None:
@@ -842,9 +934,46 @@ class AutoML:
         y = y.copy()
         self.X_raw_ = X.copy()  # Save raw for risk scoring
         
+        if not self.data_config.use_full_data and len(X) > self.data_config.sample_size:
+            if self.show_progress:
+                logger.info(f"Performance Optimization: Sampling {self.data_config.sample_size} rows from {len(X)} total...")
+            
+            # Stratified sampling if possible
+            stratify = None
+            if self.data_config.stratify_target:
+                n_unique = y.nunique()
+                # Stratify for categorical targets or integer targets with few classes
+                if y.dtype.kind in ('O', 'U', 'S') or y.dtype.name == 'category' or (
+                    y.dtype.kind in ('i', 'u') and n_unique < 20
+                ):
+                    stratify = y
+
+            # Use sklearn's train_test_split for stratified sampling, but we just want one chunk
+            try:
+                from sklearn.model_selection import train_test_split
+                X_sample, _, y_sample, _ = train_test_split(
+                    X, y, 
+                    train_size=self.data_config.sample_size,
+                    random_state=self.data_config.random_state,
+                    stratify=stratify
+                )
+                X = X_sample.copy()
+                y = y_sample.copy()
+            except Exception as e:
+                # Fallback to random choice if stratification fails (e.g. rare classes)
+                logger.warning(f"Stratified sampling failed ({e}), falling back to random sampling.")
+                sample_idx = np.random.RandomState(self.data_config.random_state).choice(
+                    len(X), size=self.data_config.sample_size, replace=False
+                )
+                X = X.iloc[sample_idx].copy()
+                y = y.iloc[sample_idx].copy()
+        
+        self.X_raw_ = X.copy()  # Save raw for risk scoring (now sampled)
+        
         # PHASE 1: Raw data profiling
         if self.show_progress:
             logger.info("\nPHASE 1: Profiling raw data...")
+        # Since we already sampled globally if needed, we pass the (potentially sampled) data
         self._profile_raw_data(X, y)
         
         # PHASE 2: Train/test split (BEFORE cleaning to prevent leakage)
@@ -875,18 +1004,16 @@ class AutoML:
     
     def _profile_raw_data(self, X: pd.DataFrame, y: pd.Series) -> None:
         """Profile raw data before cleaning."""
-        # Sample if configured
+        # Sample logic moved to _execute_pipeline for global effect.
+        # Here we just use the passed X/y which might already be sampled.
         X_for_profile = X
         y_for_profile = y
         
-        if not self.data_config.use_full_data and len(X) > self.data_config.sample_size:
-            sample_idx = np.random.RandomState(self.data_config.random_state).choice(
-                len(X), size=self.data_config.sample_size, replace=False
-            )
-            X_for_profile = X.iloc[sample_idx].copy()
-            y_for_profile = y.iloc[sample_idx].copy()
-            if self.show_progress:
-                logger.info(f"  Sampled {self.data_config.sample_size} of {len(X)} rows for profiling")
+        # Legacy: if use_full_data=True but we still want to profile a sample?
+        # Actually, if use_full_data=True, we profile everything.
+        # If use_full_data=False, we already sampled in _execute_pipeline.
+        # So we can just use X/y directly.
+        pass
         
         # Profile
         self.raw_profile_ = self.profiler.profile(X_for_profile, y_for_profile)
@@ -903,8 +1030,10 @@ class AutoML:
         stratify = None
         if self.data_config.stratify_target:
             n_unique = y.nunique()
-            # Only stratify if classification with reasonable number of classes
-            if y.dtype in ['object', 'category'] or (isinstance(y.dtype, type) and n_unique < 20):
+            # Stratify for categorical targets or integer targets with few classes
+            if y.dtype.kind in ('O', 'U', 'S') or y.dtype.name == 'category' or (
+                y.dtype.kind in ('i', 'u') and n_unique < 20
+            ):
                 stratify = y
         
         self.X_train_, self.X_test_, self.y_train_, self.y_test_ = train_test_split(
@@ -947,6 +1076,10 @@ class AutoML:
                 
                 if self.show_progress:
                     logger.info("  Data cleaning complete [OK]")
+                
+                # Manually inject duplicate removal stats since it was done outside AutoCleaner
+                if self.cleaning_log_:
+                    self.cleaning_log_['duplicates_removed'] = int(dup_count)
                     
             except Exception as e:
                 logger.error(f"Data cleaning failed: {str(e)}")
@@ -962,7 +1095,7 @@ class AutoML:
     
     def _feature_engineering(self) -> None:
         """Perform intelligent feature engineering."""
-        # 1. Feature Generation (New in v0.7.8)
+        # 1. Feature Generation (New in v0.8.0)
         # We use analyzing_interactions flag as proxy, or it should be enabled by default
         if self.profiling_config.analyze_interactions:
              try:
@@ -1020,7 +1153,13 @@ class AutoML:
                 X_train=self.X_train_,
                 X_test=self.X_test_,
                 y_train=self.y_train_,
-                y_test=self.y_test_
+                y_test=self.y_test_,
+                # New params
+                enable_gpu=self.parallel_config.enable_gpu,
+                early_stopping_rounds=self.optimization_config.early_stopping_rounds,
+                hyperparameter_overrides=self.optimization_config.hyperparameter_overrides,
+                n_trials=self.optimization_config.optuna_trials_per_model if self.optimization_config.use_optuna else None,
+                timeout_seconds=self.optimization_config.optuna_timeout_seconds if self.optimization_config.use_optuna else None
             )
             
             results = trainer.train_all_models()
@@ -1088,7 +1227,7 @@ class AutoML:
         
         return self.best_model_.predict(X_clean)
     
-    def generate_report(self) -> str:
+    def generate_report(self, filename: Optional[str] = None) -> str:
         """
         Generate comprehensive PDF report.
         
@@ -1134,14 +1273,9 @@ class AutoML:
         # Generate all report components
         results = self._generate_report_components()
         
-        # Create report
-# Create report with enhanced ReportGenerator (v0.7.7)
         # Determine report mode from config
         report_mode = getattr(self.reporting_config, 'report_detail', 'detailed')
-        if report_mode == 'brief':
-            mode = 'brief'
-        else:
-            mode = 'detailed'
+        mode = 'brief' if report_mode == 'brief' else 'detailed'
         
         generator = ReportGenerator(
             raw_profile=self.raw_profile_,
@@ -1149,6 +1283,7 @@ class AutoML:
             mode=mode,
             dist_plots=results.get("dist_paths"),
             heatmap_plot=results.get("heatmap_path"),
+            corr_summary=results.get("corr_summary", {}),
             recommendations=results.get("recommendations"),
             risk_score=results.get("risk_score"),
             risk_category=results.get("risk_category"),
@@ -1164,12 +1299,15 @@ class AutoML:
             logo_path=getattr(self, 'logo_path', None) or str(Path(__file__).parent / 'images' / 'logo.png'),
             title=getattr(self, 'report_title', 'OctoLearn Intelligence Report'),
             author=getattr(self, 'author', 'OctoLearn AutoML'),
-            company=getattr(self, 'report_company', 'Data Science Team')
+            company=getattr(self, 'report_company', 'Data Science Team'),
+            # Pass raw and clean DataFrames for before/after distribution plots
+            raw_X=self.X_raw_,
+            clean_X=self.X_train_,
         )
         if self.show_progress:
             logger.info("  Composing PDF...")
         
-        pdf_file = generator.generate()
+        pdf_file = generator.generate(filename=filename)
         
         if self.show_progress:
             logger.info(f"[OK] Report saved: {pdf_file}")
@@ -1181,7 +1319,13 @@ class AutoML:
         results = {}
         
         # Visualizations
-        plotter = PlotGenerator(self.X_, self.y_, self.clean_profile_, mode=self.reporting_config.plot_mode)
+        plotter = PlotGenerator(
+            self.X_, 
+            self.y_, 
+            self.clean_profile_, 
+            mode=self.reporting_config.plot_mode,
+            theme=self.reporting_config.color_scheme
+        )
         
         try:
             results["dist_paths"] = plotter.generate_smart_visuals(limit=self.reporting_config.visuals_limit)
@@ -1189,9 +1333,18 @@ class AutoML:
             logger.warning(f"Distribution plots failed: {e}")
         
         try:
-            results["heatmap_path"] = plotter.generate_correlation_heatmap()
+            heatmap_result = plotter.generate_correlation_heatmap(
+                corr_top_n=getattr(self.reporting_config, 'corr_top_n', 15)
+            )
+            # generate_correlation_heatmap returns (path, corr_summary)
+            if isinstance(heatmap_result, tuple):
+                results["heatmap_path"], results["corr_summary"] = heatmap_result
+            else:
+                results["heatmap_path"] = heatmap_result
+                results["corr_summary"] = {}
         except Exception as e:
             logger.warning(f"Heatmap failed: {e}")
+            results["corr_summary"] = {}
         
         if self.reporting_config.include_shap:
             try:
@@ -1222,7 +1375,10 @@ class AutoML:
         # Recommendations
         if self.profiling_config.generate_recommendations:
             try:
-                recommender = RecommendationEngine(self.clean_profile_)
+                recommender = RecommendationEngine(
+                    self.clean_profile_,
+                    raw_profile=self.raw_profile_,  # Use raw count for sample-size messages
+                )
                 results["recommendations"] = recommender.generate()
             except Exception as e:
                 logger.warning(f"Recommendations failed: {e}")
@@ -1257,8 +1413,11 @@ class AutoML:
         """Get ML recommendations based on data analysis."""
         if self.clean_profile_ is None:
             raise ValueError("Run fit() first.")
-        
-        engine = RecommendationEngine(self.clean_profile_)
+
+        engine = RecommendationEngine(
+            self.clean_profile_,
+            raw_profile=self.raw_profile_,  # Use raw count for sample-size messages
+        )
         return engine.generate()
     
     def get_model_benchmarks(self) -> List[Dict]:

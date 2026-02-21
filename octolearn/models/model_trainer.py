@@ -5,6 +5,7 @@ Trains multiple models with automated hyperparameter tuning
 """
 
 import os
+import time
 import pandas as pd
 import numpy as np
 from typing import Dict, Tuple, List, Optional
@@ -13,11 +14,12 @@ import optuna
 from optuna.samplers import TPESampler
 from optuna.pruners import MedianPruner
 from sklearn.model_selection import cross_val_score, train_test_split
-from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.ensemble import (
     RandomForestClassifier, RandomForestRegressor,
-    GradientBoostingClassifier, GradientBoostingRegressor
+    GradientBoostingClassifier, GradientBoostingRegressor,
+    StackingClassifier, StackingRegressor
 )
+from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
 from sklearn.svm import SVC, SVR
 from sklearn.preprocessing import LabelEncoder
 import xgboost as xgb
@@ -37,11 +39,25 @@ logger = setup_logger(__name__)
 
 class ModelTrainer:
     """
-    Trains multiple models with hyperparameter optimization using Optuna.
+    Orchestrator for automated model training and hyperparameter tuning.
 
-    Accepts optionally pre-split data (X_train, X_test, y_train, y_test) to avoid
-    re-splitting cleaned datasets (prevents leakage). If pre-split data are not
-    provided, a train/test split will be performed internally.
+    This class manages the lifecycle of multiple machine learning models,
+    handling data splitting, Optuna-based hyperparameter optimization, and
+    stacking ensembles.
+
+    Attributes
+    ----------
+    trained_models : dict of str: object
+        Dictionary mapping model names (e.g., 'xgboost') to their fitted
+        scikit-learn compatible estimator objects.
+    model_scores : dict of str: float
+        Dictionary mapping model names to their primary evaluation scores.
+    best_model : object
+        The top-performing estimator object after all training and optimization.
+    best_hp_params : dict of str: dict
+        Optimal hyperparameters found by Optuna for each model.
+    model_benchmarks : pd.DataFrame
+        A comparative table of all models across various performance metrics.
     """
 
     def __init__(
@@ -55,7 +71,6 @@ class ModelTrainer:
         X_test: Optional[pd.DataFrame] = None,
         y_train: Optional[pd.Series] = None,
         y_test: Optional[pd.Series] = None,
-        # New params
         enable_gpu: bool = False,
         early_stopping_rounds: Optional[int] = None,
         hyperparameter_overrides: Optional[Dict] = None,
@@ -63,18 +78,32 @@ class ModelTrainer:
         timeout_seconds: Optional[int] = None
     ):
         """
-        ModelTrainer initialization.
+        Initialize the ModelTrainer with data and optimization settings.
 
-        Args:
-            X (pd.DataFrame): Full feature data
-            y (pd.Series): Full target data
-            profile (DatasetProfile): Data profile object
-            task_type (str): 'classification' or 'regression'
-            evaluation_metric (str): Metric to optimize
-            X_train, X_test, y_train, y_test: Pre-split data (optional)
-            enable_gpu (bool): Whether to use GPU acceleration
-            early_stopping_rounds (int): Patience for early stopping
-            hyperparameter_overrides (Dict): Custom search spaces
+        Parameters
+        ----------
+        X : pd.DataFrame, optional
+            The full feature matrix.
+        y : pd.Series, optional
+            The full target vector.
+        profile : DatasetProfile
+            A profile object detailing data characteristics and task type.
+        task_type : str, optional
+            Manual override for the task ('classification' or 'regression').
+        evaluation_metric : str, optional
+            The metric to optimize during hyperparameter tuning.
+        X_train, X_test, y_train, y_test : pandas objects, optional
+            Pre-split datasets to avoid internal splitting and prevent leakage.
+        enable_gpu : bool, default=False
+            Whether to enable GPU acceleration for compatible models.
+        early_stopping_rounds : int, optional
+            The number of rounds for early stopping in gradient boosting models.
+        hyperparameter_overrides : dict, optional
+            Custom search spaces or fixed parameters for specific models.
+        n_trials : int, optional
+            The number of Optuna trials to run per model.
+        timeout_seconds : int, optional
+            The maximum time in seconds for the entire optimization process.
         """
         # store original
         self.X = X
@@ -96,6 +125,10 @@ class ModelTrainer:
         self.best_model = None
         self.best_hp_params: Dict[str, Dict] = {}
         self.model_benchmarks = None
+        
+        # New: Store predictions for report visualizations
+        self.best_model_predictions = None
+        self.best_model_probabilities = None
 
         # --- Handle provided splits ---
         if X_train is not None and X_test is not None and y_train is not None and y_test is not None:
@@ -115,12 +148,29 @@ class ModelTrainer:
         test_split = MODEL_TRAINING_CONFIG.get('test_split', 0.2)
         random_state = MODEL_TRAINING_CONFIG.get('random_state', 42)
 
-        return train_test_split(
-            self.X, self.y,
-            test_size=test_split,
-            random_state=random_state,
-            stratify=self.y if self.task_type == 'classification' else None
-        )
+        stratify = None
+        if self.task_type == 'classification':
+             stratify = self.y
+             # Check if stratification is possible (min 2 samples per class)
+             if self.y.value_counts().min() < 2:
+                 logger.warning("Target class has <2 samples. Disabling stratified split.")
+                 stratify = None
+        
+        try:
+            return train_test_split(
+                self.X, self.y,
+                test_size=test_split,
+                random_state=random_state,
+                stratify=stratify
+            )
+        except ValueError as e:
+            logger.warning(f"Train/Test split failed (likely too small data): {e}. Falling back to non-stratified.")
+            return train_test_split(
+                self.X, self.y,
+                test_size=test_split,
+                random_state=random_state,
+                stratify=None
+            )
 
     def _preprocess_data(self, X: pd.DataFrame) -> pd.DataFrame:
         """Simple preprocessing fallback: numeric fill + label encoding for objects."""
@@ -145,8 +195,24 @@ class ModelTrainer:
         os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
     @log_execution(logger_obj=logger)
-    def train_all_models(self) -> Dict:
-        """Trains all models with hyperparameter optimization and returns results summary."""
+    def train_all_models(self) -> Dict[str, float]:
+        """
+        Execute the automated training pipeline for all selected algorithms.
+
+        Orchestrates the training process, including hyperparameter optimization via
+        Optuna and final model evaluation. If multiple models are trained, it also
+        fits a stacking ensemble.
+
+        Returns
+        -------
+        scores : dict of str: float
+            Dictionary mapping algorithm names to their optimized performance scores.
+
+        Notes
+        -----
+        This method handles parallel execution and ensures that each model is
+        evaluated on the same test set to ensure fair comparison.
+        """
         logger.info(f"Starting training for task: {self.task_type}")
 
         # choose model list
@@ -181,7 +247,9 @@ class ModelTrainer:
                 model = self._build_model(model_name, best_params, force_single_thread=True)
 
                 # 3) Fit on training data
+                start_time = time.time()
                 model.fit(X_train_proc, self.y_train)
+                train_time = time.time() - start_time
 
                 # 4) Evaluate using ModelEvaluator for consistent metrics output
                 from ..evaluation.metrics import ModelEvaluator
@@ -212,7 +280,8 @@ class ModelTrainer:
                     'model': model_name,
                     'score': round(score, 4),
                     'params': best_params,
-                    'metrics': eval_results.get('metrics', {})
+                    'metrics': eval_results.get('metrics', {}),
+                    'training_time': round(train_time, 4)
                 })
 
                 logger.info(f"Model {model_name} result -> {score:.4f} ({metric})")
@@ -240,9 +309,29 @@ class ModelTrainer:
                     best_model_name = model_name
                     self.best_model = model
 
+                    # Capture predictions for report visual
+                    self.best_model_predictions = eval_results.get('predictions')
+                    self.best_model_probabilities = eval_results.get('probabilities')
+
             except Exception as e:
                 logger.warning(f"Training failed for {model_name}: {e}")
                 continue
+
+        # 5) Stacking Ensemble (Champion Search)
+        if len(self.trained_models) >= 2:
+            try:
+                # Set preliminary best results for stacking check
+                results['best_model'] = best_model_name
+                results['best_score'] = best_score
+                
+                self._train_stacking_ensemble(results, X_train_proc, X_test_proc)
+                
+                # Update locals after potential stacking update
+                best_model_name = results['best_model']
+                best_score = results['best_score']
+
+            except Exception as e:
+                logger.warning(f"Stacking Ensemble failed: {e}")
 
         # finalize results ordering
         chosen_metric = self.evaluation_metric or ('f1' if self.task_type == 'classification' else 'rmse')
@@ -455,13 +544,104 @@ class ModelTrainer:
 
         raise ValueError(f"Unknown model: {model_name}")
 
-    def get_best_model(self):
-        """Return the best trained sklearn-like model object (or None)."""
+    def _train_stacking_ensemble(self, results: Dict, X_train: pd.DataFrame, X_test: pd.DataFrame):
+        """Train a stacking ensemble using the top 3 trained models."""
+        logger.info("Training Stacking Ensemble (Champion Search)...")
+        
+        # Get top 3 models
+        benchmarks = results['model_benchmarks']
+        top_n = min(3, len(benchmarks))
+        top_models_info = benchmarks[:top_n]
+        
+        base_estimators = []
+        for info in top_models_info:
+            name = info['model']
+            model = self.trained_models[name]
+            base_estimators.append((name, model))
+            
+        if self.task_type == 'classification':
+            stack = StackingClassifier(
+                estimators=base_estimators,
+                final_estimator=LogisticRegression(),
+                cv=3,
+                n_jobs=1
+            )
+        else:
+            stack = StackingRegressor(
+                estimators=base_estimators,
+                final_estimator=Ridge(),
+                cv=3,
+                n_jobs=1
+            )
+            
+        start_time = time.time()
+        stack.fit(X_train, self.y_train)
+        train_time = time.time() - start_time
+        
+        # Evaluate
+        from ..evaluation.metrics import ModelEvaluator
+        evaluator = ModelEvaluator(stack, X_test, self.y_test, self.task_type)
+        eval_results = evaluator.evaluate()
+        
+        metric = self.evaluation_metric or ('f1' if self.task_type == 'classification' else 'rmse')
+        score = float(eval_results.get('metrics', {}).get(metric, 0.0))
+        
+        model_name = 'stacking_ensemble'
+        self.trained_models[model_name] = stack
+        self.model_scores[model_name] = score
+        
+        results['trained_models'][model_name] = "StackingEnsemble"
+        results['model_scores'][model_name] = round(score, 4)
+        results['model_benchmarks'].append({
+            'model': model_name,
+            'score': round(score, 4),
+            'params': {'base_models': [n for n, _ in base_estimators]},
+            'metrics': eval_results.get('metrics', {}),
+            'training_time': round(train_time, 4)
+        })
+        
+        logger.info(f"Stacking Ensemble result -> {score:.4f} ({metric})")
+        
+        # Update best model if stacking is better
+        is_better = False
+        best_score = results.get('best_score')
+        if best_score is None:
+            is_better = True
+        else:
+            if self.task_type == 'regression' and metric in ['rmse', 'mse', 'mae', 'mape']:
+                if score < best_score: is_better = True
+            else:
+                if score > best_score: is_better = True
+                
+        if is_better:
+            results['best_score'] = score
+            results['best_model'] = model_name
+            self.best_model = stack
+            self.best_model_predictions = eval_results.get('predictions')
+            self.best_model_probabilities = eval_results.get('probabilities')
+
+    def get_best_model(self) -> Optional[object]:
+        """
+        Retrieve the top-performing model object.
+
+        Returns
+        -------
+        model : object, optional
+            The best fitted estimator found during training, or None if no
+            models have been trained yet.
+        """
         return self.best_model
 
     def get_model_comparison(self) -> pd.DataFrame:
-        """Return a sorted dataframe comparing models and scores."""
-        comparison_data = {'Model': list(self.model_scores.keys()), 'Score': list(self.model_scores.values())}
-        df = pd.DataFrame(comparison_data)
-        df = df.sort_values('Score', ascending=False)
-        return df
+        """
+        Generate a comparative leaderboard of all trained models.
+
+        Returns
+        -------
+        comparison : pd.DataFrame
+            A DataFrame containing scores, training times, and rank for each
+            algorithm, sorted by performance.
+        """
+        if self.model_benchmarks is None:
+            return pd.DataFrame()
+        return self.model_benchmarks

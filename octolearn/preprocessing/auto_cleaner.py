@@ -28,40 +28,60 @@ logger = setup_logger(__name__)
 
 class AutoCleaner:
     """
-    Automatically cleans dataset based on profile and configuration.
+    Automated Data Cleaning and Feature Transformation Pipeline.
 
-    Public API:
-      - fit(X_train, y_train) -> fits imputers/encoders on training set
-      - transform(X) -> transforms new data using fitted transformers
-      - fit_transform(X_train, y_train) -> convenience method
+    This class handles the end-to-end cleaning workflow, including missing value
+    imputation, categorical encoding (ordinal, one-hot, target), and feature
+    selection (ID drops, constant removal).
 
-    Internal state after fit():
-      - numeric_imputer_, categorical_imputer_
-      - ordinal_encoder_, bool_label_encoders_ (dict)
-      - ohe_, output_columns_, dropped_columns_
+    Attributes
+    ----------
+    numeric_imputer_ : SimpleImputer
+        Fitted imputer for numeric columns.
+    categorical_imputer_ : SimpleImputer
+        Fitted imputer for categorical columns.
+    ordinal_encoder_ : OrdinalEncoder
+        Fitted encoder for specified ordinal columns.
+    bool_label_encoders_ : dict of LabelEncoder
+        Dictionary mapping column names to LabelEncoders for boolean features.
+    ohe_ : OneHotEncoder
+        Fitted One-Hot Encoder for high-cardinality categorical features.
+    dropped_columns_ : list of str
+        Names of all columns removed during the cleaning process.
+    output_columns_ : list of str
+        The final list of column names after transformation.
+
+    Notes
+    -----
+    The cleaner follows the fit-transform pattern to prevent data leakage.
+    Statistics are learned only from the training set and applied consistently
+    to any subsequent data.
     """
 
-    def __init__(self,
-                 profile=None,
-                 imputer_strategy: dict = None,
-                 encoder_strategy: dict = None,
-                 scaler: Optional[str] = None,
-                 id_columns: Optional[List[str]] = None):
+    def __init__(
+        self,
+        profile=None,
+        imputer_strategy: dict = None,
+        encoder_strategy: dict = None,
+        scaler: Optional[str] = None,
+        id_columns: Optional[List[str]] = None
+    ):
         """
-        Initialize AutoCleaner.
-        
+        Initialize the AutoCleaner with custom strategies.
+
         Parameters
         ----------
         profile : DatasetProfile, optional
-            Profile object from DataProfiler
+            A profile object containing data types and statistics.
         imputer_strategy : dict, optional
-            Strategy for imputation {'numeric': 'mean/median/knn', 'categorical': 'mode/constant'}
+            Mapping of column types to imputation methods
+            (e.g., {'numeric': 'median', 'categorical': 'mode'}).
         encoder_strategy : dict, optional
-            Strategy for encoding {'ordinal_cols': [...], 'bool_cols': [...]}
+            Configuration for feature encoding logic.
         scaler : str, optional
-            Type of scaling to apply
-        id_columns : list, optional
-            Columns to drop as ID columns
+            Type of scaling to apply ('standard', 'robust', 'minmax').
+        id_columns : list of str, optional
+            Specific column names to be treated as unique identifiers and dropped.
         """
         self.profile = profile
         self.imputer_strategy = imputer_strategy or {}
@@ -75,12 +95,14 @@ class AutoCleaner:
         self.ordinal_encoder_ = None
         self.bool_label_encoders_ = {}  # per-column label encoders
         self.ohe_ = None
+        self.target_encoder_mappings_ = {}  # New: Target encoding mappings
 
         # Metadata tracking
         self.dropped_columns_ = []
         self.removed_id_columns_ = []
         self.low_variance_columns_removed_ = []
         self.constant_columns_removed_ = []
+        self.redundant_columns_removed_ = []  # New: High correlation
         self.output_columns_ = None  # final column list after transform
         
         # Internal state
@@ -89,6 +111,8 @@ class AutoCleaner:
         self._fitted_ordinal_cols = []
         self._fitted_bool_cols = []
         self._fitted_ohe_cols = []
+        self._fitted_target_enc_cols = []  # New: Target encoding
+        self._fitted_date_cols = []        # New: Temporal features
 
     # ================================================================================
     # PUBLIC API: FIT / TRANSFORM
@@ -96,22 +120,26 @@ class AutoCleaner:
     
     def fit_transform(self, X: pd.DataFrame, y: pd.Series) -> Tuple[pd.DataFrame, pd.Series, Dict]:
         """
-        Fit cleaning pipeline on training data and return cleaned X_train, y_train, and cleaning log.
-        
-        Important: Duplicates should be removed BEFORE calling this in core.py to prevent data leakage.
-        This method focuses on imputation, encoding, and scaling.
-        
+        Fit the cleaner on training data and return the transformed results.
+
+        This is a convenience method that combines `fit` and `transform`. It
+        is primarily used on the initial training set.
+
         Parameters
         ----------
         X : pd.DataFrame
-            Training features (duplicates should already be removed)
+            The training feature matrix.
         y : pd.Series
-            Training target
-            
+            The training target vector.
+
         Returns
         -------
-        tuple
-            (X_clean, y_clean, log_dict)
+        X_clean : pd.DataFrame
+            The cleaned and transformed training features.
+        y_clean : pd.Series
+            The training target vector (possibly filtered).
+        cleaning_log : dict
+            A summary of all cleaning operations performed.
         """
         # Fit the cleaner (learn imputation stats, encoder mappings on training data)
         original_len = len(X)
@@ -150,27 +178,30 @@ class AutoCleaner:
     @log_execution(logger_obj=logger)
     def fit(self, X: pd.DataFrame, y: pd.Series):
         """
-        Fit imputers and encoders on training data.
-        
-        This method learns the statistics and mappings needed to transform new data:
-        - Numeric imputation statistics (mean, median, etc.)
-        - Categorical imputation strategy
-        - Encoder mappings and categories
-        - Column lists for output
-        
-        Note: Assumes duplicates have already been removed (done in core.py)
-        
+        Fit the cleaning pipeline on training data.
+
+        Learns parameters for imputation (means, medians), encoding (categories,
+        mappings), and feature selection (constant columns, low variance).
+
         Parameters
         ----------
         X : pd.DataFrame
-            Training data (already deduplicated)
+            The training feature matrix.
         y : pd.Series
-            Training target
+            The training target vector.
+
+        Returns
+        -------
+        self : AutoCleaner
+            Returns the instance itself.
         """
         X = X.copy()
         y = y.copy()
 
         # ===== STEP 1: REMOVE COLUMNS =====
+        # Handle infinite values early
+        X = X.replace([np.inf, -np.inf], np.nan)
+
         # Remove user-specified ID columns
         id_cols = self.id_columns or (self.profile.id_like_columns if self.profile else [])
         id_cols = [c for c in id_cols if c in X.columns]
@@ -202,7 +233,46 @@ class AutoCleaner:
             self.low_variance_columns_removed_ = low_var_cols
             logger.info(f"Removed low variance columns: {low_var_cols}")
 
-        # ===== STEP 2: NUMERIC IMPUTATION =====
+        # Remove highly correlated features (> 0.95)
+        numeric_cols_temp = X.select_dtypes(include=[np.number]).columns.tolist()
+        if len(numeric_cols_temp) > 1:
+            corr_matrix = X[numeric_cols_temp].corr().abs()
+            upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+            to_drop = [column for column in upper.columns if any(upper[column] > 0.95)]
+            if to_drop:
+                X = X.drop(columns=to_drop)
+                self.redundant_columns_removed_ = to_drop
+                logger.info(f"Removed redundant redundant features: {to_drop}")
+
+        # ===== STEP 2: TEMPORAL FEATURE EXTRACTION =====
+        date_cols = []
+        if self.profile and getattr(self.profile, 'date_columns', None):
+            date_cols = [c for c in self.profile.date_columns if c in X.columns]
+        else:
+            # Simple heuristic if no profile
+            for col in X.columns:
+                if X[col].dtype == 'object':
+                    try:
+                        # Try to parse first few non-null values
+                        pd.to_datetime(X[col].dropna().head(5), errors='raise')
+                        date_cols.append(col)
+                    except:
+                        pass
+        
+        self._fitted_date_cols = date_cols
+        for col in date_cols:
+            try:
+                dt_col = pd.to_datetime(X[col], errors='coerce')
+                X[f"{col}_year"] = dt_col.dt.year
+                X[f"{col}_month"] = dt_col.dt.month
+                X[f"{col}_day"] = dt_col.dt.day
+                X[f"{col}_dayofweek"] = dt_col.dt.dayofweek
+                X = X.drop(columns=[col])
+                logger.info(f"Extracted temporal features from {col}")
+            except Exception as e:
+                logger.warning(f"Temporal extraction failed for {col}: {e}")
+
+        # ===== STEP 3: NUMERIC IMPUTATION =====
         numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
         numeric_missing = X[numeric_cols].isnull().sum().sum() if numeric_cols else 0
         
@@ -298,7 +368,31 @@ class AutoCleaner:
                 logger.warning(f"OneHotEncoder fit failed: {e}")
                 self.ohe_ = None
 
-        # ===== STEP 5: BUILD OUTPUT COLUMNS LIST =====
+        # Target Encoding (for high cardinality or multi-class)
+        # We'll use a simple mean encoding with smoothing
+        to_target_enc = encoder_strategy.get('target_enc_cols', [])
+        # If no explicit list, use high-cardinality columns from profile
+        if not to_target_enc and self.profile and getattr(self.profile, 'high_cardinality_cols', None):
+            to_target_enc = [c for c in self.profile.high_cardinality_cols if c in X.columns and c not in ordinal_cols and c not in bool_cols]
+        
+        self._fitted_target_enc_cols = to_target_enc
+        # Skip target encoding if y is not numeric (e.g., string labels in classification)
+        if to_target_enc and y is not None and pd.api.types.is_numeric_dtype(y):
+            global_mean = y.mean()
+            for col in to_target_enc:
+                try:
+                    # Smoothing: (count * mean + m * global_mean) / (count + m)
+                    m = 10 
+                    stats = y.groupby(X[col]).agg(['count', 'mean'])
+                    counts = stats['count']
+                    means = stats['mean']
+                    smooth = (counts * means + m * global_mean) / (counts + m)
+                    self.target_encoder_mappings_[col] = smooth.to_dict()
+                    self.target_encoder_mappings_[col]['_global_mean'] = global_mean
+                except Exception as e:
+                    logger.warning(f"Target encoding fit failed for {col}: {e}")
+
+        # ===== STEP 6: BUILD OUTPUT COLUMNS LIST =====
         out_cols = []
         numeric_cols_after = [c for c in numeric_cols if c in X.columns]
         out_cols.extend(numeric_cols_after)
@@ -320,6 +414,13 @@ class AutoCleaner:
                             ohe_names.append(f"{c}_{cat}")
             out_cols.extend(ohe_names)
 
+        if self._fitted_target_enc_cols:
+            out_cols.extend(self._fitted_target_enc_cols)
+        
+        # Add date feature names
+        for col in self._fitted_date_cols:
+            out_cols.extend([f"{col}_year", f"{col}_month", f"{col}_day", f"{col}_dayofweek"])
+
         self.output_columns_ = out_cols
         self.dropped_columns_ = [c for c in (self.profile.columns if self.profile else []) 
                                 if c not in X.columns]
@@ -336,24 +437,25 @@ class AutoCleaner:
     @log_execution(logger_obj=logger)
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """
-        Apply fitted cleaning pipeline to new data (train/test/validation/production).
-        
-        Returns a DataFrame with columns matching self.output_columns_.
-        
+        Apply the fitted cleaning pipeline to new data.
+
+        Ensures that the output columns and data transformations are identical
+        to those learned during `fit`.
+
         Parameters
         ----------
         X : pd.DataFrame
-            Data to transform
-            
+            The feature matrix to transform.
+
         Returns
         -------
-        pd.DataFrame
-            Cleaned, encoded data
-            
+        X_transformed : pd.DataFrame
+            The cleaned and encoded feature matrix.
+
         Raises
         ------
         RuntimeError
-            If called before fit()
+            If the cleaner has not been fitted yet.
         """
         if not self._fitted:
             raise RuntimeError("AutoCleaner must be fitted before calling transform(). "
@@ -371,6 +473,25 @@ class AutoCleaner:
         if self.low_variance_columns_removed_:
             X = X.drop(columns=[c for c in self.low_variance_columns_removed_ if c in X.columns], 
                       errors='ignore')
+        if getattr(self, 'redundant_columns_removed_', None):
+            X = X.drop(columns=[c for c in self.redundant_columns_removed_ if c in X.columns],
+                      errors='ignore')
+
+        # Handle infinite values
+        X = X.replace([np.inf, -np.inf], np.nan)
+
+        # ===== TEMPORAL FEATURES =====
+        for col in self._fitted_date_cols:
+            if col in X.columns:
+                try:
+                    dt_col = pd.to_datetime(X[col], errors='coerce')
+                    X[f"{col}_year"] = dt_col.dt.year.fillna(X[f"{col}_year"].mean() if f"{col}_year" in X else 0)
+                    X[f"{col}_month"] = dt_col.dt.month.fillna(0)
+                    X[f"{col}_day"] = dt_col.dt.day.fillna(0)
+                    X[f"{col}_dayofweek"] = dt_col.dt.dayofweek.fillna(0)
+                    X = X.drop(columns=[col])
+                except:
+                    pass
 
         # ===== NUMERIC IMPUTATION =====
         if self._fitted_numeric_cols and self.numeric_imputer_ is not None:
@@ -435,6 +556,13 @@ class AutoCleaner:
                     ohe_df = pd.DataFrame(arr, index=X.index, columns=feature_names)
                 except Exception as e:
                     logger.warning(f"OneHot encoding transform failed: {e}")
+
+        # ===== TARGET ENCODING =====
+        for col in self._fitted_target_enc_cols:
+            if col in X.columns and col in self.target_encoder_mappings_:
+                mapping = self.target_encoder_mappings_[col]
+                global_mean = mapping.get('_global_mean', 0)
+                X[col] = X[col].map(mapping).fillna(global_mean)
 
         # ===== FINAL OUTPUT =====
         out = pd.DataFrame(index=X.index)

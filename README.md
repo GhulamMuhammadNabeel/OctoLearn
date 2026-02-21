@@ -1,103 +1,79 @@
 <p align="center">
-  <img src="octolearn/images/logo.png" alt="OctoLearn Logo" width="200"/>
+  <img src="octolearn/images/logo.png" alt="OctoLearn Logo" width="220"/>
+</p>
+
+<h1 align="center">OctoLearn</h1>
+
+<p align="center">
+  <strong>The Enterprise-Grade AutoML Orchestrator for Python.</strong><br>
+  Deliver production-ready machine learning from messy data in minutes, not weeks.
 </p>
 
 <p align="center">
-  <strong>Enterprise-Grade AutoML for Python</strong><br>
-  Profile → Clean → Engineer → Train → Report — in one line of code.
+  <a href="https://github.com/GhulamMuhammadNabeel/OctoLearn/blob/main/guide.md"><strong>Explore the User Guide »</strong></a>
 </p>
 
 <p align="center">
   <a href="#-quick-start">Quick Start</a> •
-  <a href="#-features">Features</a> •
+  <a href="#-features">Key Capabilities</a> •
   <a href="#-installation">Installation</a> •
-  <a href="#-advanced-usage">Advanced Usage</a> •
-  <a href="#-user-guide">User Guide</a> •
-  <a href="#-api-reference">API Reference</a> •
-  <a href="#-architecture">Architecture</a>
+  <a href="guide.md">Full Documentation</a> •
+  <a href="testing.md">Reliability & Testing</a>
 </p>
 
 ---
 
-## ✨ Features
+OctoLearn is designed for data scientists and engineers who need more than just a "black box" model. It provides **transparent, controllable, and professional** machine learning workflows that automate the tedious parts of data science while giving you full oversight through high-fidelity intelligence reports.
 
-| Feature | Description |
-|---------|-------------|
-| **🔍 Smart Profiling** | Auto-detects column types, task type, leakage suspects, class imbalance |
-| **🧹 Auto Cleaning** | Imputation, encoding, scaling — all learned on train, applied to test |
-| **⚠️ Risk Scoring** | 0–100 data quality risk score with detailed factor breakdown |
-| **🔧 Feature Engineering** | Outlier detection (IQR, Z-score, Isolation Forest) + interaction analysis |
-| **🤖 Model Training** | Trains 5+ models with Optuna hyperparameter optimization |
-| **📊 Industry-Level PDF Reports** | Professional magazine-style reports with 0.75" margins, light-themed plots, before/after distribution plots, feature importance bar charts, model arena, and logo watermark |
-| **💾 Model Registry** | Version-controlled model storage with metadata tracking |
-| **⚡ fit() Override Params** | Override Optuna trials, timeout, models, metrics, and more per-call without re-creating AutoML |
+## 🚀 The OctoLearn Advantage
+
+Most AutoML libraries focus solely on leaderboard scores. OctoLearn focuses on the **entire lifecycle**:
+
+1.  **Observability**: Detailed profiling and risk scoring tell you *why* your data might fail.
+2.  **Transparency**: The "Data Journey" in our reports shows exactly how every feature was transformed.
+3.  **Communication**: Stakeholder-ready PDF reports that look like McKinsey-level analysis.
+4.  **Control**: Override any part of the pipeline via simple config objects or per-run parameters.
+
+---
+
+## ✨ Features at a Glance
+
+| Pillar | Capability |
+|:---|:---|
+| **🔍 Intelligence** | Auto-detects feature types, class imbalance, and **Data Leakage** suspects. |
+| **🧹 Resilience** | Industrial-strength cleaners handle outliers, missing values, and high-cardinality features. |
+| **📈 Performance** | Bayesian optimization via **Optuna** + Stacking Ensembles for maximum ROI. |
+| **📄 Clarity** | Magazine-style PDF reports with SHAP explainability and interactive-ready visuals. |
+| **🛡️ Reliability** | Built-in data quality risk scoring (0-100) to flag "garbage-in" scenarios. |
 
 ---
 
 ## 📦 Installation
 
-### From Source (Development)
-
 ```bash
-git clone https://github.com/GhulamMuhammadNabeel/OctoLearn.git
-cd OctoLearn
-python -m venv .venv
-
-# Windows
-.\.venv\Scripts\activate
-
-# macOS/Linux
-source .venv/bin/activate
-
-pip install -e .
+# Recommendation: Use a virtual environment
+pip install git+https://github.com/GhulamMuhammadNabeel/OctoLearn.git
 ```
 
-### Dependencies
-
-OctoLearn requires Python 3.8+ and installs the following:
-
-| Package | Purpose |
-|---------|---------|
-| `pandas`, `numpy` | Data manipulation |
-| `scikit-learn` | ML models & preprocessing |
-| `optuna` | Hyperparameter optimization |
-| `reportlab` | PDF report generation |
-| `matplotlib`, `seaborn` | Visualization |
-| `shap` | Model explainability |
-| `joblib` | Model serialization |
-
 ---
 
-## 📚 Documentation
-
-For a comprehensive guide on all features, configuration, and advanced usage, please see the **[User Guide](guide.md)**.
-
-- **[User Guide](guide.md)**: Cookbook, detailed config reference, and troubleshooting.
-- **[Architecture Guide](ARCHITECTURE.md)**: Deep dive into the internal design and how to extend OctoLearn.
-
----
-
-## 🚀 Quick Start
-
-### For Beginners — One Line Pipeline
+## 🏎️ Quick Start: Production Pipeline in 30 Seconds
 
 ```python
 from octolearn import AutoML
 import pandas as pd
 
-# Load your data
-data = pd.read_csv("your_data.csv")
-X = data.drop("target_column", axis=1)
-y = data["target_column"]
+# 1. Ingest Data
+df = pd.read_csv("telecom_churn.csv")
+X, y = df.drop("churn", axis=1), df["churn"]
 
-# Run the entire pipeline
+# 2. Orchestrate (Profile, Clean, Tune, Evaluate)
 automl = AutoML()
 automl.fit(X, y)
 
-# Get results
-print(automl.raw_profile_)          # Dataset profiling results
-print(automl.get_risk_score())      # Data quality risk score
-print(automl.get_recommendations()) # ML recommendations
+# 3. Deliver Insight
+pdf_report = automl.generate_report()
+print(f"Analysis complete: {pdf_report}")
 ```
 
 ### Profile Only (No Training)
@@ -171,8 +147,67 @@ automl.fit(X, y, models=['xgboost', 'lightgbm'])
 
 ## 🔧 Advanced Usage
 
-### Full Configuration Control
+### 🚀 Deployment: Exporting the Best Pipeline
+OctoLearn makes it easy to move from experimentation to production. You can export the entire "Best Pipeline" (Preprocessing + Model) as a standalone scikit-learn object.
 
+```python
+# 1. Train the orchestrator
+automl.fit(X, y)
+
+# 2. Get the standalone pipeline (Preprocessing + Best Model)
+pipeline = automl.get_pipeline()
+
+# 3. Use it like a standard sklearn object (no OctoLearn required for inference!)
+predictions = pipeline.predict(X_new)
+
+# 4. Save for deployment
+import joblib
+joblib.dump(pipeline, "octolearn_prod_pipeline.pkl")
+```
+
+---
+
+### 🏋️‍♂️ Training on Full Data
+After finding the best model and hyperparameters, you may want to retrain on your **entire** dataset (train + test combined) to maximize performance before deployment.
+
+```python
+# 1. Find the best settings
+automl.fit(X, y)
+
+# 2. Get the standalone pipeline
+pipeline = automl.get_pipeline()
+
+# 3. Retrain the pipeline on the FULL dataset
+# This refits the preprocessing and the model on all available data
+pipeline.fit(X, y)
+
+# 4. Save your final production model
+joblib.dump(pipeline, "final_model_full_data.pkl")
+```
+
+---
+
+### 📍 Accessing Data at Specific Points
+Need to inspect the data after cleaning but before model training? Or want to see the raw samples? OctoLearn exposes all intermediate states:
+
+```python
+# Raw data exactly as provided (or sampled if configured)
+X_raw = automl.X_raw_
+
+# The train/test split (pre-cleaning)
+X_train_raw = automl.X_train_
+
+# The final cleaned data used for the "Model Arena"
+X_final = automl.X_  # Combined cleaned dataset
+y_final = automl.y_
+
+# Access the cleaner directly to transform new data manually
+clean_data = automl.cleaner_.transform(new_df)
+```
+
+---
+
+### Full Configuration Control
 Every aspect of OctoLearn is configurable through dataclass objects:
 
 ```python

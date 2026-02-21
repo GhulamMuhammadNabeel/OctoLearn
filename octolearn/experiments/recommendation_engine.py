@@ -36,16 +36,20 @@ class RecommendationEngine:
         Profile of the **raw** dataset (before any cleaning). When provided,
         sample-size recommendations reference the original row count rather
         than the post-cleaning count.
+    original_row_count : int, optional
+        The true original number of rows in the dataset (before sampling).
+        Used to give accurate suggestions about dataset size even when
+        working with a sample.
 
     Examples
     --------
-    >>> engine = RecommendationEngine(clean_profile, raw_profile=raw_profile)
+    >>> engine = RecommendationEngine(clean_profile, raw_profile=raw_profile, original_row_count=100000)
     >>> recommendations = engine.generate()
     >>> for priority, recs in recommendations.items():
     ...     print(f"{priority}: {recs}")
     """
 
-    def __init__(self, profile, raw_profile=None):
+    def __init__(self, profile, raw_profile=None, original_row_count=None):
         """
         Initialize the RecommendationEngine.
 
@@ -56,10 +60,14 @@ class RecommendationEngine:
         raw_profile : DatasetProfile, optional
             Raw dataset profile used for original sample-size checks.
             If None, falls back to ``profile`` for all checks.
+        original_row_count : int, optional
+            Original row count before sampling.
         """
         self.profile = profile
-        self.raw_profile = raw_profile  # Used for original row-count checks
+        self.raw_profile = raw_profile  # Used for comparisons
+        self.original_row_count = original_row_count
         self.recommendations = {}
+        self.valid_task_type = True
 
         logger.info("RecommendationEngine initialized")
 
@@ -103,6 +111,7 @@ class RecommendationEngine:
         self._check_duplicates()
         self._check_missing_values()
         self._check_feature_engineering()
+        self._check_skewness()
         self._check_model_considerations()
 
         # Filter out empty categories
@@ -121,9 +130,15 @@ class RecommendationEngine:
             )
 
         if self.profile.task_type == 'classification':
-            unique_classes = len(self.profile.stats.get('target', {}).get('unique', []))
+            target_col = self.profile.target_col
+            unique_classes = self.profile.unique_counts.get(target_col, 0) if target_col else 0
+
+            # Fallback if unique_counts is missing but stats exists
+            if unique_classes == 0:
+                 unique_classes = len(self.profile.stats.get('target', {}).get('unique', []))
 
             if unique_classes < 2:
+                self.valid_task_type = False
                 self.recommendations['critical'].append(
                     "Classification target has only one class. "
                     "This is not a valid classification problem. "
@@ -193,15 +208,18 @@ class RecommendationEngine:
         """
         Check feature-to-sample ratio using the original (raw) row count.
 
-        Uses ``raw_profile`` if available so that deduplication does not
-        artificially reduce the reported sample size in recommendations.
+        Uses ``original_row_count`` if available, otherwise ``raw_profile``.
         """
-        # Use raw profile for row count so deduplication doesn't skew the message
-        ref_profile = self.raw_profile if self.raw_profile is not None else self.profile
-        n_samples = ref_profile.shape[0]
-        n_features = self.profile.shape[1]  # Feature count from clean profile
+        # Use true original count if available (handles sampling case), else raw profile, else clean profile
+        if self.original_row_count is not None:
+            n_samples = self.original_rows_count = self.original_row_count
+            origin_note = " (original dataset)"
+        else:
+            ref_profile = self.raw_profile if self.raw_profile is not None else self.profile
+            n_samples = ref_profile.shape[0]
+            origin_note = " (original dataset)" if self.raw_profile is not None else ""
 
-        origin_note = " (original dataset)" if self.raw_profile is not None else ""
+        n_features = self.profile.shape[1]  # Feature count from clean profile
 
         if n_samples < 100:
             self.recommendations['high'].append(
@@ -241,30 +259,52 @@ class RecommendationEngine:
             )
 
     def _check_duplicates(self):
-        """Check for duplicate rows."""
-        dup_ratio = self.profile.duplicate_rows / max(self.profile.shape[0], 1)
+        """
+        Check for duplicate rows.
+        
+        Uses ``raw_profile`` if available to report on original data quality.
+        """
+        # Use raw profile if available to catch duplicates in original data
+        profile = self.raw_profile if self.raw_profile is not None else self.profile
+        
+        dup_count = profile.duplicate_rows
+        n_rows = profile.shape[0] if profile else 0
+        dup_ratio = dup_count / max(n_rows, 1)
         
         if dup_ratio > 0.05:
             self.recommendations['high'].append(
-                f"Detected {self.profile.duplicate_rows} duplicate rows ({dup_ratio:.1%} of data). "
+                f"Detected {dup_count} duplicate rows ({dup_ratio:.1%} of data). "
                 "Remove duplicates before training to ensure valid evaluation. "
                 "Investigate why duplicates exist."
             )
-        elif self.profile.duplicate_rows > 0:
+        elif dup_count > 0:
             self.recommendations['medium'].append(
-                f"Detected {self.profile.duplicate_rows} duplicate rows. "
+                f"Detected {dup_count} duplicate rows. "
                 "Remove duplicates before training to get accurate metrics."
             )
 
     def _check_missing_values(self):
-        """Check for missing values and provide imputation recommendations."""
-        missing_ratio_dict = self.profile.missing_ratio or {}
+        """
+        Check for missing values and provide imputation recommendations.
+        
+        Uses ``raw_profile`` if available to report on input data quality.
+        """
+        # Use raw profile if available
+        profile = self.raw_profile if self.raw_profile is not None else self.profile
+        missing_ratio_dict = profile.missing_ratio or {}
         cols_with_missing = {col: ratio for col, ratio in missing_ratio_dict.items() if ratio > 0}
         
         if not cols_with_missing:
-            self.recommendations['informational'].append(
-                "No missing values detected. Data quality is excellent."
-            )
+            # Only report "excellent" if examining raw data or if cleaned data is somehow perfect
+            # If checking raw data and it's perfect: Good.
+            # If checking clean data: It's expected to be perfect.
+            if self.raw_profile is None:
+                # We only have clean profile, so saying "No missing" is trivial but technically true
+                pass 
+            else:
+                 self.recommendations['informational'].append(
+                    "No missing values detected in original data. Data quality is excellent."
+                )
             return
         
         high_missing = {col: ratio for col, ratio in cols_with_missing.items() if ratio > 0.3}
@@ -320,8 +360,58 @@ class RecommendationEngine:
                 "and reduce noise."
             )
 
+    def _check_skewness(self):
+        """Check for high skewness in numeric features."""
+        # This requires the profile to have skewness information
+        if hasattr(self.profile, 'skewness') and self.profile.skewness:
+            highly_skewed = {col: val for col, val in self.profile.skewness.items() if abs(val) > 1.0}
+            if highly_skewed:
+                cols_list = ', '.join(list(highly_skewed.keys())[:3])
+                self.recommendations['medium'].append(
+                    f"Detected high skewness (abs > 1.0) in {len(highly_skewed)} features: {cols_list}. "
+                    "Consider Log or Yeo-Johnson transformations to normalize distributions, "
+                    "which often improves performance for linear models and neural networks."
+                )
+
+    def generate_business_narrative(self, feature_importance: Dict[str, float]) -> List[str]:
+        """
+        Translates raw feature importance into business-friendly impact statements.
+        
+        Parameters
+        ----------
+        feature_importance : dict
+            Dictionary mapping feature names to importance scores.
+            
+        Returns
+        -------
+        list
+            List of impact statements.
+        """
+        if not feature_importance:
+            return []
+            
+        sorted_features = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)
+        top_3 = sorted_features[:3]
+        
+        narratives = []
+        for feature, score in top_3:
+            # Simple heuristic-based narrative
+            if "age" in feature.lower():
+                narratives.append(f"Demographic Factor: `{feature}` is a primary driver, suggesting age-based segmentation is critical.")
+            elif "score" in feature.lower() or "rating" in feature.lower():
+                narratives.append(f"Performance Metric: `{feature}` strongly influences outcomes; quality control here yields high ROI.")
+            elif "amount" in feature.lower() or "price" in feature.lower() or "cost" in feature.lower():
+                narratives.append(f"Financial Driver: `{feature}` has high leverage; pricing sensitivity analysis is recommended.")
+            else:
+                narratives.append(f"Core Predictor: `{feature}` shows high statistical weight. Focus operational efforts on this variable.")
+                
+        return narratives
+
     def _check_model_considerations(self):
         """Provide model selection recommendations."""
+        if not self.valid_task_type:
+             return
+
         task = self.profile.task_type
         n_features = self.profile.shape[1]
         n_samples = self.profile.shape[0]

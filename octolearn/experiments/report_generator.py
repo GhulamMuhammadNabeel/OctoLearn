@@ -16,7 +16,7 @@ Features:
 - Page headers and footers with branding
 
 Author: OctoLearn Development Team
-Version: 0.8.0 (Redesigned)
+Version: 0.9.0 (Redesigned)
 License: MIT
 """
 
@@ -203,7 +203,12 @@ class ReportGenerator:
         # Raw and cleaned DataFrames for before/after distribution plots
         raw_X: Optional[Any] = None,
         clean_X: Optional[Any] = None,
-        corr_summary: Optional[Dict[str, Any]] = None,  # From PlotGenerator.generate_correlation_heatmap
+        corr_summary: Optional[Dict[str, Any]] = None,
+        # Performance Visuals
+        confusion_matrix_plot: Optional[str] = None,
+        roc_curve_plot: Optional[str] = None,
+        residual_plot: Optional[str] = None,
+        feature_importance_plot: Optional[str] = None,
     ):
         if mode not in ['brief', 'detailed']:
             raise ValueError(f"Mode must be 'brief' or 'detailed', got '{mode}'")
@@ -232,6 +237,12 @@ class ReportGenerator:
         self.company = company
         self.raw_X = raw_X
         self.clean_X = clean_X
+        # Visuals
+        self.confusion_matrix_plot = confusion_matrix_plot
+        self.roc_curve_plot = roc_curve_plot
+        self.residual_plot = residual_plot
+        self.feature_importance_plot = feature_importance_plot
+        
         # Temp files created during report generation (cleaned up after)
         self._temp_files: List[str] = []
 
@@ -528,7 +539,7 @@ class ReportGenerator:
             ('RIGHTPADDING', (0, 0), (-1, -1), 0),
         ]))
         story.append(t)
-        story.append(Spacer(1, 0.25 * inch))  # Increased spacing after header bar
+        story.append(Spacer(1, 0.4 * inch))  # Increased spacing for better UI
 
     def _create_side_by_side(self, left_content, right_content, widths=[3.7*inch, 3.7*inch]):
         """Create a 2-column layout using a Table."""
@@ -590,7 +601,7 @@ class ReportGenerator:
                 Paragraph("<b>Risk Score</b>", self.styles['TableCell']),
                 Paragraph(f"{self.risk_score}/100 ({self.risk_category})", self.styles['TableCell']),
                 Paragraph("<b>Best Model</b>", self.styles['TableCell']),
-                Paragraph(str(self.best_model_name), self.styles['TableCell']),
+                Paragraph(str(self.best_model_name).replace('_', ' ').title(), self.styles['TableCell']),
             ],
         ]
 
@@ -704,23 +715,29 @@ class ReportGenerator:
         risk_color = ReportColors.get_risk_color(self.risk_score)
         risk_label = ReportColors.get_risk_label(self.risk_score)
         
-        # Compact Risk Table
+        # Compact Risk Table Layout
+        # Avoid showing "100" from /100 too prominently to confuse with the value
+        # Just show "15" and "Risk Score" stacked cleanly
+        
+        # Single cell approach with cleaner formatting
         risk_data = [[
-            Paragraph(f'<font size="24" color="{risk_color.hexval()}">{self.risk_score}</font>'
-                      f'<font size="10" color="{ReportColors.TEXT_SECONDARY.hexval()}">/100</font>',
-                      ParagraphStyle('RiskNum', parent=self.styles['ReportBody'], alignment=TA_CENTER)),
-            Paragraph(f'<font size="12" color="{risk_color.hexval()}"><b>{risk_label}</b></font><br/>'
-                      f'<font size="8" color="{ReportColors.TEXT_CAPTION.hexval()}">Risk Score</font>',
-                      ParagraphStyle('RiskLabel', parent=self.styles['ReportBody'],
-                                     alignment=TA_LEFT, leading=14)),
+            Paragraph(
+                f'<font size="24" color="{risk_color.hexval()}"><b>{self.risk_score}</b></font>'
+                f'<font size="12" color="{ReportColors.TEXT_SECONDARY.hexval()}">/100</font><br/>'
+                f'<font size="4"> </font><br/>'
+                f'<font size="11" color="{ReportColors.TEXT_PRIMARY.hexval()}"><b>{risk_label}</b></font><br/>'
+                f'<font size="9" color="{ReportColors.TEXT_CAPTION.hexval()}">Data Risk Level</font>',
+                ParagraphStyle('RiskCell', parent=self.styles['ReportBody'], alignment=TA_CENTER, leading=14)
+            )
         ]]
-        risk_table = Table(risk_data, colWidths=[1.1 * inch, 1.8 * inch])
+        risk_table = Table(risk_data, colWidths=[2.5 * inch])
         risk_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), ReportColors.CARD_BG),
             ('BOX', (0, 0), (-1, -1), 1, risk_color),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
         ]))
 
         # --- Metric Cards (Right Content) ---
@@ -758,6 +775,15 @@ class ReportGenerator:
         # Layout Side-by-Side
         layout = self._create_side_by_side(risk_table, card_table, widths=[3.0 * inch, 4.0 * inch])
         story.append(layout)
+        story.append(Spacer(1, 0.2 * inch))
+
+        # Data Quality Score Gauge
+        # STRICTLY enforce consistency with Risk Score to avoid user confusion.
+        # DQ Score = 100 - Risk Score.
+        # This overrides any independent calculation in DataProfiler which might use different heuristics.
+        dq_score = max(0, 100 - self.risk_score)
+             
+        self._add_data_quality_gauge(story, dq_score)
         story.append(Spacer(1, 0.2 * inch))
 
 
@@ -1114,11 +1140,15 @@ class ReportGenerator:
             return
 
         self._add_section_header(story, "Model Arena")
-
+        
+        # Add visual performance plots if available
+        self._add_performance_visuals(story)
 
         n_models = len(self.model_benchmarks)
         best = self.model_benchmarks[0] if self.model_benchmarks else {}
-        best_name = best.get('model', self.best_model_name)
+        # Try to use a pretty version of the best model name if available
+        internal_best_name = best.get('model', self.best_model_name)
+        best_name = str(internal_best_name).replace('_', ' ').title()
         best_score = best.get('score', 0)
 
         story.append(Paragraph(
@@ -1234,6 +1264,30 @@ class ReportGenerator:
             story.append(Paragraph("No specific recommendations at this time.", self.styles['Narrative']))
             return
 
+        self._add_section_header(story, "Action Plan for Production")
+        
+        # Add Business Impact Narrative if importance is available
+        if self.feature_importance:
+            story.append(Paragraph("Strategic Business Insights", self.styles['SubsectionHeading']))
+            # We'll use a simple logic here or import from engine if possible
+            # To keep it simple and decoupled, I'll implement a local version 
+            # or try to use the engine if available in context.
+            # actually I can just implement a quick version here.
+            top_3 = sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)[:3]
+            for feature, score in top_3:
+                msg = f"<b>Key Lever: {feature}</b>"
+                if "age" in feature.lower():
+                    desc = "Driving factor. Age-based segmentation is critical for targeting."
+                elif "score" in feature.lower() or "rating" in feature.lower():
+                    desc = "Primary quality indicator. Optimization here yields immediate ROI."
+                elif "amount" in feature.lower() or "price" in feature.lower():
+                    desc = "Financial pivot point. Small variances here significantly impact the bottom line."
+                else:
+                    desc = "Significant statistical weight. Prioritize operational focus on this variable."
+                
+                story.append(Paragraph(f"➜ {msg} — {desc}", self.styles['Narrative']))
+            story.append(Spacer(1, 0.2 * inch))
+
         # Priority styling
         priority_config = {
             'critical': ('[CRITICAL]', ReportColors.DANGER, self.styles['RecCritical']),
@@ -1291,44 +1345,32 @@ class ReportGenerator:
 
         # ── Correlation narrative paragraph ──────────────────────────────────
         if self.corr_summary:
-            story.append(Paragraph("Correlation Analysis", self.styles['SubsectionHeading']))
+            story.append(Paragraph("Goal Correlation Analysis", self.styles['SubsectionHeading']))
             n_features = self.corr_summary.get('n_features', 0)
-            strategy = self.corr_summary.get('strategy', 'none')
+            target_name = self.corr_summary.get('target_name', 'Target')
             top_pairs = self.corr_summary.get('top_pairs', [])
             bottom_pairs = self.corr_summary.get('bottom_pairs', [])
 
             # Build plain-English narrative
-            if n_features >= 2 and top_pairs:
-                # Top correlated pairs
+            if n_features >= 1 and top_pairs:
+                # Top correlated features with target
                 top_strs = []
-                for a, b, c in top_pairs[:3]:
-                    direction = "positively" if c > 0 else "negatively"
-                    top_strs.append(f"<b>{a}</b> and <b>{b}</b> ({direction}, r={c:.2f})")
-
-                # Bottom correlated pairs (least correlated = near 0)
-                bottom_strs = []
-                for a, b, c in bottom_pairs[:2]:
-                    bottom_strs.append(f"<b>{a}</b> and <b>{b}</b> (r={c:.2f})")
+                for feat, target, corr in top_pairs[:3]:
+                    direction = "positively" if corr > 0 else "negatively"
+                    impact = "strong" if abs(corr) > 0.6 else "moderate"
+                    top_strs.append(f"<b>{feat}</b> ({impact} {direction} influence, r={corr:.2f})")
 
                 top_text = ", ".join(top_strs) if top_strs else "none identified"
-                bottom_text = " and ".join(bottom_strs) if bottom_strs else "none identified"
 
-                if strategy == 'heatmap':
-                    viz_note = (
-                        f"The full correlation matrix is shown below ({n_features} features — "
-                        f"readable at this scale)."
-                    )
-                else:
-                    viz_note = (
-                        f"With {n_features} numeric features, a full heatmap would be unreadable. "
-                        f"The chart below shows the top {len(top_pairs)} most correlated pairs instead."
-                    )
+                viz_note = (
+                    f"The chart below identifies which of your {n_features} numeric features "
+                    f"most strongly correlate with <b>{target_name}</b>. This reveals the "
+                    f"key drivers behind your data's goal."
+                )
 
                 story.append(Paragraph(
-                    f"Among the {n_features} numeric features, the strongest correlations are: "
-                    f"{top_text}. "
-                    f"The least correlated pairs are {bottom_text} — these features carry "
-                    f"largely independent information. {viz_note}",
+                    f"Analysis shows that {top_text} are the primary predictors for <b>{target_name}</b>. "
+                    f"Changes in these features are most likely to impact your results. {viz_note}",
                     self.styles['Narrative']
                 ))
                 story.append(Spacer(1, 0.1 * inch))
@@ -1337,13 +1379,13 @@ class ReportGenerator:
         if self.heatmap_plot and os.path.exists(self.heatmap_plot):
             try:
                 strategy = self.corr_summary.get('strategy', 'heatmap') if self.corr_summary else 'heatmap'
-                if strategy == 'bar_chart':
+                if strategy == 'target_correlation' or strategy == 'bar_chart':
                     # Bar chart is wider/shorter
                     hm_img = Image(self.heatmap_plot, width=7.0 * inch, height=4.5 * inch)
                     caption = (
                         "Ranked correlation chart: blue bars = positive correlation, "
-                        "red bars = negative correlation. Values near ±1.0 indicate "
-                        "strong linear relationships; values near 0 indicate independence."
+                        "red bars = negative correlation. Higher absolute values "
+                        "indicate features that have more linear influence on the target goal."
                     )
                 else:
                     hm_img = Image(self.heatmap_plot, width=6.0 * inch, height=4.8 * inch)
@@ -1433,7 +1475,7 @@ class ReportGenerator:
             NAVY = '#1B3A5C'
             bars = ax.barh(range(n), scores, color=NAVY, alpha=0.85, height=0.6)
             ax.set_yticks(range(n))
-            ax.set_yticklabels(feats[::-1] if feats else feats, fontsize=8)
+            ax.set_yticklabels(feats, fontsize=8)  # Fixed: No more [::-1] reversal
             ax.invert_yaxis()
             ax.set_xlabel('Importance Score', fontsize=8)
             ax.set_xlim(0, max_score * 1.15)
@@ -1638,6 +1680,80 @@ class ReportGenerator:
                     pass
             self._temp_files.clear()
 
+
+
+    def _add_data_quality_gauge(self, story, score: float):
+        """Add a gauge for Data Quality Score."""
+        drawing = Drawing(400, 50)
+        
+        # Gauge background
+        drawing.add(Rect(50, 10, 300, 20, rx=5, ry=5, fillColor=colors.HexColor('#E2E8F0'), strokeColor=None))
+        
+        # Score bar
+        bar_width = 300 * (score / 100)
+        color = ReportColors.RISK_HIGH
+        if score > 60: color = ReportColors.RISK_MODERATE
+        if score > 80: color = ReportColors.RISK_LOW
+            
+        if bar_width > 0:
+            drawing.add(Rect(50, 10, bar_width, 20, rx=5, ry=5, fillColor=color, strokeColor=None))
+            
+        # Label
+        drawing.add(String(200, 38, f"Data Quality Score: {score:.1f}/100", 
+                           fontSize=12, fontName=self.font_bold, 
+                           textAnchor='middle', fillColor=ReportColors.TEXT_PRIMARY))
+                           
+        story.append(drawing)
+
+    def _add_performance_visuals(self, story):
+        """Add ROC Curve, Confusion Matrix, or Residual Plots."""
+        visuals = []
+        if self.confusion_matrix_plot and os.path.exists(self.confusion_matrix_plot):
+            visuals.append((self.confusion_matrix_plot, "Confusion Matrix"))
+        if self.roc_curve_plot and os.path.exists(self.roc_curve_plot):
+            visuals.append((self.roc_curve_plot, "ROC Curve"))
+        if self.residual_plot and os.path.exists(self.residual_plot):
+            visuals.append((self.residual_plot, "Residual Analysis"))
+        if self.feature_importance_plot and os.path.exists(self.feature_importance_plot):
+            visuals.append((self.feature_importance_plot, "Feature Importance"))
+        if self.feature_importance_plot and os.path.exists(self.feature_importance_plot):
+            visuals.append((self.feature_importance_plot, "Feature Importance"))
+            
+        if not visuals:
+            return
+            
+        story.append(Paragraph("Best Model Deep Dive", self.styles['SubsectionHeading']))
+        story.append(Paragraph(
+            "Detailed performance analysis of the champion model.",
+            self.styles['Narrative']
+        ))
+        story.append(Spacer(1, 0.1 * inch))
+
+        # layout images side by side if 2, or grid
+        images = []
+        for path, title in visuals:
+            try:
+                img = Image(path, width=3.2 * inch, height=2.6 * inch)
+                caption = Paragraph(title, ParagraphStyle('C', parent=self.styles['Caption'], alignment=TA_CENTER))
+                # Keep image and caption together
+                images.append([img, caption])
+            except:
+                pass
+        
+        if len(images) == 2:
+            data = [[images[0][0], images[1][0]], [images[0][1], images[1][1]]]
+            t = Table(data, colWidths=[3.5*inch, 3.5*inch])
+            t.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER'), ('VALIGN', (0,0), (-1,-1), 'TOP')]))
+            story.append(t)
+        elif len(images) >= 1:
+            # If 1 or more (but not exactly 2, though logic covers it), stack them or grid them
+            # For now, simplistic stacking
+             for img_set in images:
+                 story.append(img_set[0])
+                 story.append(img_set[1])
+                 story.append(Spacer(1, 0.1 * inch))
+
+        story.append(Spacer(1, 0.2 * inch))
 
 
 # ============================================================================

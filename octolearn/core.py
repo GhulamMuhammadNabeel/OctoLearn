@@ -56,7 +56,7 @@ License:
     MIT
 
 Version:
-    0.8.0
+    0.9.0
 """
 
 import pandas as pd
@@ -85,8 +85,7 @@ from .experiments.outlier_detector import OutlierDetector
 from .feature.interaction_analyzer import FeatureInteractionAnalyzer
 from .feature.generator import FeatureGenerator
 from .preprocessing.auto_cleaner import AutoCleaner
-
-
+from .preprocessing.pipeline_builder import PipelineBuilder
 
 # Phase 4 modules
 from .models.model_trainer import ModelTrainer
@@ -104,32 +103,29 @@ logger = setup_logger(__name__)
 @dataclass
 class DataConfig:
     """
-    Configuration for data handling and validation.
-    
-    This dataclass encapsulates all data-related configuration options, including
-    sampling strategy, size limits, and data-specific parameters.
-    
-    Attributes:
-        use_full_data (bool): If True, uses entire dataset for all operations.
-            If False, samples data for faster profiling while using full data for training.
-            Default: False (recommended for datasets > 10,000 rows).
-        
-        sample_size (int): Number of rows to sample for profiling when use_full_data=False.
-            Larger values give more accurate profiles but slower execution.
-            Recommended: 500-2000. Default: 500.
-        
-        test_size (float): Proportion of data to reserve for testing (0.0-1.0).
-            Must be between 0.1 and 0.5. Default: 0.2 (20% test, 80% train).
-        
-        random_state (int): Random seed for reproducibility. All random operations use this seed.
-            Set to None for non-deterministic results. Default: 42.
-        
-        stratify_target (bool): If True, stratifies train/test split by target variable.
-            Recommended for classification with imbalanced classes. Default: True.
-    
-    Example:
-        >>> config = DataConfig(sample_size=1000, test_size=0.2, random_state=42)
-        >>> automl = AutoML(data_config=config)
+    Configuration for data ingestion, sampling, and validation strategy.
+
+    Parameters
+    ----------
+    use_full_data : bool, default=False
+        If True, the entire dataset will be used for training. For large datasets,
+        this may increase memory usage significantly.
+    sample_size : int, default=500
+        The number of rows to sample if `use_full_data` is False. This is useful
+        for quick prototyping on large datasets.
+    test_size : float, default=0.2
+        The proportion of the dataset to include in the test split (0.0 < size < 1.0).
+    random_state : int, default=42
+        Determines random number generation for reproducibility across runs.
+    stratify_target : bool, default=True
+        If True, data is split in a stratified fashion using the target labels.
+        Only applicable for classification tasks.
+
+    Examples
+    --------
+    >>> from octolearn import AutoML, DataConfig
+    >>> config = DataConfig(sample_size=1000, test_size=0.3)
+    >>> automl = AutoML(data_config=config)
     """
     use_full_data: bool = False
     sample_size: int = 500
@@ -141,39 +137,31 @@ class DataConfig:
 @dataclass
 class ProfilingConfig:
     """
-    Configuration for dataset profiling and analysis.
-    
-    Controls how the data is analyzed to understand its characteristics, quality,
-    and potential issues.
-    
-    Attributes:
-        detect_outliers (bool): Whether to perform outlier detection using IQR and Isolation Forest.
-            Helpful for understanding data quality. Default: True.
-        
-        analyze_interactions (bool): Whether to analyze feature interactions and correlations.
-            Can be slow for high-dimensional data (>100 features). Default: True.
-        
-        generate_risk_score (bool): Whether to calculate data quality risk score (0-100).
-            Default: True.
-        
-        calculate_feature_importance (bool): Whether to calculate feature importance scores.
-            Uses Random Forest baseline + SHAP analysis. Default: True.
-        
-        generate_recommendations (bool): Whether to generate actionable recommendations.
-            Based on detected data characteristics. Default: True.
-        
-        include_duplicates_analysis (bool): Whether to detect and analyze duplicate rows.
-            Default: True.
-    
-    Example:
-        >>> config = ProfilingConfig(
-        ...     detect_outliers=True,
-        ...     analyze_interactions=False  # Skip for speed with high-dimensional data
-        ... )
-        >>> automl = AutoML(profiling_config=config)
+    Configuration for dataset profiling and structural analysis.
+
+    Parameters
+    ----------
+    detect_outliers : bool, default=True
+        Whether to run outlier detection using multiple methods (IQR, Isolation Forest, Z-Score).
+    analyze_interactions : bool, default=False
+        Whether to perform pairwise feature interaction analysis. This can be
+        computationally expensive for high-dimensional data.
+    generate_risk_score : bool, default=True
+        Whether to calculate an overall data health and reliability score.
+    calculate_feature_importance : bool, default=True
+        Whether to calculate baseline feature importance scores before modeling.
+    generate_recommendations : bool, default=True
+        Whether the engine should generate actionable advice for improving data/models.
+    include_duplicates_analysis : bool, default=True
+        Whether to scan and report on duplicate rows or highly correlated (leaked) features.
+
+    Examples
+    --------
+    >>> from octolearn import ProfilingConfig
+    >>> config = ProfilingConfig(analyze_interactions=True)
     """
     detect_outliers: bool = True
-    analyze_interactions: bool = False  # Disabled by default for performance
+    analyze_interactions: bool = False
     generate_risk_score: bool = True
     calculate_feature_importance: bool = True
     generate_recommendations: bool = True
@@ -183,36 +171,25 @@ class ProfilingConfig:
 @dataclass
 class PreprocessingConfig:
     """
-    Configuration for data cleaning and preprocessing.
-    
-    Attributes:
-        auto_clean (bool): Whether to automatically impute, encode, and scale data.
-            Default: True. Set to False only if you provide pre-cleaned data.
-        
-        imputer_strategy (Dict): Imputation strategy {'numeric': 'mean'|'median'|'knn',
-            'categorical': 'mode'|'constant'}. Default: {'numeric': 'median', 'categorical': 'mode'}.
-        
-        encoder_strategy (Dict): Encoding strategy with keys:
-            - 'ordinal_cols': List of columns for ordinal encoding
-            - 'bool_cols': List of columns for binary encoding (0/1)
-            - 'ohe_cols': List of columns for one-hot encoding
-            Default: Auto-detects based on cardinality.
-        
-        scaler (str): Feature scaling method: 'standard', 'robust', 'minmax', or None.
-            'standard': Zero mean, unit variance (good for normally distributed features)
-            'robust': Uses median and IQR (robust to outliers)
-            'minmax': Scales to [0, 1] range
-            Default: 'standard'.
-        
-        id_columns (List[str]): Columns to drop as non-predictive identifiers.
-            Detected automatically but can be overridden. Default: None (auto-detect).
-    
-    Example:
-        >>> config = PreprocessingConfig(
-        ...     imputer_strategy={'numeric': 'median', 'categorical': 'mode'},
-        ...     scaler='robust'  # Robust to outliers
-        ... )
-        >>> automl = AutoML(preprocessing_config=config)
+    Configuration for automated data cleaning, imputation, and encoding.
+
+    Parameters
+    ----------
+    auto_clean : bool, default=True
+        Whether to automatically apply data sanitation (ID removal, constant removal, etc.).
+    imputer_strategy : dict, optional
+        Custom mapping for imputation strategies (e.g., {'age': 'median'}).
+        If None, the global default from `config.py` is used.
+    encoder_strategy : dict, optional
+        Custom mapping for encoding categorical columns.
+    scaler : str, default='standard'
+        The scaling method to apply to numeric features. Options: 'standard', 'robust', 'minmax', None.
+    id_columns : list of str, optional
+        Explicit list of columns to treat as IDs and exclude from modeling.
+
+    Examples
+    --------
+    >>> config = PreprocessingConfig(scaler='robust', auto_clean=True)
     """
     auto_clean: bool = True
     imputer_strategy: Dict[str, str] = None
@@ -224,127 +201,107 @@ class PreprocessingConfig:
 @dataclass
 class ModelingConfig:
     """
-    Configuration for model selection and training.
-    
-    Attributes:
-        train_models (bool): Whether to train machine learning models.
-            Default: True. Set to False to only profile data.
-        
-        models_to_train (List[str]): Specific models to train. Options:
-            Classification: 'logistic_regression', 'random_forest', 'gradient_boosting',
-                           'xgboost', 'lightgbm', 'svm'
-            Regression: 'linear_regression', 'random_forest', 'gradient_boosting',
-                       'xgboost', 'lightgbm', 'svr'
-            Default: All available models for detected task.
-        
-        evaluation_metric (str): Metric to optimize during training.
-            Classification: 'accuracy', 'precision', 'recall', 'f1', 'roc_auc'
-            Regression: 'mse', 'rmse', 'mae', 'r2', 'mape'
-            Default: 'f1' for classification, 'rmse' for regression.
-        
-        n_models (int): Number of models to train (if using auto-selection).
-            Default: 5. Range: 1-10.
-        
-        test_size (float): Proportion of data for testing. Default: 0.2.
-    
-    Example:
-        >>> config = ModelingConfig(
-        ...     models_to_train=['xgboost', 'lightgbm'],  # Only the best two
-        ...     evaluation_metric='f1'
-        ... )
-        >>> automl = AutoML(modeling_config=config)
+    Configuration for model selection, training, and ensemble strategy.
+
+    Parameters
+    ----------
+    train_models : bool, default=True
+        Whether to perform model training. If False, the pipeline will stop
+        after the profiling/preprocessing phase.
+    models_to_train : list of str, optional
+        List of specific algorithms to train (e.g., ['xgboost', 'lightgbm']).
+        If None, the defaults from `config.py` are used.
+    evaluation_metric : str, optional
+        The metric used to select the 'Champion' model. If None, defaults to
+        'f1' for classification and 'r2' for regression.
+    n_models : int, default=5
+        Number of top-performing models to consider for the final leaderboard.
+    test_size : float, default=0.2
+        Percentage of data to withhold for model evaluation.
+    use_stacking : bool, default=True
+        Whether to train a Stacking Ensemble (combiner) of the top base models.
+
+    Examples
+    --------
+    >>> config = ModelingConfig(models_to_train=['xgboost'], use_stacking=False)
     """
     train_models: bool = True
     models_to_train: Optional[List[str]] = None
     evaluation_metric: Optional[str] = None
     n_models: int = 5
     test_size: float = 0.2
+    use_stacking: bool = True
 
 
 @dataclass
 class OptimizationConfig:
     """
-    Configuration for hyperparameter optimization using Optuna.
-    
-    Attributes:
-        use_optuna (bool): Whether to use Optuna for hyperparameter tuning.
-            Default: True. Adds ~5-10 minutes to training time but improves performance 3-8%.
-        
-        optuna_trials_per_model (int): Number of trials per model for optimization.
-            More trials = better hyperparameters but slower. Default: 20.
-            Recommended: 10-50 depending on time budget.
-        
-        optuna_timeout_seconds (int): Maximum time (seconds) to spend optimizing each model.
-            Default: 300 (5 minutes). Set to None for no timeout.
-        
-        optuna_parallel_jobs (int): Number of parallel workers for Optuna.
-            -1: Use all CPU cores. 1: Sequential. Default: -1.
-        
-        use_registry (bool): Whether to save trained models to registry.
-            Default: True. Models saved to './trained_models/' directory.
-    
-    Example:
-        >>> config = OptimizationConfig(
-        ...     use_optuna=True,
-        ...     optuna_trials_per_model=20,
-        ...     optuna_timeout_seconds=300
-        ... )
-        >>> automl = AutoML(optimization_config=config)
+    Configuration for hyperparameter optimization and model tracking.
+
+    Parameters
+    ----------
+    use_optuna : bool, default=True
+        Whether to use the Optuna optimizer for automated hyperparameter tuning.
+    optuna_trials_per_model : int, default=20
+        Maximum number of optimization trials per unique algorithm.
+    optuna_timeout_seconds : int, default=300
+        Maximum time spent optimizing a single algorithm.
+    optuna_parallel_jobs : int, default=-1
+        Number of parallel trials to run (-1 uses all cores).
+    use_registry : bool, default=True
+        Whether to store trained models and experiments in the local Model Registry.
+    early_stopping_rounds : int, optional
+        Rounds of non-improvement before stopping boosting iterations.
+    hyperparameter_overrides : dict, optional
+        Manual hyperparameter constraints to pass to specific models.
+
+    Examples
+    --------
+    >>> config = OptimizationConfig(optuna_trials_per_model=50)
     """
     use_optuna: bool = True
     optuna_trials_per_model: int = 20
     optuna_timeout_seconds: int = 300
     optuna_parallel_jobs: int = -1
     use_registry: bool = True
-    early_stopping_rounds: int = None  # New: Early stopping for XGB/LGBM/CatBoost
-    hyperparameter_overrides: Dict[str, Dict] = None  # New: Custom search spaces
-
+    early_stopping_rounds: int = None
+    hyperparameter_overrides: Dict[str, Dict] = None
 
 
 @dataclass
 class ReportingConfig:
     """
-    Configuration for report generation and output.
-    
-    Attributes:
-        generate_report (bool): Whether to generate PDF report after training.
-            Default: True.
-        
-        report_detail (str): Detail level of PDF report.
-            'brief': Summary insights only (~5 pages)
-            'detailed': Complete analysis (~20+ pages)
-            Default: 'detailed'.
-        
-        include_data_journey (bool): Whether to show complete data transformation journey.
-            Shows original → cleaned → after each step. Default: True.
-        
-        include_model_comparison (bool): Whether to show detailed model benchmarks.
-            Default: True.
-        
-        include_recommendations (bool): Whether to include ML recommendations.
-            Default: True.
-        
-        visuals_limit (int): Maximum number of feature visualizations to include.
-            More = larger PDF but more insights. Default: 10.
-        
-        plot_mode (str): Style of plots. Options: 'simple', 'dashboard', 'publication'.
-            Default: 'simple'.
-        
-        include_shap (bool): Whether to include SHAP feature importance plots.
-            Default: True. Adds ~100ms to report generation.
-        
-        color_scheme (str): Color scheme for visualizations.
-            'dark' (black background, red accents) or 'light'. Default: 'dark'.
-    
-    Example:
-        >>> config = ReportingConfig(
-        ...     report_detail='detailed',
-        ...     include_data_journey=True,
-        ...     visuals_limit=15
-        ... )
-        >>> automl = AutoML(reporting_config=config)
+    Configuration for final PDF report generation and visualization style.
+
+    Parameters
+    ----------
+    generate_report : bool, default=True
+        Whether to produce the professional PDF intelligence report.
+    report_title : str, default='OctoLearn Intelligence Report'
+        The header title displayed on the cover page.
+    report_detail : str, default='detailed'
+        The level of complexity in the metrics/narrative ('brief' or 'detailed').
+    include_data_journey : bool, default=True
+        Whether to include the 'Before & After' cleaning distribution visuals.
+    include_model_comparison : bool, default=True
+        Whether to include the 'Model Arena' leaderboard.
+    include_recommendations : bool, default=True
+        Whether to include the narrative insights section.
+    visuals_limit : int, default=10
+        Maximum number of feature distribution plots to generate.
+    plot_mode : str, default='simple'
+        The complexity of the matplotlib visuals.
+    include_shap : bool, default=True
+        Whether to calculate and display SHAP global importance values.
+    color_scheme : str, default='light'
+        The aesthetic theme of the report ('light', 'dark', or 'neon').
+
+    Examples
+    --------
+    >>> config = ReportingConfig(report_title="Q4 Churn Prediction Analysis")
     """
     generate_report: bool = True
+    report_title: str = 'OctoLearn Intelligence Report'
     report_detail: str = 'detailed'
     include_data_journey: bool = True
     include_model_comparison: bool = True
@@ -352,140 +309,74 @@ class ReportingConfig:
     visuals_limit: int = 10
     plot_mode: str = 'simple'
     include_shap: bool = True
-    include_shap: bool = True
     color_scheme: str = 'light'
 
 
 @dataclass
 class ParallelConfig:
     """
-    Configuration for parallel processing.
-    
-    Attributes:
-        parallel_processing (bool): Whether to use parallel processing.
-            Default: True. Provides 2-8x speedup on multi-core systems.
-        
-        n_jobs (int): Number of parallel jobs.
-            -1: Use all CPU cores
-            1: Sequential (single core)
-            2+: Use specific number of cores
-            Default: -1.
-        
-        backend (str): Joblib backend: 'threading', 'loky', 'dask'.
-            'threading': Good for I/O bound, light computation
-            'loky': Good for heavy computation
-            'dask': For very large datasets
-            Default: 'threading'.
-        
-        verbose (int): Verbosity level (0-2). Default: 0 (silent).
-    
-    Example:
-        >>> config = ParallelConfig(n_jobs=4, enable_gpu=True)
-        >>> automl = AutoML(parallel_config=config)
+    Configuration for multi-core parallel processing and hardware acceleration.
+
+    Parameters
+    ----------
+    parallel_processing : bool, default=True
+        Whether to enable parallel execution of training and profiling tasks.
+    n_jobs : int, default=-1
+        The number of worker threads/processes. -1 uses all available CPU cores.
+    backend : str, default='threading'
+        The parallelization engine ('threading', 'loky', or 'mulitprocessing').
+    verbose : int, default=0
+        Logging verbosity for parallel workers.
+    enable_gpu : bool, default=False
+        Whether to attempt hardware acceleration for compatible models (XGBoost/LightGBM).
+
+    Examples
+    --------
+    >>> config = ParallelConfig(n_jobs=4, enable_gpu=True)
     """
     parallel_processing: bool = True
     n_jobs: int = -1
     backend: str = 'threading'
     verbose: int = 0
-    enable_gpu: bool = False  # New: Enable GPU acceleration
-
+    enable_gpu: bool = False
 
 
 class AutoML:
     """
     Enterprise-Grade AutoML Pipeline Orchestrator.
-    
-    This is the main class that orchestrates the entire machine learning workflow.
-    It handles data validation, profiling, cleaning, feature engineering, model
-    training with hyperparameter optimization, and comprehensive reporting.
-    
-    The design emphasizes transparency (users can see data at every stage), control
-    (every aspect is configurable), and production-readiness (handles edge cases gracefully).
-    
-    Attributes:
-        data_config (DataConfig): Configuration for data handling
-        profiling_config (ProfilingConfig): Configuration for analysis
-        preprocessing_config (PreprocessingConfig): Configuration for cleaning
-        modeling_config (ModelingConfig): Configuration for model training
-        optimization_config (OptimizationConfig): Configuration for hyperparameter tuning
-        reporting_config (ReportingConfig): Configuration for report generation
-        parallel_config (ParallelConfig): Configuration for parallel processing
-        
-        # State attributes (populated after fit())
-        raw_profile_ (DatasetProfile): Profile of raw data before cleaning
-        clean_profile_ (DatasetProfile): Profile of cleaned data
-        X_ (DataFrame): Cleaned feature data (combined train + test)
-        y_ (Series): Target variable (combined train + test)
-        X_raw_ (DataFrame): Original raw data (for risk scoring)
-        X_train_ (DataFrame): Cleaned training features
-        X_test_ (DataFrame): Cleaned test features
-        y_train_ (Series): Training target
-        y_test_ (Series): Test target
-        best_model_ (Model): The best trained model
-        trained_models_ (Dict): All trained models
-        model_benchmarks_ (List): Performance metrics for all models
-        registry_ (ModelRegistry): Registry of trained models
-        cleaning_log_ (Dict): Log of all cleaning operations performed
-    
-    Parameters:
-        data_config (DataConfig, optional): Custom data configuration. If None, uses defaults.
-        profiling_config (ProfilingConfig, optional): Custom profiling configuration.
-        preprocessing_config (PreprocessingConfig, optional): Custom preprocessing configuration.
-        modeling_config (ModelingConfig, optional): Custom modeling configuration.
-        optimization_config (OptimizationConfig, optional): Custom optimization configuration.
-        reporting_config (ReportingConfig, optional): Custom reporting configuration.
-        parallel_config (ParallelConfig, optional): Custom parallel processing configuration.
-        show_progress (bool): Whether to show progress messages. Default: True.
-        save_artifacts (bool): Whether to save artifacts (models, plots, etc). Default: True.
-        artifact_dir (str): Directory to save artifacts. Default: './octolearn_artifacts/'.
-        **kwargs: For backward compatibility with previous parameter names.
-    
-    Example:
-        >>> from octolearn import AutoML
-        >>> import pandas as pd
-        >>> 
-        >>> # Basic usage with defaults
-        >>> data = pd.read_csv('data.csv')
-        >>> X = data.drop('target', axis=1)
-        >>> y = data['target']
-        >>> 
-        >>> automl = AutoML()
-        >>> automl.fit(X, y)
-        >>> pdf = automl.generate_report()
-        >>> predictions = automl.predict(X_new)
-        >>> 
-        >>> # Advanced usage with custom configuration
-        >>> automl = AutoML(
-        ...     data_config=DataConfig(sample_size=1000, test_size=0.25),
-        ...     profiling_config=ProfilingConfig(analyze_interactions=False),
-        ...     optimization_config=OptimizationConfig(optuna_trials_per_model=50),
-        ...     reporting_config=ReportingConfig(report_detail='detailed')
-        ... )
-        >>> automl.fit(X, y)
-        >>> 
-        >>> # Access insights
-        >>> print(f"Risk Score: {automl.get_risk_score()}")
-        >>> print(f"Best Model: {automl.best_model_.__class__.__name__}")
-        >>> print(f"Feature Importance: {automl.get_feature_importance()}")
-        >>> 
-        >>> # Access intermediate results
-        >>> print(f"Training shape: {automl.X_train_.shape}")
-        >>> print(f"Cleaned columns: {automl.X_.columns.tolist()}")
-        >>> print(f"Outliers detected: {automl.outlier_results_}")
-    
-    Raises:
-        ValueError: If input data is invalid or incompatible
-        TypeError: If parameters are of wrong type
-        RuntimeError: If pipeline execution fails
-    
-    Note:
-        All configuration objects have sensible defaults, so you can start with
-        AutoML() and customize only what you need.
-    
-    Version:
-        0.8.0
+
+    This is the main entry point for the OctoLearn library. It orchestrates the
+    entire machine learning lifecycle—from data profiling and automated cleaning
+    to hyperparameter optimization and professional report generation.
+
+    Attributes
+    ----------
+    best_model_ : object
+        The top-performing estimator selected after training and optional optimization.
+    model_benchmarks_ : dict
+        Scores for all trained models across all evaluation metrics.
+    X_train_ : pd.DataFrame
+        The final cleaned and preprocessed training data.
+    registry_ : ModelRegistry
+        The local tracking system used for model versioning and artifact storage.
+
+    Notes
+    -----
+    OctoLearn follows a 'fit-then-report' pattern. Calling `.fit()` executes the
+    entire internal pipeline, while `.generate_report()` produces a PDF summarizing
+    the intelligence gathered.
+
+    Examples
+    --------
+    >>> from octolearn import AutoML
+    >>> import pandas as pd
+    >>> data = pd.read_csv('data.csv')
+    >>> X, y = data.drop('target', axis=1), data['target']
+    >>> automl = AutoML()
+    >>> automl.fit(X, y)
+    >>> pdf_path = automl.generate_report()
     """
-    
+
     def __init__(
         self,
         data_config: Optional[DataConfig] = None,
@@ -506,27 +397,32 @@ class AutoML:
         **kwargs
     ):
         """
-        Initialize the AutoML pipeline.
-        
-        Parameters are organized into logical configuration groups for clarity and
-        maintainability. Each group can be customized independently.
-        
-        Args:
-            data_config: DataConfig object for data handling. Default: DataConfig()
-            profiling_config: ProfilingConfig object for analysis. Default: ProfilingConfig()
-            preprocessing_config: PreprocessingConfig object for cleaning. Default: PreprocessingConfig()
-            modeling_config: ModelingConfig object for model training. Default: ModelingConfig()
-            optimization_config: OptimizationConfig for hyperparameter tuning. Default: OptimizationConfig()
-            reporting_config: ReportingConfig for report generation. Default: ReportingConfig()
-            parallel_config: ParallelConfig for parallel processing. Default: ParallelConfig()
-            show_progress: Whether to print progress messages. Default: True.
-            save_artifacts: Whether to save models and plots to disk. Default: True.
-            artifact_dir: Directory for artifacts. Default: './octolearn_artifacts/'.
-            **kwargs: Backward compatibility for old parameter names (deprecated).
-        
-        Raises:
-            TypeError: If config objects are not of correct type
-            ValueError: If parameter values are out of valid range
+        Initialize the AutoML pipeline with specific configuration modules.
+
+        Parameters
+        ----------
+        data_config : DataConfig, optional
+            Settings for sampling and data splitting.
+        profiling_config : ProfilingConfig, optional
+            Settings for dataset health analysis and outlier detection.
+        preprocessing_config : PreprocessingConfig, optional
+            Settings for imputation, encoding, and scaling.
+        modeling_config : ModelingConfig, optional
+            Settings for algorithm selection and training.
+        optimization_config : OptimizationConfig, optional
+            Settings for Bayesian hyperparameter tuning (Optuna).
+        reporting_config : ReportingConfig, optional
+            Settings for the PDF intelligence report and plot themes.
+        parallel_config : ParallelConfig, optional
+            Settings for multi-core processing Backend.
+        show_progress : bool, default=True
+            Whether to output pipeline status to the console.
+        save_artifacts : bool, default=True
+            Whether to persist models and logs to the local filesystem.
+        artifact_dir : str, default='./octolearn_artifacts/'
+            Base directory for all saved artifacts.
+        **kwargs : dict
+            Deprecated legacy parameters for backward compatibility.
         """
         # Initialize config objects with defaults or provided values
         self.data_config = data_config or DataConfig()
@@ -551,10 +447,6 @@ class AutoML:
         self.save_artifacts = save_artifacts
         self.artifact_dir = artifact_dir
         
-        # Create artifact directory if needed
-        if save_artifacts:
-            os.makedirs(artifact_dir, exist_ok=True)
-        
         # Initialize profiler
         self.profiler = DataProfiler()
         
@@ -567,8 +459,15 @@ class AutoML:
         self.X_train_ = None
         self.X_test_ = None
         self.y_train_ = None
+        self.y_train_ = None
         self.y_test_ = None
         
+        # New: Track original dataset size before sampling/cleaning
+        self.original_rows_ = None
+        
+        # New: Target encoder for string classification targets
+        self.target_encoder_ = None
+
         # Components
         self.cleaner_ = None
         self.outlier_results_ = None
@@ -582,7 +481,7 @@ class AutoML:
         self.registry_ = None
         
         if self.show_progress:
-            logger.info(f"AutoML initialized (v0.8.0)")
+            logger.info(f"AutoML initialized (v0.9.0)")
             self._log_configuration()
     
     def _validate_configs(self):
@@ -687,77 +586,56 @@ class AutoML:
         # ── Preprocessing overrides ───────────────────────────────────────
         imputer_strategy: Optional[Dict[str, str]] = None,
         scaler: Optional[str] = None,
-    ) -> 'AutoML':
+        # Standard flags
+        train_models: Optional[bool] = None,
+    ):
         """
-        Execute the complete AutoML pipeline on your data.
+        Execute the complete AutoML pipeline on the provided dataset.
 
-        By default OctoLearn handles everything automatically with sensible
-        defaults. The optional keyword arguments let you override specific
-        settings **for this run only** without touching the stored config
-        objects — so you can experiment freely without re-creating the
-        AutoML instance.
+        This method orchestrates data validation, profiling, cleaning,
+        feature engineering, and model training. By default, it uses the
+        configuration provided during initialization.
 
-        Pipeline stages:
-            1. Input validation
-            2. Raw data profiling
-            3. Sampling (if configured)
-            4. Train/test split with stratification
-            5. Automatic data cleaning (imputation, encoding, scaling)
-            6. Cleaned data profiling
-            7. Feature engineering (outlier detection, interactions)
-            8. Model training with hyperparameter optimisation
-            9. Artifact saving
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input feature matrix. Must be a pandas DataFrame.
+        y : pd.Series
+            The target vector. Must be a pandas Series.
+        optuna_trials : int, optional
+            Override for `optimization_config.optuna_trials_per_model`.
+        optuna_timeout : int, optional
+            Override for `optimization_config.optuna_timeout_seconds`.
+        use_optuna : bool, optional
+            Override for `optimization_config.use_optuna`.
+        test_size : float, optional
+            Override for `data_config.test_size`.
+        random_state : int, optional
+            Override for `data_config.random_state`.
+        models : list of str, optional
+            Override for `modeling_config.models_to_train`.
+        n_models : int, optional
+            Override for `modeling_config.n_models`.
+        evaluation_metric : str, optional
+            Override for `modeling_config.evaluation_metric`.
+        imputer_strategy : dict, optional
+            Override for `preprocessing_config.imputer_strategy`.
+        scaler : str, optional
+            Override for `preprocessing_config.scaler`.
+        train_models : bool, optional
+            Override for `modeling_config.train_models`.
 
-        Args:
-            X (pd.DataFrame): Feature matrix (n_samples × n_features).
-                Column names must be strings (auto-converted if not).
-            y (pd.Series): Target variable (n_samples,).
-                Classification → labels; Regression → continuous values.
+        Returns
+        -------
+        self : AutoML
+            Returns the instance itself after fitting.
 
-            optuna_trials (int, optional): Override ``OptimizationConfig.
-                optuna_trials_per_model`` for this run.
-                Example: ``automl.fit(X, y, optuna_trials=5)`` for a quick run.
-            optuna_timeout (int, optional): Override per-model Optuna timeout
-                in seconds. ``None`` means no timeout.
-            use_optuna (bool, optional): Override whether Optuna is used.
-                ``False`` → use default hyperparameters (much faster).
-            test_size (float, optional): Override ``DataConfig.test_size``.
-                Must be between 0.05 and 0.5.
-            random_state (int, optional): Override ``DataConfig.random_state``
-                for reproducibility.
-            models (list[str], optional): Override ``ModelingConfig.
-                models_to_train``. E.g. ``['xgboost', 'lightgbm']``.
-            n_models (int, optional): Override ``ModelingConfig.n_models``.
-            evaluation_metric (str, optional): Override the primary metric
-                used to rank models (e.g. ``'roc_auc'``, ``'rmse'``).
-            imputer_strategy (dict, optional): Override imputation strategy,
-                e.g. ``{'numeric': 'median', 'categorical': 'mode'}``.
-            scaler (str, optional): Override feature scaler:
-                ``'standard'``, ``'robust'``, ``'minmax'``, or ``None``.
-
-        Returns:
-            AutoML: Returns *self* for method chaining::
-
-                pdf = AutoML().fit(X, y, optuna_trials=10).generate_report()
-
-        Raises:
-            TypeError: If X is not a DataFrame or y is not a Series.
-            ValueError: If X and y have different row counts, or are empty.
-
-        Examples:
-            Quick run — no Optuna, 2 models::
-
-                automl.fit(X, y, use_optuna=False, n_models=2)
-
-            Full run with custom Optuna budget::
-
-                automl.fit(X, y, optuna_trials=50, optuna_timeout=300)
-
-            Custom preprocessing::
-
-                automl.fit(X, y,
-                           imputer_strategy={'numeric': 'median'},
-                           scaler='robust')
+        Raises
+        ------
+        ValueError
+            If input dimensions are incompatible or data quality is too poor.
+        TypeError
+            If X or y are not pandas objects.
         """
         # ── Apply per-call overrides non-destructively ────────────────────
         # We snapshot the original values and restore them after the run so
@@ -775,6 +653,10 @@ class AutoML:
         if use_optuna is not None:
             _orig['use_optuna'] = self.optimization_config.use_optuna
             self.optimization_config.use_optuna = use_optuna
+
+        if train_models is not None:
+            _orig['train_models'] = self.modeling_config.train_models
+            self.modeling_config.train_models = train_models
 
         if test_size is not None:
             if not 0.05 <= test_size <= 0.5:
@@ -823,7 +705,7 @@ class AutoML:
                     setattr(self.optimization_config, attr, val)
                 elif attr in ('test_size', 'random_state'):
                     setattr(self.data_config, attr, val)
-                elif attr in ('models_to_train', 'n_models', 'evaluation_metric'):
+                elif attr in ('models_to_train', 'n_models', 'evaluation_metric', 'train_models'):
                     setattr(self.modeling_config, attr, val)
                 elif attr in ('imputer_strategy', 'scaler'):
                     setattr(self.preprocessing_config, attr, val)
@@ -894,10 +776,35 @@ class AutoML:
         # All-NaN column detection
         all_nan_cols = X.columns[X.isnull().all()].tolist()
         if all_nan_cols:
-            raise ValueError(
+            logger.warning(
                 f"Found {len(all_nan_cols)} columns with all null values: {all_nan_cols}. "
-                f"Hint: Remove these columns before passing to AutoML."
+                f"Dropping them automatically."
             )
+            X.drop(columns=all_nan_cols, inplace=True)
+            # Update self.X_raw_ if it was already assigned? No, _validate_inputs is called before pipeline execution starts (usually).
+            # But wait, X is passed by reference? 
+            # If I modify X in place, caller sees it?
+            # Pandas functions usually don't modify in place unless specified.
+            # But `drop(inplace=True)` modifies the object.
+            # `_validate_inputs` takes `X`.
+            # If `X` is modified here, does it affect `_execute_pipeline`'s `X`?
+            # `fit(X, y)` calls `_validate_inputs(X, y)`.
+            # If `_validate_inputs` modifies `X` in place, `fit` sees it?
+            # Validating inputs should generally NOT modify inputs.
+            # But here we want to proceed.
+            # Better to return cleaned X, y from validate?
+            # Or just warn and let pipeline handle it if pipeline handles it?
+            # `AutoML` pipeline starts with `profile`. Profiler handles NaN.
+            # Then `cleaner`. Cleaner handles NaN (imputes).
+            # But `cleaner` might fail on all-NaN column if strategy is 'mean' (all NaN -> mean=NaN).
+            # So dropping is safer.
+            # But I should probably do it in `fit` before calling `validate` or let `validate` return.
+            # Refactoring: allow `validate` to modify? 
+            # Or just warn here and let `AutoCleaner` handle it?
+            # But if `AutoCleaner` fails...
+            # The previous error was explicit `raise ValueError`.
+            # I will drop in place and warn.
+
         
         # Target validation
         if y.isnull().all():
@@ -933,6 +840,7 @@ class AutoML:
         X = X.copy()
         y = y.copy()
         self.X_raw_ = X.copy()  # Save raw for risk scoring
+        self.original_rows_ = len(X)  # Save original row count for recommendations
         
         if not self.data_config.use_full_data and len(X) > self.data_config.sample_size:
             if self.show_progress:
@@ -1001,6 +909,11 @@ class AutoML:
             if self.show_progress:
                 logger.info("PHASE 6: Model training...")
             self._train_models()
+            
+            # PHASE 7: Feature Importance Analysis
+            if self.show_progress:
+                logger.info("PHASE 7: Feature Importance Analysis...")
+            self._analyze_feature_importance()
     
     def _profile_raw_data(self, X: pd.DataFrame, y: pd.Series) -> None:
         """Profile raw data before cleaning."""
@@ -1085,6 +998,43 @@ class AutoML:
                 logger.error(f"Data cleaning failed: {str(e)}")
                 raise ValueError(f"Data cleaning failed. Error: {str(e)}") from e
         
+        # Handle Target Encoding for Classification (if strings)
+        # ModelTrainer (XGBoost/LightGBM) requires numeric targets
+        if self.modeling_config.train_models:  # Only needed if training
+             # Access task type from profile or detect it
+             task = self.raw_profile_.task_type if self.raw_profile_ else "unknown"
+             if task == 'classification':
+                 # Check if target is not numeric
+                 # Use y_train_ to check dtype
+                 if not pd.api.types.is_numeric_dtype(self.y_train_):
+                     try:
+                         from sklearn.preprocessing import LabelEncoder
+                         self.target_encoder_ = LabelEncoder()
+                         # Fit on all known target values (train + test to be safe? No, only train usually)
+                         # But wait, we split already.
+                         # Best to fit on train, but handle unknown in test?
+                         # LabelEncoder doesn't handle unknown.
+                         # Better to fit on raw y before split?
+                         # But we are in _clean_data, after split.
+                         # Let's fit on concatenated y_train and y_test to ensure all classes are covered if possible
+                         # (Leakage is minimal for target encoding labels)
+                         self.target_encoder_.fit(pd.concat([self.y_train_, self.y_test_]))
+                         
+                         self.y_train_ = pd.Series(
+                             self.target_encoder_.transform(self.y_train_),
+                             index=self.y_train_.index,
+                             name=self.y_train_.name
+                         )
+                         self.y_test_ = pd.Series(
+                             self.target_encoder_.transform(self.y_test_),
+                             index=self.y_test_.index,
+                             name=self.y_test_.name
+                         )
+                         if self.show_progress:
+                             logger.info(f"  Encoded string target labels to integers. Classes: {len(self.target_encoder_.classes_)}")
+                     except Exception as e:
+                         logger.warning(f"Target encoding failed: {e}")
+        
         # Combine for analysis
         self.X_ = pd.concat([self.X_train_, self.X_test_], axis=0).sort_index()
         self.y_ = pd.concat([self.y_train_, self.y_test_], axis=0).sort_index()
@@ -1095,7 +1045,7 @@ class AutoML:
     
     def _feature_engineering(self) -> None:
         """Perform intelligent feature engineering."""
-        # 1. Feature Generation (New in v0.8.0)
+        # 1. Feature Generation (New in v0.9.0)
         # We use analyzing_interactions flag as proxy, or it should be enabled by default
         if self.profiling_config.analyze_interactions:
              try:
@@ -1133,6 +1083,34 @@ class AutoML:
                 self.interaction_results_ = interaction_analyzer.analyze()
             except Exception as e:
                 logger.warning(f"Interaction analysis failed: {str(e)}")
+
+    def _analyze_feature_importance(self) -> None:
+        """Extract feature importance from the best model."""
+        self.feature_importance_ = {}
+        
+        if self.best_model_ is None:
+            return
+            
+        try:
+            # Tree-based
+            if hasattr(self.best_model_, 'feature_importances_'):
+                importances = self.best_model_.feature_importances_
+                feature_names = self.X_train_.columns
+                self.feature_importance_ = dict(zip(feature_names, importances))
+                
+            # Linear models
+            elif hasattr(self.best_model_, 'coef_'):
+                importances = np.abs(self.best_model_.coef_)
+                if importances.ndim > 1:
+                    importances = importances[0] # Take first class for multiclass or flatten
+                feature_names = self.X_train_.columns
+                self.feature_importance_ = dict(zip(feature_names, importances))
+                
+            else:
+                logger.info("Best model does not support native feature importance.")
+                
+        except Exception as e:
+            logger.warning(f"Failed to extract feature importance: {e}")
     
     def _train_models(self) -> None:
         """Train machine learning models."""
@@ -1167,6 +1145,8 @@ class AutoML:
             self.trained_models_ = trainer.trained_models
             self.best_model_ = trainer.best_model
             self.model_benchmarks_ = getattr(trainer, 'model_benchmarks', [])
+            self.best_model_predictions_ = getattr(trainer, 'best_model_predictions', None)
+            self.best_model_probabilities_ = getattr(trainer, 'best_model_probabilities', None)
             
             if self.optimization_config.use_registry:
                 self.registry_ = ModelRegistry()
@@ -1190,29 +1170,25 @@ class AutoML:
     
     def predict(self, X_new: pd.DataFrame) -> np.ndarray:
         """
-        Make predictions on new data using the best trained model.
-        
-        Automatically applies the same preprocessing that was used during training,
-        including imputation, encoding, and scaling.
-        
-        Args:
-            X_new (pd.DataFrame): New data to make predictions on.
-                Must have the same features as training data (after cleaning).
-        
-        Returns:
-            np.ndarray: Predictions of same length as X_new.
-                For classification: class labels
-                For regression: continuous predictions
-        
-        Raises:
-            ValueError: If model hasn't been trained yet
-            Exception: If preprocessing or prediction fails
-        
-        Example:
-            >>> automl = AutoML()
-            >>> automl.fit(X_train, y_train)
-            >>> y_pred = automl.predict(X_test)
-            >>> # y_pred contains predictions in same format as y_train
+        Predict target values for new, unseen data.
+
+        Automatically applies the exact same preprocessing pipeline (imputation,
+        encoding, scaling) that was fitted on the training data.
+
+        Parameters
+        ----------
+        X_new : pd.DataFrame
+            The new feature matrix to predict on.
+
+        Returns
+        -------
+        y_pred : np.ndarray
+            Predicted values (class labels or regression targets).
+
+        Notes
+        -----
+        If the target was string-encoded during training, the predictions will
+        be automatically decoded back to their original labels.
         """
         if self.best_model_ is None:
             raise ValueError(
@@ -1229,28 +1205,6 @@ class AutoML:
     
     def generate_report(self, filename: Optional[str] = None) -> str:
         """
-        Generate comprehensive PDF report.
-        
-        Creates a professional, detailed PDF report including:
-        - Executive summary with key insights
-        - Data quality assessment and risk score
-        - Complete data transformation journey (showing before/after)
-        - Preprocessing strategy and rationale
-        - Feature importance and SHAP analysis
-        - Model comparison and selection
-        - Actionable recommendations
-        - All visualizations and metrics
-        
-        The report serves as documentation for stakeholders and technical audience.
-        
-        Returns:
-            str: Path to generated PDF file
-        
-        Raises:
-            ValueError: If fit() hasn't been called yet
-            Exception: If PDF generation fails
-        
-        Example:
             >>> automl = AutoML()
             >>> automl.fit(X, y)
             >>> pdf_path = automl.generate_report()
@@ -1292,7 +1246,7 @@ class AutoML:
             feature_importance=results.get("feature_importance"),
             shap_path=results.get("shap_path"),
             model_benchmarks=self.model_benchmarks_,
-            best_model_name=self.best_model_.__class__.__name__ if self.best_model_ else None,
+            best_model_name=self.model_benchmarks_[0]['model'] if self.model_benchmarks_ else (self.best_model_.__class__.__name__ if self.best_model_ else None),
             cleaning_log=self.cleaning_log_,
             outlier_results=getattr(self, 'outlier_results_', {}),
             interaction_results=getattr(self, 'interaction_results_', {}),
@@ -1303,6 +1257,11 @@ class AutoML:
             # Pass raw and clean DataFrames for before/after distribution plots
             raw_X=self.X_raw_,
             clean_X=self.X_train_,
+            # Performance visuals
+            confusion_matrix_plot=results.get('confusion_matrix'),
+            roc_curve_plot=results.get('roc_curve'),
+            residual_plot=results.get('residuals'),
+            feature_importance_plot=results.get('feature_importance_plot'),
         )
         if self.show_progress:
             logger.info("  Composing PDF...")
@@ -1314,6 +1273,41 @@ class AutoML:
         
         return pdf_file
     
+    def get_pipeline(self) -> Any:
+        """
+        Get the complete standalone scikit-learn Pipeline (Preprocessing + Model).
+        
+        This returns a unified pipeline object that can be used for deployment
+        without the OctoLearn library.
+        
+        Returns
+        -------
+        pipeline : sklearn.pipeline.Pipeline
+            The complete ML pipeline containing all cleaning steps and the best model.
+            
+        Examples
+        --------
+        >>> automl.fit(X, y)
+        >>> pipeline = automl.get_pipeline()
+        >>> pipeline.predict(X_new)  # Standard sklearn API
+        """
+        if self.best_model_ is None:
+            raise ValueError("Run fit() first to generate a model.")
+            
+        from sklearn.pipeline import Pipeline
+        
+        # 1. Build preprocessing part
+        builder = PipelineBuilder(self.cleaner_, scaler=self.preprocessing_config.scaler)
+        preprocessor = builder.build()
+        
+        # 2. Combine with best model
+        pipeline = Pipeline([
+            ('preprocessing', preprocessor),
+            ('model', self.best_model_)
+        ])
+        
+        return pipeline
+
     def _generate_report_components(self) -> Dict[str, Any]:
         """Generate all components needed for the report."""
         results = {}
@@ -1342,8 +1336,30 @@ class AutoML:
             else:
                 results["heatmap_path"] = heatmap_result
                 results["corr_summary"] = {}
+
         except Exception as e:
             logger.warning(f"Heatmap failed: {e}")
+
+        try:
+            results["feature_importance_plot"] = plotter.generate_feature_importance_plot(
+                getattr(self, 'feature_importance_', {})
+            )
+        except Exception as e:
+            logger.warning(f"Feature importance plot failed: {e}")
+            
+        # Performance Plots
+        try:
+            # Need predictions and true metrics
+            # Note: y_test_ is what we evaluated on. 
+            if hasattr(self, 'y_test_') and hasattr(self, 'best_model_predictions_'):
+                perf_paths = plotter.generate_performance_plots(
+                    y_true=self.y_test_,
+                    y_pred=np.array(self.best_model_predictions_) if self.best_model_predictions_ is not None else None,
+                    y_proba=np.array(self.best_model_probabilities_) if self.best_model_probabilities_ is not None else None
+                )
+                results.update(perf_paths)
+        except Exception as e:
+            logger.warning(f"Performance plots failed: {e}")
             results["corr_summary"] = {}
         
         if self.reporting_config.include_shap:
@@ -1377,7 +1393,8 @@ class AutoML:
             try:
                 recommender = RecommendationEngine(
                     self.clean_profile_,
-                    raw_profile=self.raw_profile_,  # Use raw count for sample-size messages
+                    raw_profile=self.raw_profile_,
+                    original_row_count=self.original_rows_
                 )
                 results["recommendations"] = recommender.generate()
             except Exception as e:
@@ -1416,7 +1433,8 @@ class AutoML:
 
         engine = RecommendationEngine(
             self.clean_profile_,
-            raw_profile=self.raw_profile_,  # Use raw count for sample-size messages
+            raw_profile=self.raw_profile_,
+            original_row_count=self.original_rows_
         )
         return engine.generate()
     

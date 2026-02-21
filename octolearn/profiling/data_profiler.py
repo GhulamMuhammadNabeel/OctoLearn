@@ -17,7 +17,53 @@ logger = setup_logger(__name__)
 @dataclass
 class DatasetProfile:
     """
-    Container for storing dataset profiling results.
+    Metadata container for dataset analysis results.
+
+    Stores comprehensive information about a dataset's structure, quality,
+    and statistical distributions across all features.
+
+    Attributes
+    ----------
+    shape : tuple of int
+        The dimensions of the dataset (n_rows, n_cols).
+    columns : list of str
+        The original column names.
+    feature_types : dict of str: str
+        The inferred semantic type for each column (e.g., 'numeric', 'categorical').
+    stats : dict of str: dict
+        Summary statistics (mean, std, min, max, etc.) for each feature.
+    missing_ratio : dict of str: float
+        The proportion of missing values per column.
+    unique_counts : dict of str: int
+        The number of unique values per column.
+    task_type : str, optional
+        The inferred machine learning task type (e.g., 'classification', 'regression').
+    target_col : str, optional
+        The name of the target column, if specified.
+    id_like_columns : list of str
+        Columns identified as potential ID or key columns.
+    constant_columns : list of str
+        Columns with only one unique value.
+    low_variance_columns : list of str
+        Numeric columns with very low variance.
+    numeric_columns : list of str
+        Columns identified as numeric.
+    categorical_columns : list of str
+        Columns identified as categorical.
+    date_columns : list of str
+        Columns identified as datetime.
+    text_columns : list of str
+        Columns identified as free text.
+    leakage_suspects : list of str
+        Columns potentially exhibiting data leakage with the target.
+    high_cardinality_cols : list of str
+        Categorical columns with a high number of unique values.
+    imbalance_ratio : float, optional
+        The ratio of the smallest class count to the largest class count for classification targets.
+    duplicate_rows : int
+        The total count of identical rows in the dataset.
+    data_quality_score : float
+        A health score from 0 to 100 representing overall data cleanliness.
     """
 
     shape: Tuple[int, int]
@@ -43,6 +89,7 @@ class DatasetProfile:
     high_cardinality_cols: List[str] = field(default_factory=list)
     imbalance_ratio: float = None
     duplicate_rows: int = 0
+    data_quality_score: float = 0.0  # New field from smart pipeline specs
 
     @property
     def n_rows(self) -> int:
@@ -85,6 +132,26 @@ class DataProfiler:
         target: Optional[pd.Series] = None,
         user_id_cols: Optional[List[str]] = None
     ) -> DatasetProfile:
+        """
+        Analyze a DataFrame and generate a comprehensive `DatasetProfile`.
+
+        This method coordinates the entire profiling process, from feature type
+        inference to data quality scoring and correlation analysis.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            The input dataset to profile.
+        target : pd.Series, optional
+            The target variable, used to infer task type and calculate correlations.
+        user_id_cols : list of str, optional
+            A list of column names to be explicitly marked as identifiers.
+
+        Returns
+        -------
+        profile : DatasetProfile
+            A populated profile object containing all analysis results.
+        """
 
         feature_types = {}
         numeric_cols, categorical_cols, date_cols, text_cols, id_cols = [], [], [], [], []
@@ -93,12 +160,17 @@ class DataProfiler:
         stats, missing_ratio, unique_counts = {}, {}, {}
 
         for col in df.columns:
+            series = df[col]
             if user_id_cols and col in user_id_cols:
                 col_type = "id"
             else:
-                col_type = self._detect_column_type(df[col], col)
+                col_type = self._detect_column_type(series, col)
 
             feature_types[col] = col_type
+
+            # Safe numeric conversion for stats
+            if col_type == "numeric" and not pd.api.types.is_numeric_dtype(series):
+                series = pd.to_numeric(series, errors='coerce')
 
             if col_type == "numeric":
                 numeric_cols.append(col)
@@ -111,15 +183,16 @@ class DataProfiler:
             elif col_type == "id":
                 id_cols.append(col)
 
-            n_unique = df[col].nunique(dropna=True)
+            n_unique = series.nunique(dropna=True)
             unique_counts[col] = n_unique
-            missing_ratio[col] = df[col].isna().mean()
+            missing_ratio[col] = series.isna().mean()
 
             if n_unique <= 1:
                 constant_cols.append(col)
 
             if col_type == "numeric" and n_unique > 1:
-                if df[col].var() < 1e-5:
+                # Use the potentially converted series
+                if series.var() < 1e-5:
                     low_variance_cols.append(col)
 
         # ----------------------------------------------------
@@ -134,13 +207,13 @@ class DataProfiler:
         # STATISTICS
         # ----------------------------------------------------
         stats = self._calculate_statistics(df, feature_types)
-
+        
         # ----------------------------------------------------
         # TASK TYPE
         # ----------------------------------------------------
         task_type = "unknown"
         if target is not None:
-            task_type = self._detect_task_type(target)
+             task_type = self._detect_task_type(target)
 
         # ----------------------------------------------------
         # DUPLICATE ROWS
@@ -156,8 +229,15 @@ class DataProfiler:
         if target is not None:
             if pd.api.types.is_numeric_dtype(target):
                 for col in numeric_cols:
+                    if target_name and col == target_name:
+                        continue
                     try:
-                        corr = df[col].corr(target)
+                        # Safe conversion for correlation
+                        series = df[col]
+                        if not pd.api.types.is_numeric_dtype(series):
+                             series = pd.to_numeric(series, errors='coerce')
+                        
+                        corr = series.corr(target)
                         if corr is not None and abs(corr) > 0.95:
                             leakage_suspects.append(col)
                     except Exception:
@@ -165,6 +245,8 @@ class DataProfiler:
             # Name-based heuristic
             for col in df.columns:
                 if target_name and target_name.lower() in col.lower() and col != target_name:
+                    # Double check equality to be safe
+                    if col == target_name: continue
                     leakage_suspects.append(col)
             leakage_suspects = list(set(leakage_suspects))
 
@@ -172,13 +254,18 @@ class DataProfiler:
         # CLASS IMBALANCE
         # ----------------------------------------------------
         imbalance_ratio = None
-        if target is not None and target_name in df.columns:
-            target_series = df[target_name]
-            if target_series.nunique() > 1:
-                counts = target_series.value_counts()
+        imbalance_ratio = None
+        if target is not None:
+            # Use the passed target series directly
+            if target.nunique() > 1:
+                counts = target.value_counts()
                 imbalance_ratio = counts.min() / counts.max()
             else:
                 imbalance_ratio = 1.0
+            
+            # Ensure target is in unique_counts for RecommendationEngine
+            if target.name:
+                unique_counts[target.name] = target.nunique()
 
         return DatasetProfile(
             shape=df.shape,
@@ -199,8 +286,47 @@ class DataProfiler:
             duplicate_rows=duplicate_rows,
             imbalance_ratio=imbalance_ratio,
             leakage_suspects=leakage_suspects,
-            high_cardinality_cols=high_cardinality_cols
+            high_cardinality_cols=high_cardinality_cols,
+            data_quality_score=self._calculate_data_quality_score(
+                df, missing_ratio, duplicate_rows, leakage_suspects
+            )
         )
+
+    def _calculate_data_quality_score(
+        self, 
+        df: pd.DataFrame, 
+        missing_ratio: Dict[str, float], 
+        duplicate_rows: int,
+        leakage_suspects: List[str]
+    ) -> float:
+        """
+        Compute a 0-100 Data Quality Score based on completeness, uniqueness, and leakage.
+        
+        Formula:
+        - Start: 100
+        - Completeness: -1 point for every 1% of missing data (avg across cols)
+        - Uniqueness: -1 point for every 1% of duplicate rows
+        - Leakage: -20 points if any leakage suspect is found (critical)
+        - Constant Cols: -5 points if > 10% of columns are constant
+        """
+        score = 100.0
+        n_rows = len(df)
+        if n_rows == 0:
+            return 0.0
+
+        # Completeness penalty
+        avg_missing = np.mean(list(missing_ratio.values())) if missing_ratio else 0.0
+        score -= (avg_missing * 100)
+
+        # Uniqueness penalty
+        dup_rate = duplicate_rows / n_rows
+        score -= (dup_rate * 100)
+
+        # Leakage penalty (Binary heavy penalty)
+        if leakage_suspects:
+            score -= 20.0
+
+        return max(0.0, round(score, 1))
 
     # --------------------------------------------------------
     # HELPER METHODS
@@ -344,14 +470,61 @@ class DataProfiler:
             str: 'classification' or 'regression'.
         """
 
-        if pd.api.types.is_numeric_dtype(target):
-            n_unique = target.nunique()
-            if n_unique < 20 or (n_unique / len(target) < 0.05):
-                return "classification"
-            if pd.api.types.is_float_dtype(target.dtype):
-                if (target.dropna() % 1 != 0).any():
-                    return "regression"
+    def _detect_task_type(self, target: pd.Series) -> str:
+        """
+        Infer whether the prediction task is classification or regression
+        based on the target variable characteristics.
+
+        Heuristics:
+        1. Non-numeric -> Classification
+        2. Float with decimals -> Regression
+        3. 2 or fewer unique values -> Classification (Binary)
+        4. High cardinality (>50 unique & >5% ratio) -> Regression
+        5. Low cardinality integers (3-50 unique):
+           - If consecutive (0,1,2... or 10,11,12) -> Classification (Label Encoded)
+           - If gaps (10, 20, 50) -> Regression
+        """
+        # 1. Non-numeric
+        if not pd.api.types.is_numeric_dtype(target):
+            return "classification"
+
+        target_valid = target.dropna()
+        n_unique = target_valid.nunique()
+        n_total = len(target_valid)
+        
+        # 2. Float with decimals
+        if pd.api.types.is_float_dtype(target.dtype):
+            if (target_valid % 1 != 0).any():
+                return "regression"
+
+        # 3. Binary
+        if n_unique <= 2:
+            return "classification"
+
+        # 4. High Cardinality (Likely continuous quantity)
+        unique_ratio = n_unique / n_total if n_total > 0 else 0
+        if n_unique > 50 and unique_ratio > 0.05:
             return "regression"
+
+        # 5. Low Cardinality Integers (The ambiguous zone)
+        # Check for order/consecutiveness
+        unique_vals = np.sort(target_valid.unique())
+        
+        # Check if values are consecutive integers (e.g. 0,1,2,3 or 1,2,3,4)
+        # This strongly suggests Label Encoding -> Classification
+        if len(unique_vals) > 1:
+            diffs = np.diff(unique_vals)
+            is_consecutive = np.all(diffs == 1)
+            
+            if is_consecutive:
+                return "classification"
+            else:
+                # Gaps exist (e.g. 10, 20, 50). Likely regression (discrete counts, ratings with gaps, prices)
+                # But could be sparse class labels. 
+                # If unique counts are very low (<10) and not consecutive, it's ambiguous.
+                # User preference: "if it aint have any order... call it regression"
+                return "regression"
+                
         return "classification"
 
     def _calculate_statistics(self, df: pd.DataFrame,
@@ -370,6 +543,11 @@ class DataProfiler:
         stats = {}
         for col, dtype in feature_types.items():
             series = df[col]
+            
+            # Convert if necessary (redundant logic but ensures safety for stats)
+            if dtype == "numeric" and not pd.api.types.is_numeric_dtype(series):
+                series = pd.to_numeric(series, errors='coerce')
+                
             if dtype == "numeric":
                 desc = series.describe()
                 stats[col] = {

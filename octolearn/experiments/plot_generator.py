@@ -417,130 +417,101 @@ class PlotGenerator:
         corr_top_n: int = 15,
     ) -> Tuple[Optional[str], Dict]:
         """
-        Generate a correlation visualization that adapts to the number of features.
+        Generate a correlation visualization focusing on feature-to-target relationships.
 
-        **Strategy:**
-
-        - **≤15 numeric features**: Full annotated heatmap — every cell is
-          labeled, easy to read.
-        - **>15 numeric features**: Ranked horizontal bar chart of the
-          ``corr_top_n`` most correlated feature pairs. This avoids the
-          unreadable "wall of numbers" problem with wide datasets.
-
-        In both cases, a ``corr_summary`` dict is returned containing the
-        top and bottom correlated pairs for use in narrative paragraphs.
+        Strategy:
+        - Calculates the correlation of all numeric features with the target column.
+        - Displays a ranked horizontal bar chart of the top features.
+        - Handles both small and large feature sets by focusing on relevance to the target.
 
         Parameters
         ----------
         corr_top_n : int, optional
-            Number of top correlated pairs to show in the bar chart (used
-            only when features > 15). Default 15.
+            Number of top features to show in the bar chart. Default 15.
 
         Returns
         -------
         path : str or None
-            Absolute path to the saved PNG, or ``None`` on failure.
+            Absolute path to the saved PNG, or None on failure.
         corr_summary : dict
-            Dictionary with keys:
-
-            - ``'top_pairs'``: list of (feat_a, feat_b, corr) tuples,
-              highest absolute correlations first.
-            - ``'bottom_pairs'``: list of (feat_a, feat_b, corr) tuples,
-              lowest absolute correlations first.
-            - ``'n_features'``: total number of numeric features.
-            - ``'strategy'``: ``'heatmap'`` or ``'bar_chart'``.
-
-        Examples
-        --------
-        >>> path, summary = plotter.generate_correlation_heatmap(corr_top_n=10)
-        >>> print(summary['top_pairs'][:3])
-        [('age', 'fare', 0.87), ('pclass', 'fare', -0.73), ...]
+            Dictionary with correlation details for narrative use.
         """
         corr_summary = {
             'top_pairs': [],
             'bottom_pairs': [],
             'n_features': 0,
-            'strategy': 'none',
+            'strategy': 'target_correlation',
+            'target_name': 'Target'
         }
 
         try:
-            numeric_df = self.X.select_dtypes(include=[np.number])
+            numeric_df = self.X.select_dtypes(include=[np.number]).copy()
             n_features = numeric_df.shape[1]
             corr_summary['n_features'] = n_features
 
-            if n_features < 2:
-                logger.info("Fewer than 2 numeric features — skipping correlation plot.")
+            if self.y is None or n_features < 1:
+                logger.info("Target missing or no numeric features — skipping correlation plot.")
                 return None, corr_summary
 
+            # Prepare target for correlation
+            target_name = getattr(self.y, 'name', 'Target') or 'Target'
+            corr_summary['target_name'] = target_name
+            
+            y_enc = self.y
+            if not pd.api.types.is_numeric_dtype(y_enc):
+                y_enc = pd.factorize(y_enc)[0]
+            
+            numeric_df[target_name] = y_enc
             corr_matrix = numeric_df.corr()
-
-            # Build a flat list of unique pairs (upper triangle, excluding diagonal)
-            pairs = []
-            cols = corr_matrix.columns.tolist()
-            for i in range(len(cols)):
-                for j in range(i + 1, len(cols)):
-                    pairs.append((cols[i], cols[j], corr_matrix.iloc[i, j]))
-
+            
+            # Extract correlations with target only
+            target_corrs = corr_matrix[target_name].drop(target_name)
+            
+            # Build list of (feature, target, correlation)
+            correlations = []
+            for feat, val in target_corrs.items():
+                if not np.isnan(val):
+                    correlations.append((feat, target_name, val))
+            
             # Sort by absolute value descending
-            pairs_sorted = sorted(pairs, key=lambda x: abs(x[2]), reverse=True)
-            corr_summary['top_pairs'] = pairs_sorted[:5]
-            corr_summary['bottom_pairs'] = pairs_sorted[-5:]
+            correlations_sorted = sorted(correlations, key=lambda x: abs(x[2]), reverse=True)
+            corr_summary['top_pairs'] = correlations_sorted[:corr_top_n]
+            corr_summary['bottom_pairs'] = correlations_sorted[-5:]
 
-            if n_features <= 15:
-                # ── Full annotated heatmap ────────────────────────────────
-                corr_summary['strategy'] = 'heatmap'
-                fig, ax = plt.subplots(figsize=(max(8, n_features * 0.7),
-                                                max(6, n_features * 0.6)))
-                sns.heatmap(
-                    corr_matrix, annot=True, fmt='.2f',
-                    cmap='coolwarm', center=0, ax=ax,
-                    cbar_kws={'label': 'Correlation Coefficient'},
-                    linewidths=0.5, linecolor=self.colors['grid'],
-                )
-                ax.set_title(
-                    f'Feature Correlation Matrix ({n_features} features)',
-                    fontweight='bold', color=self.colors['title'], fontsize=14,
-                )
-                ax.tick_params(axis='x', rotation=45, labelsize=9)
-                ax.tick_params(axis='y', rotation=0, labelsize=9)
+            # Always use a bar chart for Target Correlation as it's a 1D vector (clearer than heatmap row)
+            top_list = correlations_sorted[:corr_top_n]
+            labels = [f"{f}" for f, _, _ in top_list]
+            values = [c for _, _, c in top_list]
+            colors_bar = [self.colors['accent2'] if v < 0 else self.colors['accent1'] for v in values]
 
-            else:
-                # ── Ranked bar chart of top-N pairs ───────────────────────
-                corr_summary['strategy'] = 'bar_chart'
-                top_pairs = pairs_sorted[:corr_top_n]
+            fig_height = max(5, len(top_list) * 0.45)
+            fig, ax = plt.subplots(figsize=(10, fig_height))
 
-                labels = [f"{a} ↔ {b}" for a, b, _ in top_pairs]
-                values = [c for _, _, c in top_pairs]
-                colors_bar = [self.colors['accent2'] if v < 0 else self.colors['accent1'] for v in values]
+            bars = ax.barh(range(len(values)), values, color=colors_bar, alpha=0.85)
+            ax.set_yticks(range(len(labels)))
+            ax.set_yticklabels(labels, fontsize=9)
+            ax.invert_yaxis()  # Highest at top
+            ax.axvline(0, color=self.colors['grid'], linewidth=0.8, linestyle='--')
+            ax.set_xlabel('Pearson Correlation Coefficient', color=self.colors['text'])
+            ax.set_title(
+                f'Top {len(top_list)} Features Correlated with {target_name}\n'
+                f'(Insights into which features most influence the goal)',
+                fontweight='bold', color=self.colors['title'], fontsize=12,
+            )
 
-                fig_height = max(5, len(top_pairs) * 0.45)
-                fig, ax = plt.subplots(figsize=(10, fig_height))
+            # Legend
+            pos_patch = mpatches.Patch(color=self.colors['accent1'], label='Positive correlation')
+            neg_patch = mpatches.Patch(color=self.colors['accent2'], label='Negative correlation')
+            ax.legend(handles=[pos_patch, neg_patch], loc='lower right',
+                      facecolor=self.colors['bg'], edgecolor=self.colors['grid'], fontsize=8, labelcolor=self.colors['text'])
 
-                bars = ax.barh(range(len(values)), values, color=colors_bar, alpha=0.85)
-                ax.set_yticks(range(len(labels)))
-                ax.set_yticklabels(labels, fontsize=9)
-                ax.invert_yaxis()  # Highest at top
-                ax.axvline(0, color=self.colors['grid'], linewidth=0.8, linestyle='--')
-                ax.set_xlabel('Pearson Correlation Coefficient', color=self.colors['text'])
-                ax.set_title(
-                    f'Top {len(top_pairs)} Correlated Feature Pairs\n'
-                    f'({n_features} total numeric features — full heatmap would be unreadable)',
-                    fontweight='bold', color=self.colors['title'], fontsize=12,
-                )
-
-                # Legend
-                pos_patch = mpatches.Patch(color=self.colors['accent1'], label='Positive correlation')
-                neg_patch = mpatches.Patch(color=self.colors['accent2'], label='Negative correlation')
-                ax.legend(handles=[pos_patch, neg_patch], loc='lower right',
-                          facecolor=self.colors['bg'], edgecolor=self.colors['grid'], fontsize=8, labelcolor=self.colors['text'])
-
-                # Value labels on bars
-                for bar, val in zip(bars, values):
-                    x_pos = val + 0.01 if val >= 0 else val - 0.01
-                    ha = 'left' if val >= 0 else 'right'
-                    ax.text(x_pos, bar.get_y() + bar.get_height() / 2,
-                            f'{val:.2f}', va='center', ha=ha,
-                            color=self.colors['text'], fontsize=8)
+            # Value labels on bars
+            for bar, val in zip(bars, values):
+                x_pos = val + 0.01 if val >= 0 else val - 0.01
+                ha = 'left' if val >= 0 else 'right'
+                ax.text(x_pos, bar.get_y() + bar.get_height() / 2,
+                        f'{val:.2f}', va='center', ha=ha,
+                        color=self.colors['text'], fontsize=8)
 
             plt.tight_layout()
             filename = os.path.join(self.output_dir, 'correlation_heatmap.png')
@@ -549,7 +520,9 @@ class PlotGenerator:
             return filename, corr_summary
 
         except Exception as e:
-            logger.warning(f"Failed to generate correlation visualization: {e}")
+            logger.warning(f"Failed to generate target correlation visualization: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
             plt.close('all')
             return None, corr_summary
 
@@ -624,4 +597,169 @@ class PlotGenerator:
         except Exception as e:
             logger.warning(f"Failed to generate SHAP plot: {e}")
             plt.close('all')
+            return None
+
+    def generate_performance_plots(
+        self,
+        y_true: pd.Series,
+        y_pred: np.ndarray,
+        y_proba: Optional[np.ndarray] = None
+    ) -> Dict[str, str]:
+        """
+        Generate model performance visualizations based on task type.
+        
+        Returns dictionary of paths:
+        - classification: 'confusion_matrix', 'roc_curve'
+        - regression: 'residuals', 'prediction_error'
+        """
+        paths = {}
+        if y_true is None or len(y_true) == 0 or y_pred is None:
+            return paths
+
+        task = self.profile.task_type if self.profile else 'unknown'
+        
+        try:
+            # 1. Confusion Matrix (Classification)
+            if task == 'classification':
+                try:
+                    from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+                    
+                    fig, ax = plt.subplots(figsize=(6, 5))
+                    cm = confusion_matrix(y_true, y_pred)
+                    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+                    disp.plot(cmap='Blues', ax=ax, colorbar=False)
+                    ax.set_title("Confusion Matrix", color=self.colors['title'], fontweight='bold')
+                    
+                    path = os.path.join(self.output_dir, 'confusion_matrix.png')
+                    plt.savefig(path, bbox_inches='tight', dpi=120, facecolor=self.colors['bg'])
+                    plt.close()
+                    paths['confusion_matrix'] = path
+                except Exception as e:
+                    logger.warning(f"Confusion matrix plot failed: {e}")
+
+                # 2. ROC Curve (Binary Classification only for now)
+                if y_proba is not None:
+                    try:
+                        from sklearn.metrics import roc_curve, auc
+                        # Check if strictly binary (2 classes)
+                        n_classes = len(np.unique(y_true))
+                        if n_classes == 2:
+                            # Assuming y_proba is (n_samples, 2) or (n_samples,) 
+                            if y_proba.ndim == 2 and y_proba.shape[1] == 2:
+                                scores = y_proba[:, 1]
+                            elif y_proba.ndim == 1:
+                                scores = y_proba
+                            else:
+                                scores = None
+                                
+                            if scores is not None:
+                                fpr, tpr, _ = roc_curve(y_true, scores)
+                                roc_auc = auc(fpr, tpr)
+                                
+                                plt.figure(figsize=(6, 5))
+                                plt.plot(fpr, tpr, color=self.colors['accent2'], lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+                                plt.plot([0, 1], [0, 1], color=self.colors['grid'], lw=1, linestyle='--')
+                                plt.xlim([0.0, 1.0])
+                                plt.ylim([0.0, 1.05])
+                                plt.xlabel('False Positive Rate', color=self.colors['text'])
+                                plt.ylabel('True Positive Rate', color=self.colors['text'])
+                                plt.title('ROC Curve', color=self.colors['title'], fontweight='bold')
+                                plt.legend(loc="lower right")
+                                
+                                path = os.path.join(self.output_dir, 'roc_curve.png')
+                                plt.savefig(path, bbox_inches='tight', dpi=120, facecolor=self.colors['bg'])
+                                plt.close()
+                                paths['roc_curve'] = path
+                    except Exception as e:
+                        logger.warning(f"ROC plot failed: {e}")
+
+            # 3. Residuals (Regression)
+            elif task == 'regression':
+                try:
+                    residuals = y_true - y_pred
+                    
+                    plt.figure(figsize=(10, 5))
+                    
+                    # Residuals vs Predicted
+                    plt.subplot(1, 2, 1)
+                    plt.scatter(y_pred, residuals, alpha=0.5, color=self.colors['accent1'])
+                    plt.axhline(0, color=self.colors['accent2'], linestyle='--')
+                    plt.xlabel('Predicted Values', color=self.colors['text'])
+                    plt.ylabel('Residuals', color=self.colors['text'])
+                    plt.title('Residuals vs Predicted', color=self.colors['title'])
+                    
+                    # Actual vs Predicted
+                    plt.subplot(1, 2, 2)
+                    plt.scatter(y_true, y_pred, alpha=0.5, color=self.colors['accent3'])
+                    min_val = min(y_true.min(), y_pred.min())
+                    max_val = max(y_true.max(), y_pred.max())
+                    plt.plot([min_val, max_val], [min_val, max_val], 'r--')
+                    plt.xlabel('Actual Values', color=self.colors['text'])
+                    plt.ylabel('Predicted Values', color=self.colors['text'])
+                    plt.title('Actual vs Predicted', color=self.colors['title'])
+                    
+                    plt.tight_layout()
+                    path = os.path.join(self.output_dir, 'residuals.png')
+                    plt.savefig(path, bbox_inches='tight', dpi=120, facecolor=self.colors['bg'])
+                    plt.close()
+                    paths['residuals'] = path
+                except Exception as e:
+                    logger.warning(f"Residual plot failed: {e}")
+
+        except Exception as e:
+             logger.warning(f"Performance plots failed: {e}")
+             plt.close('all')
+
+        return paths
+
+    def generate_feature_importance_plot(self, importances: Dict[str, float], limit: int = 20) -> Optional[str]:
+        """
+        Generate a horizontal bar chart of feature importances.
+        
+        Parameters
+        ----------
+        importances : dict
+            Dictionary mapping feature names to importance scores.
+        limit : int, optional
+            Max number of features to show. Default 20.
+            
+        Returns
+        -------
+        str or None
+            Path to the saved plot image.
+        """
+        if not importances:
+            return None
+            
+        try:
+            # Sort by importance
+            sorted_items = sorted(importances.items(), key=lambda x: x[1], reverse=True)[:limit]
+            features = [x[0] for x in sorted_items]
+            scores = [x[1] for x in sorted_items]
+            
+            # Create Plot
+            fig_height = max(5, len(features) * 0.4)
+            fig, ax = plt.subplots(figsize=(10, fig_height))
+            
+            y_pos = np.arange(len(features))
+            # Use accent1 (navy/teal) for bars
+            ax.barh(y_pos, scores, align='center', color=self.colors['accent1'], alpha=0.8)
+            ax.set_yticks(y_pos)
+            ax.set_yticklabels(features, fontsize=10)
+            ax.invert_yaxis()  # Best feature at top
+            ax.set_xlabel('Importance Score', color=self.colors['text'])
+            ax.set_title(f'Top {len(features)} Key Features', fontweight='bold', color=self.colors['title'])
+            
+            # Value labels
+            for i, v in enumerate(scores):
+                ax.text(v, i, f' {v:.4f}', va='center', fontsize=9, color=self.colors['text'])
+                
+            plt.tight_layout()
+            filename = os.path.join(self.output_dir, 'feature_importance.png')
+            plt.savefig(filename, dpi=120, bbox_inches='tight', facecolor=self.colors['bg'])
+            plt.close()
+            
+            return filename
+        except Exception as e:
+            logger.warning(f"Feature importance plot failed: {e}")
             return None

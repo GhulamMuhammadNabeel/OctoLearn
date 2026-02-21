@@ -1,225 +1,65 @@
-<p align="center">
-  <img src="octolearn/images/logo.png" alt="OctoLearn Logo" width="200"/>
-</p>
 # OctoLearn User Guide
 
-Welcome to the comprehensive guide for **OctoLearn**, the enterprise-grade AutoML library designed for robustness, transparency, and professional reporting.
+Welcome to the comprehensive guide for OctoLearn. This document provides in-depth information on how to configure and extend the AutoML pipeline.
 
-## 📚 Table of Contents
-
-1. [Installation](#-installation)
-2. [Quick Start](#-quick-start)
-3. [Core Concepts](#-core-concepts)
-4. [Cookbook & Examples](#-cookbook--examples)
-5. [Configuration Reference](#-configuration-reference)
-6. [Reporting & Visualization](#-reporting--visualization)
-7. [Advanced Features](#-advanced-features)
-8. [Troubleshooting](#-troubleshooting)
+## 📖 Table of Contents
+- [Core Concepts](#core-concepts)
+- [Configuration Reference](#configuration-reference)
+- [Advanced Features](#advanced-features)
+- [Methodology](#methodology)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-## 📦 Installation
+## Core Concepts
 
-OctoLearn requires Python 3.8 or higher.
+OctoLearn is built on the principle of **Transparent AutoML**. Unlike other libraries that hide the "magic" inside a black box, OctoLearn exposes the results of every stage—from raw data profiling to final model staging.
 
-```bash
-# Clone the repository
-git clone https://github.com/GhulamMuhammadNabeel/OctoLearn.git
-cd OctoLearn
-
-# Create a virtual environment
-python -m venv .venv
-
-# Activate the environment
-# Windows:
-.\.venv\Scripts\activate
-# Mac/Linux:
-source .venv/bin/activate
-
-# Install in editable mode
-pip install -e .
-```
-
-### Verification
-To verify your installation, run the test suite:
-```bash
-python test_complete_pipeline.py
-```
+### The fit-then-report Pattern
+Success with OctoLearn follows a simple pattern:
+1.  **fit()**: Orchestrates the technical pipeline (cleaning, tuning, training).
+2.  **generate_report()**: Decodes the technical results into human-readable business intelligence.
 
 ---
 
-## 🚀 Quick Start
+## Configuration Reference
 
-The fastest way to get value from OctoLearn is the one-line pipeline.
+You can pass specific configuration objects to the `AutoML` constructor to control behavior.
 
-### Basic Classification
+### DataConfig
+Controls how data is sampled and split.
+- `use_full_data`: If True, bypasses sampling.
+- `test_size`: Fraction of data held out for validation (default 0.2).
+- `random_state`: Integer seed for reproducibility.
 
-```python
-import pandas as pd
-from octolearn import AutoML
-
-# 1. Load Data
-df = pd.read_csv("titanic.csv")
-X = df.drop("survived", axis=1)
-y = df["survived"]
-
-# 2. Initialize & Run
-automl = AutoML()
-automl.fit(X, y)
-
-# 3. Generate Insights
-automl.generate_report("titanic_report.pdf")
-print("Best model:", automl.best_model_)
-```
-
-### Basic Regression
-
-OctoLearn automatically detects regression tasks based on the target variable.
-
-```python
-# Assuming 'price' is a continuous variable
-y_reg = df["price"]
-X_reg = df.drop("price", axis=1)
-
-automl_reg = AutoML()
-automl_reg.fit(X_reg, y_reg)
-```
+### PreprocessingConfig
+Controls the automated data cleaning engine.
+- `imputer_strategy`: `{'numeric': 'median', 'categorical': 'mode'}`.
+- `scaler`: `'standard'`, `'robust'`, or `'minmax'`.
 
 ---
 
-## 🧠 Core Concepts
+## Advanced Features
 
-### The Pipeline
-OctoLearn is built as a sequential pipeline:
-1.  **Profiling**: Understands your data before touching it.
-2.  **Cleaning**: Imputes missing values, encodes categoricals, removes outliers.
-3.  **Engineering**: Creates new features (interactions) and detects deeper issues.
-4.  **Training**: Trains multiple models with Optuna hyperparameter optimization.
-5.  **Reporting**: Generates a PDF report summarizing the entire journey.
+### Class Imbalance Handling
+OctoLearn automatically detects class imbalance during profiling and utilizes stratified splitting to ensure stable evaluation metrics.
 
-### Configuration Objects vs. Overrides
-You can configure OctoLearn in two ways:
-
-1.  **Global Configuration** (via `AutoML` constructor): Best for production pipelines where settings are fixed.
-2.  **Runtime Overrides** (via `fit` method): Best for experimentation.
-
-**Example: Override for Quick Experiment**
-```python
-# Run only 2 models, no Optuna, limit iterations
-automl.fit(X, y, 
-    n_models=2, 
-    use_optuna=False, 
-    optuna_trials=0
-)
-```
+### Target Leakage Detection
+The `DataProfiler` looks for features that are essentially identical to or highly correlated with the target, flagging them as potential "leakage suspects" in the risk report.
 
 ---
 
-## 🍲 Cookbook & Examples
+## Methodology
 
-### 1. Data Profiling Only (No Training)
-Useful for initial data exploration.
-
-```python
-automl = AutoML(train_models=False)
-automl.fit(X, y)
-
-print(automl.raw_profile_.missing_ratio)
-print(automl.get_risk_score())
-```
-
-### 2. Customizing Data Cleaning
-Override default imputation or scaling.
-
-```python
-from octolearn import AutoML, PreprocessingConfig
-
-config = PreprocessingConfig(
-    imputer_strategy={"numeric": "mean", "categorical": "constant"},
-    scaler="minmax",  # Default is 'standard'
-    id_columns=["passenger_id", "ticket"] # Force drop these
-)
-automl = AutoML(preprocessing_config=config)
-automl.fit(X, y)
-```
-
-### 3. Production Training (High Accuracy)
-Increase trials and timeout for better models.
-
-```python
-from octolearn import AutoML, OptimizationConfig, ModelingConfig
-
-automl = AutoML(
-    optimization_config=OptimizationConfig(
-        optuna_trials_per_model=100,
-        optuna_timeout_seconds=3600
-    ),
-    modeling_config=ModelingConfig(
-        metrics="f1_macro" # Optimize for F1 Macro
-    )
-)
-automl.fit(X, y)
-```
+### Stacking Ensembles
+When multiple models are selected for training, OctoLearn generates a Stacking Regressor or Classifier by using the top-performing base models and a meta-model to blend their predictions.
 
 ---
 
-## ⚙️ Configuration Reference
+## Troubleshooting
 
-### `DataConfig`
-Controls data loading and splitting.
-- `sample_size` (int): Rows to sample for speed (default: 500).
-- `test_size` (float): Test split ratio (default: 0.2).
-- `stratify_target` (bool): Stratify split for classification (default: True).
+### PDF Generation Fails
+Ensure you have `reportlab` installed. If your environment lacks specific fonts, OctoLearn will fallback to standard Helvetica.
 
-### `ProfilingConfig`
-Controls analysis depth.
-- `detect_outliers` (bool): Run outlier detection (default: True).
-- `analyze_interactions` (bool): Run interaction analysis (expensive) (default: False).
-
-### `ReportingConfig`
-Controls PDF output.
-- `report_detail` (str): 'brief' or 'detailed'.
-- `color_scheme` (str): 'light' (default) or 'dark'.
-- `visuals_limit` (int): Max plots in report.
-
----
-
-## 📊 Reporting & Visualization
-
-### Professional PDF Reports
-OctoLearn generates magazine-quality PDF reports.
-
-```python
-automl.generate_report("my_analysis.pdf")
-```
-
-**New in v0.8.0**:
-- **Light Theme**: Reports now use a clean, white-background theme for all plots, ensuring they look great on paper/PDF.
-- **Margins**: Professional 0.75" margins are standard.
-- **Enhanced Plots**: Correlation heatmaps and feature importance charts are styled to match the report palette (Navy/Red/Grey).
-
-### Standalone Visuals
-You can also use the plotting engine directly:
-
-```python
-from octolearn.experiments.plot_generator import PlotGenerator
-
-plotter = PlotGenerator(X, y, profile, theme='light')
-plotter.generate_correlation_heatmap()
-```
-
----
-
-## ⚠️ Troubleshooting
-
-**Q: Optuna hangs on Windows?**
-A: OctoLearn automatically sets `n_jobs=1` for Optuna on Windows to prevent multiprocessing crashes. Do not override this unless you are sure using `backend='threading'`.
-
-**Q: "Input contains infinity or a value too large for dtype('float64')"**
-A: Check if your dataset has very large numbers or unhandled nulls. OctoLearn's `AutoCleaner` handles most, but extreme outliers might need manual cleanup.
-
-**Q: Report generation fails with "Permission denied"**
-A: Ensure the PDF file is not open in another application (e.g., Acrobat, Browser) when running `generate_report()`.
-
----
-*Generated for OctoLearn v0.8.0*
+### Optuna is Too Slow
+Reduce `optuna_trials` or set `use_optuna=False` in your `fit()` call for a baseline performance run.

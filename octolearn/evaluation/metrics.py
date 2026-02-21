@@ -55,7 +55,9 @@ class ModelEvaluator:
             'task': 'classification',
             'metrics': {},
             'confusion_matrix': None,
-            'classification_report': None
+            'classification_report': None,
+            'predictions': y_pred.tolist(),
+            'probabilities': None
         }
 
         metrics_dict = EVALUATION_CONFIG['classification_metrics']
@@ -111,6 +113,7 @@ class ModelEvaluator:
                         )
 
                     results['metrics']['roc_auc'] = round(auc, 4)
+                    results['probabilities'] = y_pred_proba.tolist()
             except:
                 pass
 
@@ -140,7 +143,8 @@ class ModelEvaluator:
 
         results = {
             'task': 'regression',
-            'metrics': {}
+            'metrics': {},
+            'predictions': y_pred.tolist()
         }
 
         metrics_dict = EVALUATION_CONFIG['regression_metrics']

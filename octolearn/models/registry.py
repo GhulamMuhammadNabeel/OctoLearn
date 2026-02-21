@@ -42,16 +42,28 @@ class NumpyEncoder(json.JSONEncoder):
 
 class ModelRegistry:
     """
-    Local Model Registry using JSON storage.
+    Persistence layer for model artifacts and performance metadata.
 
-    Stores:
-    - Model artifacts on disk (joblib format)
-    - Model metadata (metrics, parameters, timestamps) in JSON
+    The registry manages versioned storage of fitted models (as joblib files)
+    and their associated metadata (as a JSON database). It provides a centralized
+    point for model tracking and lifecycle management.
 
-    Supports:
-    - Automatic versioning
-    - Best model retrieval
-    - Safe serialization of NumPy/Pandas values
+    Attributes
+    ----------
+    db_path : str
+        The absolute path to the JSON registry database.
+    storage_dir : str
+        The base directory where all artifacts and the database are stored.
+    models_dir : str
+        The subdirectory dedicated specifically to model pkl files.
+
+    Notes
+    -----
+    Uses a standard directory structure:
+    `artifact_dir/`
+    ├── `model_registry.json`
+    └── `trained_models/`
+        └── `model_name_v1.pkl`
     """
 
     def __init__(self):
@@ -91,25 +103,28 @@ class ModelRegistry:
         parameters: Optional[Dict[str, Any]] = None
     ) -> Optional[int]:
         """
-        Register a trained model and save its artifact and metadata.
+        Save a trained model and its performance metadata to the registry.
+
+        This method assigns a version number, persists the model object to disk,
+        and updates the JSON database with the provided metrics and parameters.
 
         Parameters
         ----------
         name : str
-            Model name.
+            The identifier for the model algorithm (e.g., 'xgboost').
         model : Any
-            Trained ML model object.
+            The fitted, scikit-learn compatible model object.
         task_type : str
-            Task type ('classification' or 'regression').
-        metrics : Dict[str, float]
-            Evaluation metrics for the model.
-        parameters : Dict[str, Any], optional
-            Hyperparameters used during training.
+            The nature of the problem ('classification' or 'regression').
+        metrics : dict of str: float
+            The performance scores for this specific model instance.
+        parameters : dict, optional
+            The hyperparameters used for training.
 
         Returns
         -------
-        int or None
-            Assigned model version number if successful, else None.
+        version : int, optional
+            The assigned version number if successful, or None on failure.
         """
         try:
             registry_data = self._load_registry()

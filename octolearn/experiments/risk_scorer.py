@@ -77,6 +77,7 @@ class RiskScorer:
         imbalance = getattr(self.profile, "imbalance_ratio", None)
         if imbalance is not None:
             points = 0
+            desc = ""
             if imbalance < 0.70:
                 points = 15
                 desc = f"Severe imbalance ratio: {imbalance:.3f}"

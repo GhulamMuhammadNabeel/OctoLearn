@@ -463,18 +463,6 @@ class DataProfiler:
         Infer whether the prediction task is classification or regression
         based on the target variable characteristics.
 
-        Args:
-            target (pd.Series): Target column.
-
-        Returns:
-            str: 'classification' or 'regression'.
-        """
-
-    def _detect_task_type(self, target: pd.Series) -> str:
-        """
-        Infer whether the prediction task is classification or regression
-        based on the target variable characteristics.
-
         Heuristics:
         1. Non-numeric -> Classification
         2. Float with decimals -> Regression

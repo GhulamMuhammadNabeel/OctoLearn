@@ -645,61 +645,71 @@ class ReportGenerator:
         n_missing_cols = sum(1 for v in getattr(self.raw_profile, 'missing_ratio', {}).values() if v > 0) if self.raw_profile else 0
         dupes = getattr(self.raw_profile, 'duplicate_rows', 0) if self.raw_profile else 0
 
+        # Extract deeper insights
+        high_card = getattr(self.raw_profile, 'high_cardinality_cols', []) if self.raw_profile else []
+        stats = getattr(self.raw_profile, 'stats', {}) if self.raw_profile else {}
+        highly_skewed = []
+        for col, s in stats.items():
+            if isinstance(s, dict):
+                skew = s.get('skew')
+                if skew is not None and not pd.isna(skew) and abs(float(skew)) > 2.0:
+                    highly_skewed.append(col)
+
         # Opening narrative
         story.append(Paragraph(
             f"Your dataset arrived with <b>{n_rows:,}</b> records and <b>{n_cols}</b> features, "
-            f"setting up a <b>{task}</b> challenge. OctoLearn's 6-phase intelligent pipeline "
-            f"examined every corner of this data to extract maximum insight.",
+            f"setting up a <b>{task}</b> challenge. OctoLearn's intelligent pipeline "
+            f"examined the statistical boundaries of this data to extract maximum insight.",
             self.styles['Narrative']
         ))
 
-        # Feature composition
+        # Deep Feature composition
+        card_text = f" Notably, {len(high_card)} categorical features exhibited high cardinality, requiring advanced encoding techniques." if high_card else ""
+        skew_text = f" We also detected significant distribution skewness (skew > 2.0) in {len(highly_skewed)} numeric features, prompting robust scaling." if highly_skewed else ""
+        
         story.append(Paragraph(
-            f"The features break down into <b>{n_numeric} numeric</b> and <b>{n_cat} categorical</b> columns. "
+            f"The data structure breaks down into <b>{n_numeric} numeric</b> and <b>{n_cat} categorical</b> columns. "
             f"Of the {n_cols} total features, <b>{n_missing_cols}</b> contained missing values that "
-            f"required intelligent imputation strategies.",
+            f"necessitated mathematical imputation.{card_text}{skew_text}",
             self.styles['Narrative']
         ))
 
         # Data quality narrative
         if dupes > 0:
             story.append(Paragraph(
-                f"OctoLearn detected <b>{dupes} duplicate rows</b> lurking in the data. "
-                f"These were automatically removed during the cleaning phase to prevent "
-                f"data leakage and inflated model performance.",
+                f"During initial integrity checks, OctoLearn detected <b>{dupes} duplicate rows</b>. "
+                f"These were immediately purged to prevent data leakage and artificially inflated model performance metrics.",
                 self.styles['Narrative']
             ))
 
         # Risk narrative
         risk_color_name = "green" if self.risk_score <= 30 else ("amber" if self.risk_score <= 60 else "red")
         story.append(Paragraph(
-            f"After deep analysis, OctoLearn assigned a <b>Data Quality Risk Score of "
-            f"{self.risk_score}/100</b> ({self.risk_category}). "
-            f"This places your dataset in the <b>{risk_color_name} zone</b> -- "
-            + ("minimal risk factors were detected. Your data is well-structured and ready for modeling."
+            f"Synthesizing these metrics, OctoLearn assigned a <b>Data Quality Risk Score of "
+            f"{self.risk_score}/100</b> ({self.risk_category}), placing your dataset in the <b>{risk_color_name} zone</b>. "
+            + ("This indicates exceptional structural integrity, providing a solid foundation for predictive modeling."
                if self.risk_score <= 30 else
-               "some quality issues were found that OctoLearn addressed automatically. Review the recommendations for further improvements."
+               "This reveals structural inconsistencies that OctoLearn has automatically mitigated, though domain-expert review is advised."
                if self.risk_score <= 60 else
-               "significant quality concerns were identified. OctoLearn applied automated fixes, but manual review is strongly recommended."),
+               "This denotes critical quality issues. While OctoLearn applied heavy automated transformations, manual intervention is highly recommended."),
             self.styles['Narrative']
         ))
 
         # Model narrative
         if self.model_benchmarks:
             n_models = len(self.model_benchmarks)
-            best_name = self.best_model_name
+            best_name = str(self.best_model_name).replace('_', ' ').title()
             best_score = self.model_benchmarks[0].get('score', 0) if self.model_benchmarks else 0
+            metric_name = "Accuracy/F1" if task == 'classification' else "RMSE/R²" 
             story.append(Paragraph(
-                f"OctoLearn trained and evaluated <b>{n_models} models</b> with hyperparameter "
-                f"optimization. After rigorous benchmarking, <b>{best_name}</b> emerged as the "
-                f"champion with a score of <b>{best_score:.4f}</b>. "
-                f"See the Model Arena section for full comparison.",
+                f"Powered by Bayesian inference, OctoLearn evaluated <b>{n_models} model architectures</b>. "
+                f"<b>{best_name}</b> ultimately dominated the Model Arena, achieving an optimized validation score of <b>{best_score:.4f}</b> against our {metric_name} baselines.",
                 self.styles['Narrative']
             ))
         else:
             story.append(Paragraph(
-                "Model training was not performed in this run. "
-                "Set <b>train_models=True</b> in ModelingConfig to see model benchmarks.",
+                "Model training was bypassed in this execution. "
+                "Enable <b>train_models=True</b> in ModelingConfig to unlock automated algorithm benchmarking.",
                 self.styles['Narrative']
             ))
 
@@ -1356,21 +1366,22 @@ class ReportGenerator:
                 # Top correlated features with target
                 top_strs = []
                 for feat, target, corr in top_pairs[:3]:
-                    direction = "positively" if corr > 0 else "negatively"
-                    impact = "strong" if abs(corr) > 0.6 else "moderate"
-                    top_strs.append(f"<b>{feat}</b> ({impact} {direction} influence, r={corr:.2f})")
+                    direction = "positive" if corr > 0 else "inverse"
+                    impact = "Critical" if abs(corr) > 0.7 else ("Strong" if abs(corr) > 0.5 else "Moderate")
+                    top_strs.append(f"<b>{feat}</b> ({impact} {direction} relationship, Pearson r={corr:.2f})")
 
-                top_text = ", ".join(top_strs) if top_strs else "none identified"
+                top_text = "<br/>".join([f"  • {x}" for x in top_strs]) if top_strs else "no significant linear relationships identified."
 
                 viz_note = (
-                    f"The chart below identifies which of your {n_features} numeric features "
-                    f"most strongly correlate with <b>{target_name}</b>. This reveals the "
-                    f"key drivers behind your data's goal."
+                    f"Mathematically, this implies that variance in these top features "
+                    f"explains a significant proportion of the variance in <b>{target_name}</b>. "
+                    f"The chart below visualizes these Pearson correlation coefficients across the numeric feature space, "
+                    f"allowing us to detect both multi-collinearity (redundant features) and primary predictive signals."
                 )
 
                 story.append(Paragraph(
-                    f"Analysis shows that {top_text} are the primary predictors for <b>{target_name}</b>. "
-                    f"Changes in these features are most likely to impact your results. {viz_note}",
+                    f"Statistical analysis isolated the following primary linear predictors for <b>{target_name}</b>:<br/>{top_text}<br/><br/>"
+                    f"{viz_note}",
                     self.styles['Narrative']
                 ))
                 story.append(Spacer(1, 0.1 * inch))

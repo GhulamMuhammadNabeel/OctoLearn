@@ -1501,14 +1501,10 @@ class AutoML:
         # 1. Fetch Dataset
         print(f"\n[OctoLearn Surprise Me] Fetching {task} dataset...")
         if task == 'classification':
-            data = load_breast_cancer(as_frame=True)
-            X = data.data
-            y = data.target
+            X, y = load_breast_cancer(return_X_y=True, as_frame=True)
             dataset_name = "Breast_Cancer"
         elif task == 'regression':
-            data = fetch_california_housing(as_frame=True)
-            X = data.data
-            y = data.target
+            X, y = fetch_california_housing(return_X_y=True, as_frame=True)
             dataset_name = "California_Housing"
         else:
             raise ValueError("Task must be 'classification' or 'regression'.")

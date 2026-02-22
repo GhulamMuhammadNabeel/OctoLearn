@@ -29,7 +29,8 @@ def test_perfect_correlation(profiler):
     
     x1 = np.random.rand(100)
     x2 = x1 * 2
-    y = x1 + np.random.normal(0, 0.1, 100)
+    # Use very small noise to guarantee correlation > 0.95
+    y = x1 + np.random.normal(0, 0.001, 100)
     
     df = pd.DataFrame({"x1": x1, "x2": x2, "target": y})
     

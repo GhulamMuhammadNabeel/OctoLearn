@@ -1471,6 +1471,87 @@ class AutoML:
         
         return "\n".join(lines)
 
+    @classmethod
+    def surprise_me(cls, task: str = 'classification') -> Tuple[Optional[str], Any]:
+        """
+        Automatically fetch a dataset, run the full OctoLearn pipeline, 
+        and generate a comprehensive PDF intelligence report.
+
+        This API demonstrates the full power of the OctoLearn library with 
+        a single function call. It uses Bayesian Search (Optuna) to find 
+        the best model and hyperparameters for the dataset.
+
+        Parameters
+        ----------
+        task : str, default='classification'
+            The type of ML task to demonstrate. Options: 'classification', 'regression'.
+
+        Returns
+        -------
+        pdf_path : str
+            The file path to the generated PDF report.
+        best_model : object
+            The optimized, trained model object pipeline.
+        """
+        import pandas as pd
+        from sklearn.datasets import load_breast_cancer, fetch_california_housing
+        import tempfile
+        import os
+
+        # 1. Fetch Dataset
+        print(f"\n[OctoLearn Surprise Me] Fetching {task} dataset...")
+        if task == 'classification':
+            data = load_breast_cancer(as_frame=True)
+            X = data.data
+            y = data.target
+            dataset_name = "Breast_Cancer"
+        elif task == 'regression':
+            data = fetch_california_housing(as_frame=True)
+            X = data.data
+            y = data.target
+            dataset_name = "California_Housing"
+        else:
+            raise ValueError("Task must be 'classification' or 'regression'.")
+            
+        print(f"[OctoLearn Surprise Me] Dataset shape: X{X.shape}, y{y.shape}")
+
+        # 2. Configure AutoML for MAXIMUM power
+        # We enable Optuna with a healthy number of trials to show off the Bayesian search
+        opt_config = OptimizationConfig(
+            use_optuna=True, 
+            optuna_trials_per_model=30,  # 30 trials per model to find best params
+            optuna_timeout_seconds=300   # 5 mins max per model
+        )
+        report_config = ReportingConfig(
+            generate_report=True,
+            report_detail='detailed',
+            include_shap=True
+        )
+
+        automl = cls(
+            optimization_config=opt_config,
+            reporting_config=report_config
+        )
+
+        # 3. Run Pipeline
+        print("\n[OctoLearn Surprise Me] Engaging AutoML Pipeline. Please wait...")
+        automl.fit(X, y)
+
+        # 4. Generate Report
+        print("\n[OctoLearn Surprise Me] Generating Intelligence Report...")
+        report_filename = f"OctoLearn_{dataset_name}_Intelligence_Report.pdf"
+        try:
+            pdf_path = automl.generate_report(filename=report_filename)
+            absolute_path = os.path.abspath(pdf_path)
+            print(f"\n[Success] View your Intelligence Report here: {absolute_path}")
+        except Exception as e:
+            print(f"\n[OctoLearn Surprise Me] Report generation failed: {e}")
+            absolute_path = None
+
+        print(f"[Success] Best model found: {automl.best_model_.__class__.__name__}")
+        
+        return absolute_path, automl.best_model_
+
 
 # Convenience alias for shorter imports
 __all__ = ['AutoML', 'DataConfig', 'ProfilingConfig', 'PreprocessingConfig',

@@ -196,45 +196,51 @@ OPTUNA_CONFIG = {
     
     'hyperparameters': {
         'logistic_regression': {
-            'C': [0.001, 10],                           # Regularization
+            'C': [0.001, 100],                           # Expanded regularization
             'solver': ['lbfgs', 'liblinear'],
         },
         'linear_regression': {
             'fit_intercept': [True, False],
         },
         'random_forest': {
-            'n_estimators': [50, 200],                  # Reduced upper bound for speed
-            'max_depth': [3, 15],
-            'min_samples_split': [2, 10],
-            'min_samples_leaf': [1, 4],
+            'n_estimators': [50, 300],                  # Increased upper bound
+            'max_depth': [3, 20],                       # Deeper trees
+            'min_samples_split': [2, 15],
+            'min_samples_leaf': [1, 10],
+            'max_features': ['sqrt', 'log2', None],     # Added max_features
         },
         'gradient_boosting': {
-            'n_estimators': [50, 200],
-            'max_depth': [2, 8],
-            'learning_rate': [0.01, 0.3],
-            'subsample': [0.6, 1.0],
+            'n_estimators': [50, 300],
+            'max_depth': [2, 10],
+            'learning_rate': [0.005, 0.3],              # Lower learning rate bound
+            'subsample': [0.5, 1.0],
+            'min_samples_split': [2, 10],
         },
         'xgboost': {
-            'n_estimators': [50, 200],
-            'max_depth': [3, 10],
-            'learning_rate': [0.01, 0.3],
-            'subsample': [0.6, 1.0],
-            'colsample_bytree': [0.6, 1.0],
+            'n_estimators': [50, 400],                  # More estimators for XGBoost
+            'max_depth': [3, 12],                       # Deeper trees
+            'learning_rate': [0.005, 0.3],
+            'subsample': [0.5, 1.0],
+            'colsample_bytree': [0.5, 1.0],
+            'gamma': [0, 5],                            # Added minimum loss reduction
+            'min_child_weight': [1, 7],                 # Added child weight tuning
         },
         'lightgbm': {
-            'n_estimators': [50, 200],
-            'max_depth': [3, 10],
-            'learning_rate': [0.01, 0.3],
-            'num_leaves': [20, 100],
+            'n_estimators': [50, 400],
+            'max_depth': [3, 12],
+            'learning_rate': [0.005, 0.3],
+            'num_leaves': [20, 150],                    # More leaves
+            'subsample': [0.5, 1.0],                    # Added bagging
+            'colsample_bytree': [0.5, 1.0],             # Added feature fraction
         },
         'svm': {
             'C': [0.01, 100],
-            'kernel': ['rbf', 'linear'],
+            'kernel': ['rbf', 'linear', 'poly'],        # Added poly kernel
             'gamma': ['scale', 'auto'],
         },
         'svr': {
             'C': [0.01, 100],
-            'kernel': ['rbf', 'linear'],
+            'kernel': ['rbf', 'linear', 'poly'],
             'epsilon': [0.01, 1.0],
         },
     },

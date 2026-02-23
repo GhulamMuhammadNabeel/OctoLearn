@@ -17,8 +17,12 @@ OctoLearn is built on the principle of **Transparent AutoML**. Unlike other libr
 
 ### The fit-then-report Pattern
 Success with OctoLearn follows a simple pattern:
-1.  **fit()**: Orchestrates the technical pipeline (cleaning, tuning, training).
-2.  **generate_report()**: Decodes the technical results into human-readable business intelligence.
+
+1. **`fit()`**: Orchestrates the technical pipeline (cleaning, tuning, training).
+2. **`generate_report()`**: Decodes the technical results into human-readable business intelligence.
+
+!!! tip "Remember the Report"
+    The real power of OctoLearn isn't just the model—it's the PDF report. Always generate a report before deploying!
 
 ---
 
@@ -81,7 +85,9 @@ When multiple models are selected for training, OctoLearn generates a Stacking R
 ## Troubleshooting
 
 ### PDF Generation Fails
-Ensure you have `reportlab` installed. If your environment lacks specific fonts, OctoLearn will fallback to standard Helvetica.
+!!! failure "Missing Fonts or Dependencies"
+    Ensure you have `reportlab` installed. If your environment lacks specific fonts, OctoLearn will automatically fallback to standard Helvetica, but if `reportlab` itself is missing, the CLI will throw an `ImportError`.
 
 ### Optuna is Too Slow
-Reduce `optuna_trials` or set `use_optuna=False` in your `fit()` call for a baseline performance run.
+!!! warning "Bayesian Search Latencies"
+    Bayesian Optimization takes time to build its probabilistic model of the parameter space. If it's running too slow for your dev cycle, reduce `optuna_trials_per_model` or temporarily disable it by passing `use_optuna=False` to your `fit()` call.

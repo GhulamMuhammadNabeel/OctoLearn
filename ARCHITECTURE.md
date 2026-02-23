@@ -86,13 +86,13 @@ OctoLearn/
 
 ---
 
-## 3. Documentation Standards
-
-Starting from version 0.9.0, OctoLearn has adopted the **NumPy Docstring Standard** across the entire codebase. Every public class and method is documented with:
-- **Parameters**: Detailed type information and descriptions.
-- **Returns**: Clear explanation of output types and semantics.
-- **Attributes**: Internal state documentation for class instances.
-- **Examples**: Doctype-runnable examples for quick onboarding.
+!!! tip "NumPy Docstring Standard"
+    Starting from version 0.9.0, OctoLearn has adopted the **NumPy Docstring Standard** across the entire codebase. Every public class and method is documented with:
+    
+    *   **Parameters**: Detailed type information and descriptions.
+    *   **Returns**: Clear explanation of output types and semantics.
+    *   **Attributes**: Internal state documentation for class instances.
+    *   **Examples**: Doctype-runnable examples for quick onboarding.
 
 ---
 
@@ -153,9 +153,9 @@ A comprehensive metadata container storing:
 
 ## 7. Data Cleaning (`preprocessing/auto_cleaner.py`)
 
-### The Leakage Prevention Rule
-**`fit_transform` on Train only. `transform` on Test.**
-This prevents statistical leakage (e.g., test data means influencing train data imputations).
+!!! info "The Leakage Prevention Rule"
+    **`fit_transform` on Train only. `transform` on Test.**
+    This prevents statistical leakage (e.g., test data means influencing train data imputations).
 
 ### Industrial-Strength Pipeline
 1. **Adaptive Imputation**: Uses mode for categories and mean/median for numerics based on distribution skew.

@@ -50,8 +50,10 @@ Most AutoML libraries focus solely on leaderboard scores. OctoLearn focuses on t
 
 ## 📦 Installation
 
+!!! info "Virtual Environment Recommended"
+    Before installing OctoLearn, we recommend creating and activating a Python virtual environment to avoid dependency conflicts.
+
 ```bash
-# Recommendation: Use a virtual environment
 pip install git+https://github.com/GhulamMuhammadNabeel/OctoLearn.git
 ```
 
@@ -59,59 +61,57 @@ pip install git+https://github.com/GhulamMuhammadNabeel/OctoLearn.git
 
 ## 🏎️ Quick Start: Production Pipeline in 30 Seconds
 
-### The "Surprise Me" API (Zero Configuration)
-Want to see OctoLearn in action instantly without providing your own data? Use the `surprise_me` API to automatically download a benchmark dataset, run the full pipeline, and generate a beautiful intelligence report.
+=== "🌟 Surprise Me API"
 
-```python
-from octolearn import AutoML
+    Want to see OctoLearn in action instantly without providing your own data? Use the `surprise_me` API down automatically download a benchmark dataset, run the full pipeline, and generate a beautiful intelligence report.
 
-# Run the complete pipeline on a sample classification dataset
-pdf_path, best_model = AutoML.surprise_me(task='classification')
-print(f"Report saved to: {pdf_path}")
-```
+    ```python
+    from octolearn import AutoML
 
-### Standard Usage with Your Own Data
-```python
-from octolearn import AutoML
-import pandas as pd
+    # Run the complete pipeline on a sample classification dataset
+    pdf_path, best_model = AutoML.surprise_me(task='classification')
+    print(f"Report saved to: {pdf_path}")
+    ```
 
-# 1. Ingest Data
-df = pd.read_csv("telecom_churn.csv")
-X, y = df.drop("churn", axis=1), df["churn"]
+=== "🔥 Standard Usage"
 
-# 2. Orchestrate (Profile, Clean, Tune, Evaluate)
-automl = AutoML()
-automl.fit(X, y)
+    Bring your own dataset and let OctoLearn orchestrate the profiling, cleaning, tuning, and evaluation out of the box.
 
-# 3. Deliver Insight
-pdf_report = automl.generate_report()
-print(f"Analysis complete: {pdf_report}")
-```
+    ```python
+    from octolearn import AutoML
+    import pandas as pd
 
-### Profile Only (No Training)
+    # 1. Ingest Data
+    df = pd.read_csv("telecom_churn.csv")
+    X, y = df.drop("churn", axis=1), df["churn"]
 
-```python
-automl = AutoML(train_models=False)
-automl.fit(X, y)
+    # 2. Orchestrate (Profile, Clean, Tune, Evaluate)
+    automl = AutoML()
+    automl.fit(X, y)
 
-# Access insights
-profile = automl.raw_profile_
-print(f"Rows: {profile.n_rows}, Columns: {profile.n_columns}")
-print(f"Task type: {profile.task_type}")
-print(f"Missing values: {profile.missing_ratio}")
+    # 3. Deliver Insight
+    pdf_report = automl.generate_report()
+    print(f"Analysis complete: {pdf_report}")
+    ```
 
-# Risk assessment
-risk = automl.get_risk_score()
-print(f"Risk: {risk['score']}/100 ({risk['category']})")
-```
+=== "🔍 Profile Only"
 
-### Generate a PDF Report
+    Need deep visibility into your dataset without the computational cost of training models? OctoLearn's profiler can execute independently.
 
-```python
-automl = AutoML()
-automl.fit(X, y)
-automl.generate_report()  # Creates a professional PDF report
-```
+    ```python
+    automl = AutoML(train_models=False)
+    automl.fit(X, y)
+
+    # Access insights
+    profile = automl.raw_profile_
+    print(f"Rows: {profile.n_rows}, Columns: {profile.n_columns}")
+    print(f"Task type: {profile.task_type}")
+    print(f"Missing values: {profile.missing_ratio}")
+
+    # Risk assessment
+    risk = automl.get_risk_score()
+    print(f"Risk: {risk['score']}/100 ({risk['category']})")
+    ```
 
 ---
 
@@ -153,9 +153,8 @@ automl.fit(X, y, models=['xgboost', 'lightgbm'])
 | `imputer_strategy` | `dict` | `PreprocessingConfig.imputer_strategy` | Imputation strategy |
 | `scaler` | `str` | `PreprocessingConfig.scaler` | Scaling method |
 
-> **Note:** Overrides are applied non-destructively. The original config is fully restored after `fit()` completes, so subsequent calls use the original defaults.
-
-
+!!! tip "Non-Destructive Overrides"
+    Overrides configured during `fit()` are applied non-destructively. The original config is fully restored after `fit()` completes, so subsequent executions use the original baseline configurations.
 
 ## 🔧 Advanced Usage
 
@@ -550,5 +549,5 @@ MIT License — see [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-  Built with ❤️ by the OctoLearn team
+  Built with ❤️ by Ghulam Muhammad Nabeel
 </p>

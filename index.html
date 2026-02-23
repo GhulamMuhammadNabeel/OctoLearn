@@ -1,0 +1,1833 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="The Enterprise-Grade AutoML Orchestrator for Python.">
+      
+      
+      
+        <link rel="canonical" href="https://GhulamMuhammadNabeel.github.io/OctoLearn/">
+      
+      
+      
+        <link rel="next" href="architecture/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>OctoLearn</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#the-octolearn-advantage" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="OctoLearn" class="md-header__button md-logo" aria-label="OctoLearn" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OctoLearn
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Home
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="deployment/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Deployment
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="testing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Testing
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="OctoLearn" class="md-nav__button md-logo" aria-label="OctoLearn" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    OctoLearn
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="." class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-octolearn-advantage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚀 The OctoLearn Advantage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features-at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ✨ Features at a Glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📦 Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start-production-pipeline-in-30-seconds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏎️ Quick Start: Production Pipeline in 30 Seconds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-run-fit-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚡ Per-Run fit() Overrides
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚡ Per-Run fit() Overrides">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#all-override-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        All Override Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔧 Advanced Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔧 Advanced Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deployment-exporting-the-best-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚀 Deployment: Exporting the Best Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-on-full-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏋️‍♂️ Training on Full Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accessing-data-at-specific-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📍 Accessing Data at Specific Points
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#full-configuration-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Configuration Control
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-individual-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Individual Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using Individual Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#data-profiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Profiling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-cleaning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto Cleaning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backward-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backward Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📖 API Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📖 API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#automl-main-orchestrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AutoML — Main Orchestrator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-dataclasses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Dataclasses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏗️ Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🏗️ Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧪 Running Tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📝 License
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#author" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        👤 Author
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-octolearn-advantage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚀 The OctoLearn Advantage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features-at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ✨ Features at a Glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📦 Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start-production-pipeline-in-30-seconds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏎️ Quick Start: Production Pipeline in 30 Seconds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-run-fit-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚡ Per-Run fit() Overrides
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚡ Per-Run fit() Overrides">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#all-override-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        All Override Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔧 Advanced Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔧 Advanced Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deployment-exporting-the-best-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚀 Deployment: Exporting the Best Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-on-full-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏋️‍♂️ Training on Full Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accessing-data-at-specific-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📍 Accessing Data at Specific Points
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#full-configuration-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Configuration Control
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-individual-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Individual Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using Individual Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#data-profiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Profiling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-cleaning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto Cleaning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backward-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backward Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📖 API Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📖 API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#automl-main-orchestrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AutoML — Main Orchestrator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-dataclasses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Dataclasses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏗️ Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🏗️ Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧪 Running Tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📝 License
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#author" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        👤 Author
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<p align="center">
+  <img src="../octolearn/images/logo.png" alt="OctoLearn Logo" width="220"/>
+</p>
+
+<h1 align="center">OctoLearn</h1>
+
+<p align="center">
+  <strong>The Enterprise-Grade AutoML Orchestrator for Python.</strong><br>
+  Deliver production-ready machine learning from messy data in minutes, not weeks.
+</p>
+
+<p align="center">
+  <a href="https://github.com/GhulamMuhammadNabeel/OctoLearn/blob/main/guide.md"><strong>Explore the User Guide »</strong></a>
+</p>
+
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-features">Key Capabilities</a> •
+  <a href="#-installation">Installation</a> •
+  <a href="guide.md">Full Documentation</a> •
+  <a href="testing.md">Reliability & Testing</a>
+</p>
+
+<hr />
+<p>OctoLearn is designed for data scientists and engineers who need more than just a "black box" model. It provides <strong>transparent, controllable, and professional</strong> machine learning workflows that automate the tedious parts of data science while giving you full oversight through high-fidelity intelligence reports.</p>
+<h2 id="the-octolearn-advantage">🚀 The OctoLearn Advantage</h2>
+<p>Most AutoML libraries focus solely on leaderboard scores. OctoLearn focuses on the <strong>entire lifecycle</strong>:</p>
+<ol>
+<li><strong>Observability</strong>: Detailed profiling and risk scoring tell you <em>why</em> your data might fail.</li>
+<li><strong>Transparency</strong>: The "Data Journey" in our reports shows exactly how every feature was transformed.</li>
+<li><strong>Communication</strong>: Stakeholder-ready PDF reports that look like McKinsey-level analysis.</li>
+<li><strong>Control</strong>: Override any part of the pipeline via simple config objects or per-run parameters.</li>
+</ol>
+<hr />
+<h2 id="features-at-a-glance">✨ Features at a Glance</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Pillar</th>
+<th style="text-align: left;">Capability</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>🔍 Intelligence</strong></td>
+<td style="text-align: left;">Auto-detects feature types, class imbalance, and <strong>Data Leakage</strong> suspects.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>🧹 Resilience</strong></td>
+<td style="text-align: left;">Industrial-strength cleaners handle outliers, missing values, and high-cardinality features.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>📈 Performance</strong></td>
+<td style="text-align: left;">Bayesian optimization via <strong>Optuna</strong> + Stacking Ensembles for maximum ROI.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>📄 Clarity</strong></td>
+<td style="text-align: left;">Magazine-style PDF reports with SHAP explainability and interactive-ready visuals.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>🛡️ Reliability</strong></td>
+<td style="text-align: left;">Built-in data quality risk scoring (0-100) to flag "garbage-in" scenarios.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="installation">📦 Installation</h2>
+<div class="admonition info">
+<p class="admonition-title">Virtual Environment Recommended</p>
+<p>Before installing OctoLearn, we recommend creating and activating a Python virtual environment to avoid dependency conflicts.</p>
+</div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/GhulamMuhammadNabeel/OctoLearn.git
+</code></pre></div>
+<hr />
+<h2 id="quick-start-production-pipeline-in-30-seconds">🏎️ Quick Start: Production Pipeline in 30 Seconds</h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">🌟 Surprise Me API</label><label for="__tabbed_1_2">🔥 Standard Usage</label><label for="__tabbed_1_3">🔍 Profile Only</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Want to see OctoLearn in action instantly without providing your own data? Use the <code>surprise_me</code> API down automatically download a benchmark dataset, run the full pipeline, and generate a beautiful intelligence report.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">octolearn</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoML</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># Run the complete pipeline on a sample classification dataset</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">pdf_path</span><span class="p">,</span> <span class="n">best_model</span> <span class="o">=</span> <span class="n">AutoML</span><span class="o">.</span><span class="n">surprise_me</span><span class="p">(</span><span class="n">task</span><span class="o">=</span><span class="s1">&#39;classification&#39;</span><span class="p">)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Report saved to: </span><span class="si">{</span><span class="n">pdf_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Bring your own dataset and let OctoLearn orchestrate the profiling, cleaning, tuning, and evaluation out of the box.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">octolearn</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoML</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># 1. Ingest Data</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;telecom_churn.csv&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;churn&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;churn&quot;</span><span class="p">]</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1"># 2. Orchestrate (Profile, Clean, Tune, Evaluate)</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="n">automl</span> <span class="o">=</span> <span class="n">AutoML</span><span class="p">()</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">automl</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1"># 3. Deliver Insight</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="n">pdf_report</span> <span class="o">=</span> <span class="n">automl</span><span class="o">.</span><span class="n">generate_report</span><span class="p">()</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Analysis complete: </span><span class="si">{</span><span class="n">pdf_report</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Need deep visibility into your dataset without the computational cost of training models? OctoLearn's profiler can execute independently.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">automl</span> <span class="o">=</span> <span class="n">AutoML</span><span class="p">(</span><span class="n">train_models</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">automl</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Access insights</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">profile</span> <span class="o">=</span> <span class="n">automl</span><span class="o">.</span><span class="n">raw_profile_</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rows: </span><span class="si">{</span><span class="n">profile</span><span class="o">.</span><span class="n">n_rows</span><span class="si">}</span><span class="s2">, Columns: </span><span class="si">{</span><span class="n">profile</span><span class="o">.</span><span class="n">n_columns</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task type: </span><span class="si">{</span><span class="n">profile</span><span class="o">.</span><span class="n">task_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing values: </span><span class="si">{</span><span class="n">profile</span><span class="o">.</span><span class="n">missing_ratio</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="c1"># Risk assessment</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="n">risk</span> <span class="o">=</span> <span class="n">automl</span><span class="o">.</span><span class="n">get_risk_score</span><span class="p">()</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Risk: </span><span class="si">{</span><span class="n">risk</span><span class="p">[</span><span class="s1">&#39;score&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">/100 (</span><span class="si">{</span><span class="n">risk</span><span class="p">[</span><span class="s1">&#39;category&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="per-run-fit-overrides">⚡ Per-Run <code>fit()</code> Overrides</h2>
+<p>You can override key configuration settings for a <strong>single run</strong> without re-creating the <code>AutoML</code> instance. This is ideal for rapid experimentation:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">automl</span> <span class="o">=</span> <span class="n">AutoML</span><span class="p">()</span>  <span class="c1"># Create once with default config</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># Quick exploration run — no Optuna, fast</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">automl</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">use_optuna</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">n_models</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1"># Production run — more trials, longer timeout</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">automl</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">optuna_trials</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">optuna_timeout</span><span class="o">=</span><span class="mi">600</span><span class="p">)</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="c1"># Try a specific metric</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="n">automl</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">evaluation_metric</span><span class="o">=</span><span class="s1">&#39;roc_auc&#39;</span><span class="p">)</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="c1"># Override preprocessing</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="n">automl</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">imputer_strategy</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;numeric&#39;</span><span class="p">:</span> <span class="s1">&#39;median&#39;</span><span class="p">},</span> <span class="n">scaler</span><span class="o">=</span><span class="s1">&#39;robust&#39;</span><span class="p">)</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="c1"># Specific models only</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="n">automl</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">models</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;xgboost&#39;</span><span class="p">,</span> <span class="s1">&#39;lightgbm&#39;</span><span class="p">])</span>
+</code></pre></div>
+<h3 id="all-override-parameters">All Override Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Overrides</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>optuna_trials</code></td>
+<td><code>int</code></td>
+<td><code>OptimizationConfig.optuna_trials_per_model</code></td>
+<td>Number of Optuna trials per model</td>
+</tr>
+<tr>
+<td><code>optuna_timeout</code></td>
+<td><code>int</code></td>
+<td><code>OptimizationConfig.optuna_timeout_seconds</code></td>
+<td>Max seconds per model for Optuna</td>
+</tr>
+<tr>
+<td><code>use_optuna</code></td>
+<td><code>bool</code></td>
+<td><code>OptimizationConfig.use_optuna</code></td>
+<td>Enable/disable Optuna for this run</td>
+</tr>
+<tr>
+<td><code>test_size</code></td>
+<td><code>float</code></td>
+<td><code>DataConfig.test_size</code></td>
+<td>Train/test split ratio</td>
+</tr>
+<tr>
+<td><code>random_state</code></td>
+<td><code>int</code></td>
+<td><code>DataConfig.random_state</code></td>
+<td>Random seed</td>
+</tr>
+<tr>
+<td><code>models</code></td>
+<td><code>List[str]</code></td>
+<td><code>ModelingConfig.models_to_train</code></td>
+<td>Specific models to train</td>
+</tr>
+<tr>
+<td><code>n_models</code></td>
+<td><code>int</code></td>
+<td><code>ModelingConfig.n_models</code></td>
+<td>Number of models to train</td>
+</tr>
+<tr>
+<td><code>evaluation_metric</code></td>
+<td><code>str</code></td>
+<td><code>ModelingConfig.evaluation_metric</code></td>
+<td>Primary metric to optimize</td>
+</tr>
+<tr>
+<td><code>imputer_strategy</code></td>
+<td><code>dict</code></td>
+<td><code>PreprocessingConfig.imputer_strategy</code></td>
+<td>Imputation strategy</td>
+</tr>
+<tr>
+<td><code>scaler</code></td>
+<td><code>str</code></td>
+<td><code>PreprocessingConfig.scaler</code></td>
+<td>Scaling method</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">Non-Destructive Overrides</p>
+<p>Overrides configured during <code>fit()</code> are applied non-destructively. The original config is fully restored after <code>fit()</code> completes, so subsequent executions use the original baseline configurations.</p>
+</div>
+<h2 id="advanced-usage">🔧 Advanced Usage</h2>
+<h3 id="deployment-exporting-the-best-pipeline">🚀 Deployment: Exporting the Best Pipeline</h3>
+<p>OctoLearn makes it easy to move from experimentation to production. You can export the entire "Best Pipeline" (Preprocessing + Model) as a standalone scikit-learn object.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># 1. Train the orchestrator</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">automl</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># 2. Get the standalone pipeline (Preprocessing + Best Model)</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">automl</span><span class="o">.</span><span class="n">get_pipeline</span><span class="p">()</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># 3. Use it like a standard sklearn object (no OctoLearn required for inference!)</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">predictions</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_new</span><span class="p">)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1"># 4. Save for deployment</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="kn">import</span><span class="w"> </span><span class="nn">joblib</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="n">joblib</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">pipeline</span><span class="p">,</span> <span class="s2">&quot;octolearn_prod_pipeline.pkl&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="training-on-full-data">🏋️‍♂️ Training on Full Data</h3>
+<p>After finding the best model and hyperparameters, you may want to retrain on your <strong>entire</strong> dataset (train + test combined) to maximize performance before deployment.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># 1. Find the best settings</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">automl</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># 2. Get the standalone pipeline</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">automl</span><span class="o">.</span><span class="n">get_pipeline</span><span class="p">()</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># 3. Retrain the pipeline on the FULL dataset</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1"># This refits the preprocessing and the model on all available data</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="n">pipeline</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="c1"># 4. Save your final production model</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="n">joblib</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">pipeline</span><span class="p">,</span> <span class="s2">&quot;final_model_full_data.pkl&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="accessing-data-at-specific-points">📍 Accessing Data at Specific Points</h3>
+<p>Need to inspect the data after cleaning but before model training? Or want to see the raw samples? OctoLearn exposes all intermediate states:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Raw data exactly as provided (or sampled if configured)</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">X_raw</span> <span class="o">=</span> <span class="n">automl</span><span class="o">.</span><span class="n">X_raw_</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># The train/test split (pre-cleaning)</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">X_train_raw</span> <span class="o">=</span> <span class="n">automl</span><span class="o">.</span><span class="n">X_train_</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1"># The final cleaned data used for the &quot;Model Arena&quot;</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">X_final</span> <span class="o">=</span> <span class="n">automl</span><span class="o">.</span><span class="n">X_</span>  <span class="c1"># Combined cleaned dataset</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="n">y_final</span> <span class="o">=</span> <span class="n">automl</span><span class="o">.</span><span class="n">y_</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="c1"># Access the cleaner directly to transform new data manually</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">clean_data</span> <span class="o">=</span> <span class="n">automl</span><span class="o">.</span><span class="n">cleaner_</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">new_df</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="full-configuration-control">Full Configuration Control</h3>
+<p>Every aspect of OctoLearn is configurable through dataclass objects:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">octolearn</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="n">AutoML</span><span class="p">,</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">DataConfig</span><span class="p">,</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">ProfilingConfig</span><span class="p">,</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">PreprocessingConfig</span><span class="p">,</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">ModelingConfig</span><span class="p">,</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="n">OptimizationConfig</span><span class="p">,</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="n">ReportingConfig</span><span class="p">,</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    <span class="n">ParallelConfig</span><span class="p">,</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="p">)</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="n">automl</span> <span class="o">=</span> <span class="n">AutoML</span><span class="p">(</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    <span class="c1"># Data handling</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    <span class="n">data_config</span><span class="o">=</span><span class="n">DataConfig</span><span class="p">(</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>        <span class="n">use_full_data</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>     <span class="c1"># Sample large datasets</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>        <span class="n">sample_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>        <span class="c1"># Rows to sample</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>           <span class="c1"># Train/test split ratio</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>        <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>         <span class="c1"># Reproducibility</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>    <span class="p">),</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>    <span class="c1"># Profiling behavior</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>    <span class="n">profiling_config</span><span class="o">=</span><span class="n">ProfilingConfig</span><span class="p">(</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>        <span class="n">detect_outliers</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>        <span class="n">analyze_interactions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>   <span class="c1"># Enable interaction analysis</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>        <span class="n">generate_risk_score</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>        <span class="n">calculate_feature_importance</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>    <span class="p">),</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>    <span class="c1"># Preprocessing strategy</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>    <span class="n">preprocessing_config</span><span class="o">=</span><span class="n">PreprocessingConfig</span><span class="p">(</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>        <span class="n">auto_clean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>        <span class="n">imputer_strategy</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;numeric&quot;</span><span class="p">:</span> <span class="s2">&quot;median&quot;</span><span class="p">,</span> <span class="s2">&quot;categorical&quot;</span><span class="p">:</span> <span class="s2">&quot;mode&quot;</span><span class="p">},</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>        <span class="n">scaler</span><span class="o">=</span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>       <span class="c1"># &quot;standard&quot;, &quot;minmax&quot;, &quot;robust&quot;, or None</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>        <span class="n">id_columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;user_id&quot;</span><span class="p">],</span>  <span class="c1"># Columns to remove</span>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a>    <span class="p">),</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>    <span class="c1"># Model training</span>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a>    <span class="n">modeling_config</span><span class="o">=</span><span class="n">ModelingConfig</span><span class="p">(</span>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a>        <span class="n">train_models</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a>        <span class="n">n_models</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a>        <span class="n">models_to_train</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;random_forest&quot;</span><span class="p">,</span> <span class="s2">&quot;xgboost&quot;</span><span class="p">,</span> <span class="s2">&quot;logistic_regression&quot;</span><span class="p">],</span>
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a>    <span class="p">),</span>
+<a id="__codelineno-8-43" name="__codelineno-8-43" href="#__codelineno-8-43"></a>
+<a id="__codelineno-8-44" name="__codelineno-8-44" href="#__codelineno-8-44"></a>    <span class="c1"># Hyperparameter tuning</span>
+<a id="__codelineno-8-45" name="__codelineno-8-45" href="#__codelineno-8-45"></a>    <span class="n">optimization_config</span><span class="o">=</span><span class="n">OptimizationConfig</span><span class="p">(</span>
+<a id="__codelineno-8-46" name="__codelineno-8-46" href="#__codelineno-8-46"></a>        <span class="n">use_optuna</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-8-47" name="__codelineno-8-47" href="#__codelineno-8-47"></a>        <span class="n">optuna_trials_per_model</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+<a id="__codelineno-8-48" name="__codelineno-8-48" href="#__codelineno-8-48"></a>        <span class="n">optuna_timeout_seconds</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span>
+<a id="__codelineno-8-49" name="__codelineno-8-49" href="#__codelineno-8-49"></a>    <span class="p">),</span>
+<a id="__codelineno-8-50" name="__codelineno-8-50" href="#__codelineno-8-50"></a>
+<a id="__codelineno-8-51" name="__codelineno-8-51" href="#__codelineno-8-51"></a>    <span class="c1"># Report settings</span>
+<a id="__codelineno-8-52" name="__codelineno-8-52" href="#__codelineno-8-52"></a>    <span class="n">reporting_config</span><span class="o">=</span><span class="n">ReportingConfig</span><span class="p">(</span>
+<a id="__codelineno-8-53" name="__codelineno-8-53" href="#__codelineno-8-53"></a>        <span class="n">generate_report</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-8-54" name="__codelineno-8-54" href="#__codelineno-8-54"></a>        <span class="n">report_detail</span><span class="o">=</span><span class="s2">&quot;detailed&quot;</span><span class="p">,</span>   <span class="c1"># &quot;brief&quot; or &quot;detailed&quot;</span>
+<a id="__codelineno-8-55" name="__codelineno-8-55" href="#__codelineno-8-55"></a>        <span class="n">include_shap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-8-56" name="__codelineno-8-56" href="#__codelineno-8-56"></a>        <span class="n">plot_mode</span><span class="o">=</span><span class="s2">&quot;simple&quot;</span><span class="p">,</span>         <span class="c1"># &quot;simple&quot; or &quot;dashboard&quot;</span>
+<a id="__codelineno-8-57" name="__codelineno-8-57" href="#__codelineno-8-57"></a>    <span class="p">),</span>
+<a id="__codelineno-8-58" name="__codelineno-8-58" href="#__codelineno-8-58"></a>
+<a id="__codelineno-8-59" name="__codelineno-8-59" href="#__codelineno-8-59"></a>    <span class="c1"># Parallel processing</span>
+<a id="__codelineno-8-60" name="__codelineno-8-60" href="#__codelineno-8-60"></a>    <span class="n">parallel_config</span><span class="o">=</span><span class="n">ParallelConfig</span><span class="p">(</span>
+<a id="__codelineno-8-61" name="__codelineno-8-61" href="#__codelineno-8-61"></a>        <span class="n">parallel_processing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-8-62" name="__codelineno-8-62" href="#__codelineno-8-62"></a>        <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>               <span class="c1"># -1 = all cores</span>
+<a id="__codelineno-8-63" name="__codelineno-8-63" href="#__codelineno-8-63"></a>        <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;threading&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-64" name="__codelineno-8-64" href="#__codelineno-8-64"></a>    <span class="p">),</span>
+<a id="__codelineno-8-65" name="__codelineno-8-65" href="#__codelineno-8-65"></a><span class="p">)</span>
+<a id="__codelineno-8-66" name="__codelineno-8-66" href="#__codelineno-8-66"></a>
+<a id="__codelineno-8-67" name="__codelineno-8-67" href="#__codelineno-8-67"></a><span class="n">automl</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="using-individual-components">Using Individual Components</h3>
+<p>OctoLearn's components can be used independently:</p>
+<h4 id="data-profiling">Data Profiling</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">octolearn.profiling</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataProfiler</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">profiler</span> <span class="o">=</span> <span class="n">DataProfiler</span><span class="p">()</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">profile</span> <span class="o">=</span> <span class="n">profiler</span><span class="o">.</span><span class="n">profile</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape: </span><span class="si">{</span><span class="n">profile</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Numeric columns: </span><span class="si">{</span><span class="n">profile</span><span class="o">.</span><span class="n">numeric_columns</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Categorical columns: </span><span class="si">{</span><span class="n">profile</span><span class="o">.</span><span class="n">categorical_columns</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ID-like columns: </span><span class="si">{</span><span class="n">profile</span><span class="o">.</span><span class="n">id_like_columns</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Leakage suspects: </span><span class="si">{</span><span class="n">profile</span><span class="o">.</span><span class="n">leakage_suspects</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Class imbalance ratio: </span><span class="si">{</span><span class="n">profile</span><span class="o">.</span><span class="n">imbalance_ratio</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="auto-cleaning">Auto Cleaning</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">octolearn.preprocessing.auto_cleaner</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoCleaner</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">cleaner</span> <span class="o">=</span> <span class="n">AutoCleaner</span><span class="p">(</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">imputer_strategy</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;numeric&quot;</span><span class="p">:</span> <span class="s2">&quot;median&quot;</span><span class="p">},</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">scaler</span><span class="o">=</span><span class="s2">&quot;robust&quot;</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="p">)</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="n">X_clean</span><span class="p">,</span> <span class="n">y_clean</span><span class="p">,</span> <span class="n">cleaning_log</span> <span class="o">=</span> <span class="n">cleaner</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="c1"># Apply same cleaning to test data</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="n">X_test_clean</span> <span class="o">=</span> <span class="n">cleaner</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="model-registry">Model Registry</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">octolearn.models.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelRegistry</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">ModelRegistry</span><span class="p">(</span><span class="n">base_dir</span><span class="o">=</span><span class="s2">&quot;./models&quot;</span><span class="p">)</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;xgboost_v1&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;accuracy&quot;</span><span class="p">:</span> <span class="mf">0.95</span><span class="p">})</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="c1"># Load best model later</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="n">best</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_best_model</span><span class="p">(</span><span class="n">metric</span><span class="o">=</span><span class="s2">&quot;accuracy&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="backward-compatibility">Backward Compatibility</h3>
+<p>Legacy parameter names are supported via <code>**kwargs</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Both of these work identically:</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="n">AutoML</span><span class="p">(</span><span class="n">train_models</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">AutoML</span><span class="p">(</span><span class="n">modeling_config</span><span class="o">=</span><span class="n">ModelingConfig</span><span class="p">(</span><span class="n">train_models</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+</code></pre></div>
+<hr />
+<h2 id="api-reference">📖 API Reference</h2>
+<h3 id="automl-main-orchestrator"><code>AutoML</code> — Main Orchestrator</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fit(X, y)</code></td>
+<td>Run the complete pipeline</td>
+</tr>
+<tr>
+<td><code>predict(X_new)</code></td>
+<td>Make predictions using best model</td>
+</tr>
+<tr>
+<td><code>generate_report()</code></td>
+<td>Generate PDF report</td>
+</tr>
+<tr>
+<td><code>get_risk_score()</code></td>
+<td>Get data quality risk score (0-100)</td>
+</tr>
+<tr>
+<td><code>get_recommendations()</code></td>
+<td>Get ML recommendations</td>
+</tr>
+<tr>
+<td><code>get_feature_importance()</code></td>
+<td>Get feature importance scores</td>
+</tr>
+<tr>
+<td><code>get_preprocessing_suggestions()</code></td>
+<td>Get preprocessing advice</td>
+</tr>
+<tr>
+<td><code>get_model_benchmarks()</code></td>
+<td>Get all model metrics</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>raw_profile_</code></td>
+<td><code>DatasetProfile</code> of raw data</td>
+</tr>
+<tr>
+<td><code>clean_profile_</code></td>
+<td><code>DatasetProfile</code> of cleaned data</td>
+</tr>
+<tr>
+<td><code>X_</code>, <code>y_</code></td>
+<td>Cleaned feature matrix and target</td>
+</tr>
+<tr>
+<td><code>X_train_</code>, <code>X_test_</code></td>
+<td>Train/test splits</td>
+</tr>
+<tr>
+<td><code>cleaning_log_</code></td>
+<td>Dictionary of cleaning operations</td>
+</tr>
+<tr>
+<td><code>outlier_results_</code></td>
+<td>Outlier detection results</td>
+</tr>
+<tr>
+<td><code>trained_models_</code></td>
+<td>Dictionary of trained models</td>
+</tr>
+<tr>
+<td><code>best_model_</code></td>
+<td>Best performing model</td>
+</tr>
+</tbody>
+</table>
+<h3 id="configuration-dataclasses">Configuration Dataclasses</h3>
+<details>
+<summary><strong>DataConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `use_full_data` | `bool` | `False` | Use entire dataset (no sampling) |
+| `sample_size` | `int` | `500` | Rows to sample if not using full data |
+| `test_size` | `float` | `0.2` | Fraction for test split |
+| `random_state` | `int` | `42` | Random seed for reproducibility |
+| `stratify_target` | `bool` | `True` | Stratify split on target |
+</details>
+
+<details>
+<summary><strong>ProfilingConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `detect_outliers` | `bool` | `True` | Run outlier detection |
+| `analyze_interactions` | `bool` | `False` | Analyze feature interactions |
+| `generate_risk_score` | `bool` | `True` | Calculate risk score |
+| `calculate_feature_importance` | `bool` | `True` | Compute importance |
+| `generate_recommendations` | `bool` | `True` | Generate ML recommendations |
+| `include_duplicates_analysis` | `bool` | `True` | Analyze duplicates |
+</details>
+
+<details>
+<summary><strong>PreprocessingConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `auto_clean` | `bool` | `True` | Enable auto cleaning |
+| `imputer_strategy` | `Dict` | `None` | Imputation methods per type |
+| `encoder_strategy` | `Dict` | `None` | Encoding strategy |
+| `scaler` | `str` | `"standard"` | Scaling method |
+| `id_columns` | `List[str]` | `None` | Columns to remove |
+</details>
+
+<details>
+<summary><strong>ModelingConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `train_models` | `bool` | `True` | Whether to train models |
+| `models_to_train` | `List[str]` | `None` | Specific models to train |
+| `evaluation_metric` | `str` | `None` | Primary evaluation metric |
+| `n_models` | `int` | `5` | Number of models to train |
+| `test_size` | `float` | `0.2` | Test split ratio |
+</details>
+
+<details>
+<summary><strong>OptimizationConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `use_optuna` | `bool` | `True` | Enable Optuna tuning |
+| `optuna_trials_per_model` | `int` | `20` | Trials per model |
+| `optuna_timeout_seconds` | `int` | `300` | Timeout per model |
+| `optuna_parallel_jobs` | `int` | `-1` | Parallel Optuna workers |
+| `use_registry` | `bool` | `True` | Save models to registry |
+</details>
+
+<details>
+<summary><strong>ReportingConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `generate_report` | `bool` | `True` | Generate PDF report |
+| `report_detail` | `str` | `"detailed"` | `"brief"` or `"detailed"` |
+| `include_shap` | `bool` | `True` | Include SHAP analysis |
+| `plot_mode` | `str` | `"simple"` | `"simple"` or `"dashboard"` |
+| `visuals_limit` | `int` | `10` | Max plots in report |
+</details>
+
+<details>
+<summary><strong>ParallelConfig</strong></summary>
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `parallel_processing` | `bool` | `True` | Enable parallelism |
+| `n_jobs` | `int` | `-1` | Number of cores (-1 = all) |
+| `backend` | `str` | `"threading"` | Joblib backend |
+| `verbose` | `int` | `0` | Verbosity level |
+</details>
+
+<hr />
+<h2 id="architecture">🏗️ Architecture</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>octolearn/
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>├── __init__.py              # Public API exports
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>├── config.py                # Centralized configuration constants
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>├── core.py                  # AutoML orchestrator (main entry point)
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>│
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>├── profiling/
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>│   └── data_profiler.py     # DataProfiler + DatasetProfile
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>│
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>├── preprocessing/
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>│   ├── auto_cleaner.py      # AutoCleaner (impute/encode/scale)
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>│   └── pipeline_builder.py  # sklearn Pipeline export
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>│
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>├── models/
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>│   ├── model_trainer.py     # ModelTrainer + Optuna integration
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>│   └── registry.py          # ModelRegistry (versioned storage)
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>│
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>├── evaluation/
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>│   └── metrics.py           # ModelEvaluator (classification/regression)
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>│
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>├── experiments/
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>│   ├── report_generator.py  # PDF report generation
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>│   ├── plot_generator.py    # Visualization engine
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>│   ├── recommendation_engine.py  # ML recommendations
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>│   ├── risk_scorer.py       # Data quality risk scoring
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>│   ├── outlier_detector.py  # Multi-method outlier detection
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>│   ├── baseline_importance.py    # Feature importance
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>│   └── preprocessing_suggester.py # Preprocessing advice
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>│
+<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>├── feature/
+<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a>│   └── interaction_analyzer.py   # Feature interaction analysis
+<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a>│
+<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a>└── utils/
+<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a>    └── helpers.py           # Logging, decorators, validation
+</code></pre></div>
+<h3 id="pipeline-flow">Pipeline Flow</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>Raw Data ──► Profiling ──► Train/Test Split ──► Auto Cleaning ──► Clean Profiling
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>                                                      │
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>                                                      ▼
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>                    PDF Report ◄── Model Training ◄── Feature Engineering
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>                                       │
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>                                       ▼
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>                              Optuna Optimization ──► Model Registry
+</code></pre></div>
+<p>The pipeline executes 6 phases:</p>
+<ol>
+<li><strong>Profiling</strong> — Infer types, detect quality issues, estimate task type</li>
+<li><strong>Splitting</strong> — Stratified train/test split</li>
+<li><strong>Cleaning</strong> — Impute missing values, encode categoricals, scale numerics</li>
+<li><strong>Clean Profiling</strong> — Re-profile the cleaned dataset</li>
+<li><strong>Feature Engineering</strong> — Outlier detection + interaction analysis</li>
+<li><strong>Model Training</strong> — Train multiple models with optional Optuna HPO</li>
+</ol>
+<hr />
+<h2 id="running-tests">🧪 Running Tests</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Activate virtual environment first</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>python<span class="w"> </span>test_complete_pipeline.py
+</code></pre></div>
+<p>This exercises all pipeline phases with the Titanic dataset.</p>
+<hr />
+<h2 id="license">📝 License</h2>
+<p>MIT License — see <a href="LICENSE">LICENSE</a> for details.</p>
+<hr />
+<h2 id="author">👤 Author</h2>
+<p><strong>Ghulam Muhammad Nabeel</strong></p>
+<hr />
+<p align="center">
+  Built with ❤️ by Ghulam Muhammad Nabeel
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

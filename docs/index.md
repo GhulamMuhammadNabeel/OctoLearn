@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="/octolearn/images/logo.png" alt="OctoLearn Logo" width="220"/>
+  <img src="../octolearn/images/logo.png" alt="OctoLearn Logo" width="220"/>
 </p>
 
 <h1 align="center">OctoLearn</h1>

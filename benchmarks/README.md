@@ -1,12 +1,12 @@
 # Benchmarks
 
-This folder contains small reproducible benchmarks and example data for
-quick validation and demo usage of Octolearn.
+This folder contains reproducible benchmarks and example data for validating and demonstrating OctoLearn.
 
-Files:
-- `benchmark_small.csv` - tiny synthetic dataset used by `notebooks/benchmark.ipynb`.
+## Quick Validation
 
-How to run the quick benchmark:
+Use this tiny synthetic dataset for smoke tests:
+
+- `benchmark_small.csv` - Small dataset with a 'target' column.
 
 ```bash
 python - <<'PY'
@@ -19,7 +19,26 @@ y = df['target']
 
 automl = AutoML(train_models=False, generate_shap=False)
 automl.fit(X, y)
-print('Profile:', automl.report())
-print('Risk:', automl.get_risk_score())
+print('Risk Score:', automl.get_risk_score())
 PY
 ```
+
+## Performance Benchmark
+
+For a more comprehensive test, use the included benchmark script:
+
+- `run_benchmarks.py` - Runs a full pipeline on the California Housing dataset.
+
+### Execution
+
+```bash
+python benchmarks/run_benchmarks.py
+```
+
+This script will:
+1. Load the California Housing dataset (20k+ rows).
+2. Segment data into training and test sets.
+3. Perform automated cleaning and profiling.
+4. Execute hyperparameter optimization via Optuna.
+5. Generate a professional PDF intelligence report.
+6. Display a comparative leaderboard of all models.

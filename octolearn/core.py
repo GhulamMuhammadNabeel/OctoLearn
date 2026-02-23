@@ -1216,18 +1216,37 @@ class AutoML:
     
     def generate_report(self, filename: Optional[str] = None) -> str:
         """
-            >>> automl = AutoML()
-            >>> automl.fit(X, y)
-            >>> pdf_path = automl.generate_report()
-            >>> print(f"Report saved to: {pdf_path}")
-            # Opens PDF to view results
+        Produce a professional, magazine-style PDF intelligence report.
+
+        This method compiles all findings from the fit phase—including dataset 
+        risk assessment, cleaning summaries, feature interactions, and model 
+        benchmarking—into a polished PDF report suitable for business stakeholders.
+
+        Parameters
+        ----------
+        filename : str, optional
+            The output path for the PDF file. If None, a timestamped filename 
+            (e.g., 'OctoLearn_Intelligence_Report_20231027.pdf') is generated.
+
+        Returns
+        -------
+        pdf_path : str
+            The absolute path to the generated PDF document.
+
+        Examples
+        --------
+        >>> automl = AutoML()
+        >>> automl.fit(X, y)
+        >>> pdf_path = automl.generate_report()
+        >>> print(f"Report saved to: {pdf_path}")
         
-        Note:
-            Report generation can take 1-5 minutes depending on:
-            - Dataset size
-            - Number of features
-            - Detail level (brief vs detailed)
-            - Whether to include SHAP analysis
+        Notes
+        -----
+        Report generation can take 1-5 minutes depending on:
+        - Dataset size
+        - Number of features
+        - Detail level (brief vs detailed)
+        - Whether to include SHAP analysis
         """
         if self.raw_profile_ is None:
             raise ValueError("Run fit() before generating report.")

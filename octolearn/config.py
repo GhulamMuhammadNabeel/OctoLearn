@@ -1,9 +1,18 @@
-# Configuration and constants for Octolearn
+"""
+Configuration Constants for OctoLearn.
+
+This module contains all threshold constants, dictionary configurations, and 
+hyperparameter search spaces for the OctoLearn orchestrator. Centralizing 
+these settings ensures consistency across profiling, cleaning, modeling, 
+and reporting phases.
+"""
+
 # ============================================================================
 # DATASET PROFILING THRESHOLDS
 # ============================================================================
 
 PROFILING_CONFIG = {
+    """Settings for automated feature type detection and structural analysis."""
     # Feature type detection
     'binary_cardinality_threshold': 2,                  # Cardinality for binary features
     'low_cardinality_threshold': 10,                    # Threshold for categorical
@@ -27,6 +36,7 @@ PROFILING_CONFIG = {
 # ============================================================================
 
 RISK_SCORING_CONFIG = {
+    """Scoring weights and logic for the Dataset Risk Assessment engine."""
     'thresholds': {
         'low_risk_max': 30,                             # 0-30 = Low
         'moderate_risk_max': 60,                        # 31-60 = Moderate
@@ -49,6 +59,7 @@ RISK_SCORING_CONFIG = {
 # ============================================================================
 
 OUTLIER_CONFIG = {
+    """Configuration for statistical and ML-based outlier detection."""
     'methods': ['iqr', 'isolation_forest', 'zscore'],  # Detection methods
     
     'iqr': {
@@ -74,6 +85,7 @@ OUTLIER_CONFIG = {
 # ============================================================================
 
 INTERACTION_CONFIG = {
+    """Settings for automatic creation of polynomial and ratio interactions."""
     'enabled': True,
     'types': ['polynomial', 'interaction', 'ratio'],   # Interaction types
     
@@ -101,6 +113,7 @@ INTERACTION_CONFIG = {
 # ============================================================================
 
 FEATURE_GENERATION_CONFIG = {
+    """Settings for semantic feature synthesis (Dates, Skew correction, etc.)."""
     'enabled': True,
     
     'date_features': {
@@ -127,6 +140,7 @@ FEATURE_GENERATION_CONFIG = {
 # ============================================================================
 
 AUTO_CLEAN_CONFIG = {
+    """Settings for the AutoCleaner module, including imputation and feature removal."""
     'enabled': True,
     
     'actions': {
@@ -150,6 +164,7 @@ AUTO_CLEAN_CONFIG = {
 # ============================================================================
 
 MODEL_TRAINING_CONFIG = {
+    """Global settings for model selection, training splits, and parallelisms."""
     'enabled': True,
     'parallel_processing': True,                        # Use parallel models
     'n_jobs': -1,                                       # -1 = all cores
@@ -181,6 +196,7 @@ MODEL_TRAINING_CONFIG = {
 # ============================================================================
 
 OPTUNA_CONFIG = {
+    """Configuration for hyperparameter optimization and search spaces."""
     'enabled': True,
     'study_name': 'octolearn_hpo',
     'baseline_score': None,
@@ -252,6 +268,7 @@ OPTUNA_CONFIG = {
 # ============================================================================
 
 MODEL_REGISTRY_CONFIG = {
+    """Settings for tracking and versioning models and performance artifacts."""
     'enabled': True,
     'storage': 'json',                                  # json (default, no deps), sqlite (optional), csv (readable)
     'db_path': '.octolearn/model_registry.json',       # Registry database/file
@@ -274,6 +291,7 @@ MODEL_REGISTRY_CONFIG = {
 # ============================================================================
 
 EVALUATION_CONFIG = {
+    """Metrics and cross-validation settings for model evaluation."""
     'classification_metrics': [
         'accuracy',
         'precision',
@@ -301,6 +319,7 @@ EVALUATION_CONFIG = {
 # ============================================================================
 
 PARALLEL_CONFIG = {
+    """Hardware acceleration and multi-core processing settings."""
     'enabled': True,
     'n_jobs': -1,                                       # -1 = all cores
     'backend': 'threading',                             # threading, loky, dask
@@ -322,6 +341,7 @@ PARALLEL_CONFIG = {
 # ============================================================================
 
 REPORT_CONFIG = {
+    """Aesthetics, fonts, and section visibility for the PDF Intelligence Report."""
     'mode': 'detailed',
     'include_sections': {
         'executive_summary': True,
@@ -352,6 +372,7 @@ REPORT_CONFIG = {
 # ============================================================================
 
 LOGGING_CONFIG = {
+    """Central logging configuration for the entire library."""
     'enabled': True,
     'level': 'INFO',                                    # DEBUG, INFO, WARNING, ERROR
     'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -363,6 +384,7 @@ LOGGING_CONFIG = {
 # ============================================================================
 
 ERROR_CONFIG = {
+    """Fault tolerance and retry logic for the pipeline orchestration."""
     'raise_on_error': False,                            # Continue on errors
     'log_errors': True,
     'max_retries': 3,                                   # Retry failed tasks

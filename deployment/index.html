@@ -548,11 +548,50 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#manual-deployment" class="md-nav__link">
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alternative-hosting-solutions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Manual Deployment
+        🏗️ Alternative Hosting Solutions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🏗️ Alternative Hosting Solutions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-github-pages-manualbranch-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. GitHub Pages (Manual/Branch Method)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-netlify-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Netlify (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-vercel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Vercel
       
     </span>
   </a>
@@ -698,11 +737,50 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#manual-deployment" class="md-nav__link">
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alternative-hosting-solutions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Manual Deployment
+        🏗️ Alternative Hosting Solutions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🏗️ Alternative Hosting Solutions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-github-pages-manualbranch-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. GitHub Pages (Manual/Branch Method)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-netlify-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Netlify (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-vercel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Vercel
       
     </span>
   </a>
@@ -797,17 +875,38 @@
 <a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pip install mkdocs-material mkdocstrings python-handler</span>
 <a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mkdocs gh-deploy --force</span>
 </code></pre></div>
-<h3 id="manual-deployment">Manual Deployment</h3>
-<p>If you prefer to deploy manually from your local machine:</p>
+<blockquote>
+<p>[!WARNING]
+If your GitHub Actions are disabled (e.g., due to billing issues), follow the <strong>Alternative Hosting</strong> instructions below.</p>
+</blockquote>
+<hr />
+<h2 id="alternative-hosting-solutions">🏗️ Alternative Hosting Solutions</h2>
+<p>If you encounter issues with GitHub Actions, you can use these free alternatives that don't rely on GitHub's internal billing.</p>
+<h3 id="1-github-pages-manualbranch-method">1. GitHub Pages (Manual/Branch Method)</h3>
+<p>Instead of using GitHub Actions to deploy, you can configure GitHub to serve your documentation directly from a branch.</p>
 <ol>
-<li>Install the documentation dependencies:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pip<span class="w"> </span>install<span class="w"> </span>mkdocs-material<span class="w"> </span>mkdocstrings<span class="o">[</span>python<span class="o">]</span>
-</code></pre></div></li>
-<li>Run the deployment command:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>mkdocs<span class="w"> </span>gh-deploy
-</code></pre></div></li>
+<li><strong>Push the branch</strong>: Run <code>mkdocs gh-deploy</code> from your local terminal. This creates and pushes the <code>gh-pages</code> branch.</li>
+<li><strong>Change Source</strong>: In your GitHub Repository, go to <strong>Settings</strong> &gt; <strong>Pages</strong>.</li>
+<li><strong>Select Branch</strong>: Under "Build and deployment", change the Source to <strong>Deploy from a branch</strong> and select <code>gh-pages</code> and <code>/ (root)</code>.</li>
 </ol>
-<p>The site will be hosted at <code>https://&lt;your-username&gt;.github.io/OctoLearn/</code>.</p>
+<h3 id="2-netlify-recommended">2. Netlify (Recommended)</h3>
+<p>Netlify provides superior performance and bypasses GitHub billing locks.</p>
+<ol>
+<li>Create a Free account at <a href="https://www.netlify.com">Netlify.com</a>.</li>
+<li>Select <strong>Import from GitHub</strong> and authorize the OctoLearn repository.</li>
+<li>Netlify will automatically detect the settings from the <code>netlify.toml</code> file we've included in the repository.</li>
+<li><strong>Build Command</strong>: <code>mkdocs build</code></li>
+<li><strong>Publish Directory</strong>: <code>site</code></li>
+</ol>
+<h3 id="3-vercel">3. Vercel</h3>
+<p>Vercel is another industrial-strength free alternative.</p>
+<ol>
+<li>Connect your GitHub account to <a href="https://vercel.com">Vercel</a>.</li>
+<li>Import OctoLearn.</li>
+<li>Set the Framework Preset to <strong>Other</strong> (if not detected).</li>
+<li>Build Command: <code>mkdocs build</code></li>
+<li>Output Directory: <code>site</code></li>
+</ol>
 <hr />
 <h2 id="production-best-practices">🛡️ Production Best Practices</h2>
 <ul>

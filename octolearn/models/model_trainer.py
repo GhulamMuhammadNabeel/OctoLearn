@@ -74,6 +74,7 @@ class ModelTrainer:
         enable_gpu: bool = False,
         early_stopping_rounds: Optional[int] = None,
         hyperparameter_overrides: Optional[Dict] = None,
+        baseline_score: Optional[float] = None,
         n_trials: Optional[int] = None,
         timeout_seconds: Optional[int] = None
     ):
@@ -115,6 +116,7 @@ class ModelTrainer:
         self.enable_gpu = enable_gpu
         self.early_stopping_rounds = early_stopping_rounds
         self.hyperparameter_overrides = hyperparameter_overrides or {}
+        self.baseline_score = baseline_score
         # User-supplied Optuna settings (override global config)
         self.n_trials = n_trials
         self.timeout_seconds = timeout_seconds
@@ -236,145 +238,161 @@ class ModelTrainer:
         X_train_proc = self._preprocess_data(self.X_train)
         X_test_proc = self._preprocess_data(self.X_test)
 
-        for model_name in models:
-            try:
-                logger.info(f"Training model: {model_name}")
+        # Determine metrics and constraints for Optuna study
+        metric = self.evaluation_metric or ('f1' if self.task_type == 'classification' else 'rmse')
+        direction = 'maximize' if (self.task_type == 'classification' or metric not in ['rmse', 'mse', 'mae', 'mape']) else 'minimize'
 
-                # 1) Hyperparameter optimization with Optuna (returns best params or {})
-                best_params = self._optimize_hyperparameters(model_name)
+        n_trials_config = self.n_trials if self.n_trials is not None else OPTUNA_CONFIG.get('optimization', {}).get('n_trials', 20)
 
-                # 2) Build final model (force single-thread for safety)
-                model = self._build_model(model_name, best_params, force_single_thread=True)
+        if n_trials_config and n_trials_config > 0:
+            logger.info("Performing JOINT Bayesian Optimization for Model Selection & Hyperparameters")
+            best_model_name, best_params = self._joint_optimize_hyperparameters(models, direction)
+            
+            # Rebuild and evaluate the single BEST model
+            model = self._build_model(best_model_name, best_params, force_single_thread=True)
+            start_time = time.time()
+            model.fit(X_train_proc, self.y_train)
+            train_time = time.time() - start_time
+            
+            from ..evaluation.metrics import ModelEvaluator
+            evaluator = ModelEvaluator(model, X_test_proc, self.y_test, self.task_type)
+            eval_results = evaluator.evaluate()
 
-                # 3) Fit on training data
-                start_time = time.time()
-                model.fit(X_train_proc, self.y_train)
-                train_time = time.time() - start_time
+            metric_value = eval_results.get('metrics', {}).get(metric, 0.0)
+            score = float(metric_value)
+            
+            self.trained_models[best_model_name] = model
+            self.model_scores[best_model_name] = score
+            self.best_hp_params[best_model_name] = best_params
 
-                # 4) Evaluate using ModelEvaluator for consistent metrics output
-                from ..evaluation.metrics import ModelEvaluator
-                evaluator = ModelEvaluator(model, X_test_proc, self.y_test, self.task_type)
-                eval_results = evaluator.evaluate()
+            results['trained_models'][best_model_name] = str(model)
+            results['model_scores'][best_model_name] = round(score, 4)
+            results['model_benchmarks'].append({
+                'model': best_model_name,
+                'score': round(score, 4),
+                'params': best_params,
+                'metrics': eval_results.get('metrics', {}),
+                'training_time': round(train_time, 4)
+            })
+            
+            logger.info(f"Optimal Model {best_model_name} result -> {score:.4f} ({metric})")
+            
+            results['best_model'] = best_model_name
+            results['best_score'] = score
+            self.best_model = model
+            self.best_model_predictions = eval_results.get('predictions')
+            self.best_model_probabilities = eval_results.get('probabilities')
+            
+        else:
+            # Fallback to training all models sequentially with default params
+            best_score = None
+            best_model_name = None
+            for model_name in models:
+                try:
+                    logger.info(f"Training model with defaults: {model_name}")
+                    model = self._build_model(model_name, {}, force_single_thread=True)
+                    start_time = time.time()
+                    model.fit(X_train_proc, self.y_train)
+                    train_time = time.time() - start_time
 
-                # Determine metric key
-                metric = self.evaluation_metric or ('f1' if self.task_type == 'classification' else 'rmse')
-
-                # Extract metric value (fallback to model.score if necessary)
-                metric_value = eval_results.get('metrics', {}).get(metric, None)
-                if metric_value is None:
-                    try:
-                        score = float(model.score(X_test_proc, self.y_test))
-                    except Exception:
-                        score = float(0.0)
-                else:
+                    from ..evaluation.metrics import ModelEvaluator
+                    evaluator = ModelEvaluator(model, X_test_proc, self.y_test, self.task_type)
+                    eval_results = evaluator.evaluate()
+                    
+                    metric_value = eval_results.get('metrics', {}).get(metric, 0.0)
                     score = float(metric_value)
 
-                # Save artifacts
-                self.trained_models[model_name] = model
-                self.model_scores[model_name] = score
-                self.best_hp_params[model_name] = best_params
+                    self.trained_models[model_name] = model
+                    self.model_scores[model_name] = score
+                    results['trained_models'][model_name] = str(model)
+                    results['model_scores'][model_name] = round(score, 4)
+                    results['model_benchmarks'].append({
+                        'model': model_name, 'score': round(score, 4),
+                        'params': {}, 'metrics': eval_results.get('metrics', {}),
+                        'training_time': round(train_time, 4)
+                    })
 
-                results['trained_models'][model_name] = str(model)
-                results['model_scores'][model_name] = round(score, 4)
-                results['model_benchmarks'].append({
-                    'model': model_name,
-                    'score': round(score, 4),
-                    'params': best_params,
-                    'metrics': eval_results.get('metrics', {}),
-                    'training_time': round(train_time, 4)
-                })
-
-                logger.info(f"Model {model_name} result -> {score:.4f} ({metric})")
-
-                # Compare to best (safe None handling)
-                is_better = False
-                if best_score is None:
-                    is_better = True
-                else:
-                    if self.task_type == 'regression':
-                        # For common error metrics lower is better
-                        if metric in ['rmse', 'mse', 'mae', 'mape']:
-                            if score < best_score:
-                                is_better = True
-                        else:
-                            if score > best_score:
-                                is_better = True
+                    is_better = False
+                    if best_score is None:
+                        is_better = True
                     else:
-                        # classification maximize
-                        if score > best_score:
+                        if direction == 'minimize' and score < best_score:
+                            is_better = True
+                        elif direction == 'maximize' and score > best_score:
                             is_better = True
 
-                if is_better:
-                    best_score = score
-                    best_model_name = model_name
-                    self.best_model = model
-
-                    # Capture predictions for report visual
-                    self.best_model_predictions = eval_results.get('predictions')
-                    self.best_model_probabilities = eval_results.get('probabilities')
-
-            except Exception as e:
-                logger.warning(f"Training failed for {model_name}: {e}")
-                continue
-
-        # 5) Stacking Ensemble (Champion Search)
-        if len(self.trained_models) >= 2:
-            try:
-                # Set preliminary best results for stacking check
-                results['best_model'] = best_model_name
-                results['best_score'] = best_score
-                
-                self._train_stacking_ensemble(results, X_train_proc, X_test_proc)
-                
-                # Update locals after potential stacking update
-                best_model_name = results['best_model']
-                best_score = results['best_score']
-
-            except Exception as e:
-                logger.warning(f"Stacking Ensemble failed: {e}")
+                    if is_better:
+                        best_score = score
+                        best_model_name = model_name
+                        self.best_model = model
+                        self.best_model_predictions = eval_results.get('predictions')
+                        self.best_model_probabilities = eval_results.get('probabilities')
+                        results['best_score'] = best_score
+                        results['best_model'] = best_model_name
+                except Exception as e:
+                    logger.warning(f"Training failed for {model_name}: {e}")
+                    continue
+            
+            # Stacking Ensemble
+            if len(self.trained_models) >= 2 and MODEL_TRAINING_CONFIG.get('use_stacking', True):
+                try:
+                    self._train_stacking_ensemble(results, X_train_proc, X_test_proc)
+                except Exception as e:
+                    logger.warning(f"Stacking Ensemble failed: {e}")
 
         # finalize results ordering
-        chosen_metric = self.evaluation_metric or ('f1' if self.task_type == 'classification' else 'rmse')
-        reverse_sort = True
-        if self.task_type == 'regression' and chosen_metric in ['rmse', 'mse', 'mae', 'mape']:
-            reverse_sort = False
-
+        reverse_sort = True if direction == 'maximize' else False
         results['model_benchmarks'] = sorted(results['model_benchmarks'], key=lambda x: x['score'], reverse=reverse_sort)
-        results['best_model'] = best_model_name
-        results['best_score'] = best_score
         self.model_benchmarks = results['model_benchmarks']
 
         return results
 
-    def _optimize_hyperparameters(self, model_name: str) -> Dict:
-        """Optimize hyperparameters using Optuna with guarded single-threading in trials."""
-
+    def _joint_optimize_hyperparameters(self, models: List[str], direction: str) -> Tuple[str, Dict]:
+        """Jointly optimize model selection and hyperparameters."""
         X_train_proc = self._preprocess_data(self.X_train)
+
+        class BaselineStoppingCallback:
+            def __init__(self, baseline_score: Optional[float], direction: str):
+                self.baseline_score = baseline_score
+                self.direction = direction
+                self.met_target_trial = None
+                self.extra_trials_allowed = 0
+
+            def __call__(self, study, trial):
+                if self.baseline_score is None:
+                    return
+                if self.met_target_trial is None:
+                    if trial.value is not None:
+                        reached = False
+                        if self.direction == 'maximize' and trial.value >= self.baseline_score:
+                            reached = True
+                        elif self.direction == 'minimize' and trial.value <= self.baseline_score:
+                            reached = True
+                        if reached:
+                            self.met_target_trial = trial.number
+                            self.extra_trials_allowed = max(1, int(0.25 * (trial.number + 1)))
+                            logger.info(f"Baseline score reached at trial {trial.number}. Permitting {self.extra_trials_allowed} extra exploration trials.")
+                else:
+                    if (trial.number - self.met_target_trial) >= self.extra_trials_allowed:
+                        logger.info("Extra trials exhausted after baseline reached, stopping search early.")
+                        study.stop()
 
         def objective(trial):
             try:
-                # reduce native thread usage inside this trial to avoid oversubscription
                 self._force_single_threading_env()
+                model_name = trial.suggest_categorical('model_type', models)
 
-                # Check for overrides first
                 hp_config = self.hyperparameter_overrides.get(model_name)
                 if not hp_config:
-                    if model_name not in OPTUNA_CONFIG.get('hyperparameters', {}):
-                        return 0.0
                     hp_config = OPTUNA_CONFIG['hyperparameters'].get(model_name, {})
-                
                 params = self._create_trial_params(trial, model_name, hp_config)
 
-                # Defensive: remove user-supplied thread keys to avoid collisions
                 params_for_build = params.copy()
                 params_for_build.pop('n_jobs', None)
                 params_for_build.pop('nthread', None)
-
-                # Force single-thread at model-level (defensive)
                 params_for_build['n_jobs'] = 1
                 params_for_build['nthread'] = 1
 
-                # Build model with forced single thread behavior
                 model = self._build_model(model_name, params_for_build, force_single_thread=True)
 
                 scoring_metric = 'accuracy' if self.task_type == 'classification' else 'r2'
@@ -382,34 +400,41 @@ class ModelTrainer:
                     model, X_train_proc, self.y_train,
                     cv=OPTUNA_CONFIG.get('cv_folds', 3),
                     scoring=scoring_metric,
-                    n_jobs=1  # IMPORTANT: keep CV single-threaded inside each optuna worker
+                    n_jobs=1
                 )
                 return float(np.mean(cv_scores))
             except Exception as e:
-                logger.debug(f"Optuna trial for {model_name} failed: {e}")
-                return 0.0
+                logger.debug(f"Optuna joint trial failed: {e}")
+                raise optuna.exceptions.TrialPruned()
 
         try:
             sampler = TPESampler(seed=42)
-            pruner = MedianPruner()
-            study = optuna.create_study(sampler=sampler, pruner=pruner, direction='maximize')
+            pruner = MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
+            study = optuna.create_study(sampler=sampler, pruner=pruner, direction=direction)
 
-            # Prefer instance-level settings (from user's OptimizationConfig), fall back to global config
             n_trials = self.n_trials if self.n_trials is not None else OPTUNA_CONFIG.get('optimization', {}).get('n_trials', 20)
             timeout = self.timeout_seconds if self.timeout_seconds is not None else OPTUNA_CONFIG.get('optimization', {}).get('timeout', 120)
             n_jobs_config = OPTUNA_CONFIG.get('optimization', {}).get('n_jobs', 1)
+
+            callbacks = []
+            if self.baseline_score is not None:
+                callbacks.append(BaselineStoppingCallback(self.baseline_score, direction))
+
             study.optimize(
                 objective,
                 n_trials=n_trials,
                 timeout=timeout,
                 n_jobs=n_jobs_config,
-                show_progress_bar=False
+                show_progress_bar=False,
+                callbacks=callbacks
             )
 
-            return study.best_params or {}
+            best_trial = study.best_trial
+            best_model_name = best_trial.params.pop('model_type')
+            return best_model_name, best_trial.params
         except Exception as e:
-            logger.warning(f"Hyperopt failed for {model_name}: {e}")
-            return {}
+            logger.warning(f"Joint hyperopt failed: {e}")
+            return models[0], {}
 
     def _create_trial_params(self, trial, model_name: str, hp_config: Dict) -> Dict:
         """Map hyperparameter config to Optuna trial suggestions."""

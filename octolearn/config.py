@@ -183,6 +183,7 @@ MODEL_TRAINING_CONFIG = {
 OPTUNA_CONFIG = {
     'enabled': True,
     'study_name': 'octolearn_hpo',
+    'baseline_score': None,
     
     'optimization': {
         'n_trials': 20,                                 # Number of trials (reduced for speed)

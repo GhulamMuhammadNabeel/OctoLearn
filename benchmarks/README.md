@@ -23,5 +23,3 @@ print('Profile:', automl.report())
 print('Risk:', automl.get_risk_score())
 PY
 ```
-
-For notebook usage, open `notebooks/benchmark.ipynb`.

@@ -252,6 +252,8 @@ class OptimizationConfig:
         Whether to store trained models and experiments in the local Model Registry.
     early_stopping_rounds : int, optional
         Rounds of non-improvement before stopping boosting iterations.
+    baseline_score : float, optional
+        Target score. If reached, adds 25% more trials to seek further improvement, else uses baseline model.
     hyperparameter_overrides : dict, optional
         Manual hyperparameter constraints to pass to specific models.
 
@@ -265,6 +267,7 @@ class OptimizationConfig:
     optuna_parallel_jobs: int = -1
     use_registry: bool = True
     early_stopping_rounds: int = None
+    baseline_score: Optional[float] = None
     hyperparameter_overrides: Dict[str, Dict] = None
 
 
@@ -576,6 +579,7 @@ class AutoML:
         optuna_trials: Optional[int] = None,
         optuna_timeout: Optional[int] = None,
         use_optuna: Optional[bool] = None,
+        optuna_baseline_score: Optional[float] = None,
         # ── Data split overrides ──────────────────────────────────────────
         test_size: Optional[float] = None,
         random_state: Optional[int] = None,
@@ -608,6 +612,8 @@ class AutoML:
             Override for `optimization_config.optuna_timeout_seconds`.
         use_optuna : bool, optional
             Override for `optimization_config.use_optuna`.
+        optuna_baseline_score : float, optional
+            Override for `optimization_config.baseline_score`.
         test_size : float, optional
             Override for `data_config.test_size`.
         random_state : int, optional
@@ -653,6 +659,10 @@ class AutoML:
         if use_optuna is not None:
             _orig['use_optuna'] = self.optimization_config.use_optuna
             self.optimization_config.use_optuna = use_optuna
+
+        if optuna_baseline_score is not None:
+            _orig['baseline_score'] = self.optimization_config.baseline_score
+            self.optimization_config.baseline_score = optuna_baseline_score
 
         if train_models is not None:
             _orig['train_models'] = self.modeling_config.train_models
@@ -701,7 +711,7 @@ class AutoML:
         finally:
             # ── Restore original config values ────────────────────────────
             for attr, val in _orig.items():
-                if attr in ('optuna_trials_per_model', 'optuna_timeout_seconds', 'use_optuna'):
+                if attr in ('optuna_trials_per_model', 'optuna_timeout_seconds', 'use_optuna', 'baseline_score'):
                     setattr(self.optimization_config, attr, val)
                 elif attr in ('test_size', 'random_state'):
                     setattr(self.data_config, attr, val)
@@ -1136,6 +1146,7 @@ class AutoML:
                 enable_gpu=self.parallel_config.enable_gpu,
                 early_stopping_rounds=self.optimization_config.early_stopping_rounds,
                 hyperparameter_overrides=self.optimization_config.hyperparameter_overrides,
+                baseline_score=self.optimization_config.baseline_score,
                 n_trials=self.optimization_config.optuna_trials_per_model if self.optimization_config.use_optuna else None,
                 timeout_seconds=self.optimization_config.optuna_timeout_seconds if self.optimization_config.use_optuna else None
             )

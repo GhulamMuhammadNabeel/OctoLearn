@@ -58,6 +58,7 @@ try:
     matplotlib.use('Agg')  # Non-interactive backend
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
+    import seaborn as sns
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
@@ -79,40 +80,41 @@ logger = setup_logger(__name__)
 # ============================================================================
 
 class ReportColors:
-    """Professional light-theme color palette for readable PDF output."""
+    """Premium light-theme color palette for modern PDF output."""
 
     # === Primary brand colors ===
-    PRIMARY = colors.HexColor('#1B3A5C')       # Deep navy blue (headers)
-    PRIMARY_LIGHT = colors.HexColor('#2D5F8A')  # Lighter navy
-    ACCENT = colors.HexColor('#E74C3C')         # Warm red accent
+    PRIMARY = colors.HexColor('#0F172A')        # Slate 900 (Deep modern navy)
+    PRIMARY_LIGHT = colors.HexColor('#334155')   # Slate 700
+    ACCENT = colors.HexColor('#3B82F6')          # Blue 500 (Vibrant accent for insights)
+    ACCENT_MUTED = colors.HexColor('#DBEAFE')    # Blue 100 
 
     # === Backgrounds ===
     WHITE = colors.HexColor('#FFFFFF')
-    PAGE_BG = colors.HexColor('#FFFFFF')        # White paper
-    CARD_BG = colors.HexColor('#F7F9FC')        # Subtle blue-grey cards
-    HEADER_BG = colors.HexColor('#1B3A5C')      # Navy header bars
-    ROW_ALT = colors.HexColor('#F0F4F8')        # Alternating table rows
+    PAGE_BG = colors.HexColor('#F8FAFC')         # Slate 50 (Very soft grey-blue)
+    CARD_BG = colors.HexColor('#FFFFFF')         # White cards
+    HEADER_BG = colors.HexColor('#0F172A')       # Slate 900 headers
+    ROW_ALT = colors.HexColor('#F1F5F9')         # Slate 100 for alternating rows
 
     # === Text colors ===
-    TEXT_PRIMARY = colors.HexColor('#1A1A2E')   # Near-black for body text
-    TEXT_SECONDARY = colors.HexColor('#4A5568')  # Muted grey for secondary
-    TEXT_ON_DARK = colors.HexColor('#FFFFFF')    # White text on dark headers
-    TEXT_CAPTION = colors.HexColor('#718096')    # Caption grey
+    TEXT_PRIMARY = colors.HexColor('#1E293B')    # Slate 800 for high-contrast body
+    TEXT_SECONDARY = colors.HexColor('#475569')  # Slate 600 for secondary text
+    TEXT_ON_DARK = colors.HexColor('#F8FAFC')     # Slate 50 on dark headers
+    TEXT_CAPTION = colors.HexColor('#64748B')    # Slate 500 for captions
 
     # === Status/Semantic colors ===
-    SUCCESS = colors.HexColor('#27AE60')        # Emerald green
-    WARNING = colors.HexColor('#F39C12')        # Amber
-    DANGER = colors.HexColor('#E74C3C')         # Red
-    INFO = colors.HexColor('#3498DB')           # Sky blue
+    SUCCESS = colors.HexColor('#10B981')         # Emerald 500
+    WARNING = colors.HexColor('#F59E0B')         # Amber 500
+    DANGER = colors.HexColor('#EF4444')          # Red 500
+    INFO = colors.HexColor('#0EA5E9')            # Sky 500
 
     # === Risk gauge ===
-    RISK_LOW = colors.HexColor('#27AE60')
-    RISK_MODERATE = colors.HexColor('#F39C12')
-    RISK_HIGH = colors.HexColor('#E74C3C')
+    RISK_LOW = colors.HexColor('#10B981')
+    RISK_MODERATE = colors.HexColor('#F59E0B')
+    RISK_HIGH = colors.HexColor('#EF4444')
 
     # === Decorative ===
-    DIVIDER = colors.HexColor('#CBD5E0')        # Light divider line
-    BORDER = colors.HexColor('#E2E8F0')         # Card borders
+    DIVIDER = colors.HexColor('#E2E8F0')         # Slate 200 light divider
+    BORDER = colors.HexColor('#CBD5E1')          # Slate 300 card borders
 
     @staticmethod
     def get_risk_color(score: int) -> colors.Color:
@@ -327,14 +329,12 @@ class ReportGenerator:
 
         self.styles.add(ParagraphStyle(
             name='SectionHeading',
-            fontName=self.font_title,
-            fontSize=16,
-            leading=20,
-            textColor=ReportColors.WHITE,
-            backColor=ReportColors.PRIMARY,
-            borderPadding=(10, 5, 10, 5),  # Top, Right, Bottom, Left
-            spaceBefore=18,  # Increased top spacing
-            spaceAfter=12,   # Increased bottom spacing
+            fontName=self.font_bold,
+            fontSize=20,
+            leading=24,
+            textColor=ReportColors.PRIMARY,
+            spaceBefore=24,
+            spaceAfter=4,
             allowWidows=0,
             allowOrphans=0,
         ))
@@ -434,6 +434,39 @@ class ReportGenerator:
             spaceAfter=8,
         ))
 
+        # Alert Box Styles (Like GitHub Alerts)
+        self.styles.add(ParagraphStyle(
+            name='AlertBox_Warning',
+            fontName=self.font_regular,
+            fontSize=10.5,
+            leading=15,
+            textColor=ReportColors.DANGER,
+            backColor=colors.HexColor('#FEF2F2'),
+            borderPadding=(10, 10, 10, 15),
+            borderColor=ReportColors.DANGER,
+            borderWidth=1,
+            spaceBefore=12,
+            spaceAfter=12,
+            leftIndent=5,
+            rightIndent=5,
+        ))
+
+        self.styles.add(ParagraphStyle(
+            name='AlertBox_Insight',
+            fontName=self.font_regular,
+            fontSize=10.5,
+            leading=15,
+            textColor=ReportColors.SUCCESS,
+            backColor=colors.HexColor('#ECFDF5'),
+            borderPadding=(10, 10, 10, 15),
+            borderColor=ReportColors.SUCCESS,
+            borderWidth=1,
+            spaceBefore=12,
+            spaceAfter=12,
+            leftIndent=5,
+            rightIndent=5,
+        ))
+
         self.styles.add(ParagraphStyle(
             name='RecCritical',
             fontName=self.font_bold,
@@ -520,26 +553,20 @@ class ReportGenerator:
         return t
 
     def _add_section_header(self, story, title):
-        """Add a professional full-width section header."""
-        # Use a Table to create a full-width colored bar
+        """Add a professional flush-left magazine-style section header."""
         header_style = ParagraphStyle(
             'SectionHeaderBar',
             parent=self.styles['SectionHeading'],
             alignment=TA_LEFT
         )
-        p = Paragraph(title.upper(), header_style)
+        story.append(Paragraph(title, header_style))
         
-        # 100% width table
-        t = Table([[p]], colWidths=[7.5*inch])
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), ReportColors.PRIMARY),
-            ('TOPPADDING', (0, 0), (-1, -1), 0),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-        ]))
-        story.append(t)
-        story.append(Spacer(1, 0.4 * inch))  # Increased spacing for better UI
+        # Add a sleek accent line underneath the header
+        story.append(HRFlowable(
+            width="100%", thickness=2,
+            color=ReportColors.ACCENT,
+            spaceBefore=0, spaceAfter=14
+        ))
 
     def _create_side_by_side(self, left_content, right_content, widths=[3.7*inch, 3.7*inch]):
         """Create a 2-column layout using a Table."""
@@ -632,6 +659,83 @@ class ReportGenerator:
         story.append(PageBreak())
 
     # ==================================================================
+    # SECTION 1.5: EXECUTIVE SUMMARY
+    # ==================================================================
+    def _add_executive_summary(self, story):
+        self._add_section_header(story, "Executive Summary")
+        
+        task = getattr(self.raw_profile, 'task_type', 'unknown') if self.raw_profile else 'unknown'
+        n_rows = getattr(self.raw_profile, 'n_rows', 0) if self.raw_profile else 0
+        n_cols = getattr(self.raw_profile, 'n_columns', 0) if self.raw_profile else 0
+        
+        # Calculate data loss
+        clean_rows = getattr(self.clean_profile, 'n_rows', n_rows) if self.clean_profile else n_rows
+        dropped_rows = n_rows - clean_rows
+        drop_pct = (dropped_rows / n_rows * 100) if n_rows > 0 else 0
+
+        # Model Performance
+        best_name = str(self.best_model_name).replace('_', ' ').title()
+        best_score = self.model_benchmarks[0].get('score', 0) if self.model_benchmarks else 0
+        metric_name = "Accuracy/F1" if task == 'classification' else "RMSE/R²"
+
+        # Top Feature
+        top_feature = "N/A"
+        top_feature_impact = "N/A"
+        if self.feature_importance:
+            top_3 = sorted(self.feature_importance.items(), key=lambda x: x[1], reverse=True)[:1]
+            if top_3:
+                top_feature = top_3[0][0]
+                total_importance = sum(self.feature_importance.values())
+                impact_pct = (top_3[0][1] / total_importance * 100) if total_importance > 0 else 0
+                top_feature_impact = f"{impact_pct:.1f}%"
+
+        # Executive Bullet Points
+        story.append(Paragraph(
+            "This report details the automated transformation and modeling of your dataset. Below are the core high-level takeaways:",
+            self.styles['Narrative']
+        ))
+        story.append(Spacer(1, 0.1 * inch))
+
+        bullets = [
+            f"<b>Objective Achieved</b>: Successfully trained a robust pipeline for <b>{task.title()}</b> on <b>{n_rows:,}</b> records across <b>{n_cols}</b> features.",
+            f"<b>Model Performance</b>: The optimal architecture is <b>{best_name}</b>, achieving a primary validation score of <b>{best_score:.4f}</b>.",
+        ]
+        
+        if top_feature != "N/A":
+            bullets.append(f"<b>Key Business Lever</b>: The feature <b>'{top_feature}'</b> drives <b>{top_feature_impact}</b> of the prediction, marking it as the primary operational target.")
+            
+        if drop_pct > 0:
+            bullets.append(f"<b>Data Integrity</b>: Purged <b>{dropped_rows}</b> row(s) (<b>{drop_pct:.1f}%</b> of total) to prevent hallucinations and establish algorithmic trust.")
+        else:
+            bullets.append(f"<b>Data Integrity</b>: The dataset passed all structural integrity checks with <b>0%</b> data loss, retaining full analytical volume.")
+
+        for bullet in bullets:
+            story.append(Paragraph(f"<font color='#94A3B8' name='Helvetica-Bold'>&gt;&gt;</font>  {bullet}", self.styles['ReportBody']))
+            
+        story.append(Spacer(1, 0.3 * inch))
+        
+        # Add Smart Alert if Data Loss is high
+        if drop_pct > 20:
+            story.append(Paragraph(
+                f"<b>WARNING: High Data Loss Detected ({drop_pct:.1f}%)</b><br/>"
+                "A significant portion of your dataset was discarded due to critical missingness or duplication. "
+                "Ensure upstream data collection processes are reviewed to recover statistical power.",
+                self.styles['AlertBox_Warning']
+            ))
+            
+        # Add Insight Callout for best model
+        if best_score > 0.85:
+            story.append(Paragraph(
+                f"<b>INSIGHT: Production Readiness</b><br/>"
+                f"The champion model ({best_name}) achieved an exceptionally strong score. "
+                "This indicates unambiguous dataset signals mapping variables to the target outcome. "
+                "The pipeline is highly viable for production deployment.",
+                self.styles['AlertBox_Insight']
+            ))
+            
+        story.append(PageBreak())
+
+    # ==================================================================
     # SECTION 2: DATA STORY (Narrative)
     # ==================================================================
     def _add_data_story(self, story):
@@ -645,6 +749,11 @@ class ReportGenerator:
         n_missing_cols = sum(1 for v in getattr(self.raw_profile, 'missing_ratio', {}).values() if v > 0) if self.raw_profile else 0
         dupes = getattr(self.raw_profile, 'duplicate_rows', 0) if self.raw_profile else 0
 
+        # Calculate data loss
+        clean_rows = getattr(self.clean_profile, 'n_rows', n_rows) if self.clean_profile else n_rows
+        dropped_rows = n_rows - clean_rows
+        drop_pct = (dropped_rows / n_rows * 100) if n_rows > 0 else 0
+
         # Extract deeper insights
         high_card = getattr(self.raw_profile, 'high_cardinality_cols', []) if self.raw_profile else []
         stats = getattr(self.raw_profile, 'stats', {}) if self.raw_profile else {}
@@ -657,28 +766,28 @@ class ReportGenerator:
 
         # Opening narrative
         story.append(Paragraph(
-            f"Your dataset arrived with <b>{n_rows:,}</b> records and <b>{n_cols}</b> features, "
-            f"setting up a <b>{task}</b> challenge. OctoLearn's intelligent pipeline "
-            f"examined the statistical boundaries of this data to extract maximum insight.",
+            f"Your dataset arrived with <b>{n_rows:,}</b> records and <b>{n_cols}</b> features. "
+            f"OctoLearn's intelligent compilation engine analyzed the statistical frontiers of this data "
+            f"to establish a baseline for your <b>{task}</b> objective.",
             self.styles['Narrative']
         ))
 
-        # Deep Feature composition
-        card_text = f" Notably, {len(high_card)} categorical features exhibited high cardinality, requiring advanced encoding techniques." if high_card else ""
-        skew_text = f" We also detected significant distribution skewness (skew > 2.0) in {len(highly_skewed)} numeric features, prompting robust scaling." if highly_skewed else ""
+        # Deep Feature composition & Data Quality Narrative (Combined)
+        card_text = f" Notably, <b>{len(high_card)}</b> categorical features exhibited high cardinality, requiring advanced embedding-like encoders." if high_card else ""
+        skew_text = f" We also detected significant distribution skewness (skew > 2.0) in <b>{len(highly_skewed)}</b> numeric features, prompting robust scaling." if highly_skewed else ""
         
         story.append(Paragraph(
-            f"The data structure breaks down into <b>{n_numeric} numeric</b> and <b>{n_cat} categorical</b> columns. "
-            f"Of the {n_cols} total features, <b>{n_missing_cols}</b> contained missing values that "
-            f"necessitated mathematical imputation.{card_text}{skew_text}",
+            f"The data grammar consists of <b>{n_numeric} numeric</b> and <b>{n_cat} categorical</b> components. "
+            f"Of the {n_cols} total features, <b>{n_missing_cols}</b> required mathematical imputation due to missingness. "
+            f"Furthermore, <b>{dupes} duplicate rows</b> were purged.{card_text}{skew_text}",
             self.styles['Narrative']
         ))
 
-        # Data quality narrative
-        if dupes > 0:
+        if drop_pct > 0:
             story.append(Paragraph(
-                f"During initial integrity checks, OctoLearn detected <b>{dupes} duplicate rows</b>. "
-                f"These were immediately purged to prevent data leakage and artificially inflated model performance metrics.",
+                f"In total, the cleaning pipeline discarded <b>{dropped_rows}</b> defective rows (<b>{drop_pct:.1f}%</b> of your data). "
+                f"While reducing data volume, discarding this noise is a critical prerequisite to prevent model hallucination "
+                f"and ensure the predictive signals learned are structurally sound.",
                 self.styles['Narrative']
             ))
 
@@ -701,15 +810,28 @@ class ReportGenerator:
             best_name = str(self.best_model_name).replace('_', ' ').title()
             best_score = self.model_benchmarks[0].get('score', 0) if self.model_benchmarks else 0
             metric_name = "Accuracy/F1" if task == 'classification' else "RMSE/R²" 
+            
+            # Intelligent Insight based on score
+            if task == 'classification':
+                if best_score > 0.90:
+                    insight = "This exceptional performance suggests the dataset contains unambiguous, highly separable signals mapping variables to the target outcome."
+                elif best_score > 0.75:
+                    insight = "This robust performance indicates a strong underlying pattern, though some classes may overlap in the feature space."
+                else:
+                    insight = "This moderate performance suggests a complex or noisy feature space where predictive signals are subtle or partially obscured."
+            else:
+                insight = "This performance establishes a strong quantitative baseline for future target forecasting."
+                
             story.append(Paragraph(
-                f"Powered by Bayesian inference, OctoLearn evaluated <b>{n_models} model architectures</b>. "
-                f"<b>{best_name}</b> ultimately dominated the Model Arena, achieving an optimized validation score of <b>{best_score:.4f}</b> against our {metric_name} baselines.",
+                f"Powered by Joint Bayesian Inference, OctoLearn evaluated the hyperparameter spaces of <b>{n_models} model architectures</b> rapidly. "
+                f"<b>{best_name}</b> ultimately dominated the Model Arena, achieving an optimized validation score of <b>{best_score:.4f}</b> against our {metric_name} baselines. "
+                f"{insight}",
                 self.styles['Narrative']
             ))
         else:
             story.append(Paragraph(
                 "Model training was bypassed in this execution. "
-                "Enable <b>train_models=True</b> in ModelingConfig to unlock automated algorithm benchmarking.",
+                "Enable <b>train_models=True</b> in ModelingConfig to unlock automated algorithm benchmarking and Bayesian optimization.",
                 self.styles['Narrative']
             ))
 
@@ -718,18 +840,9 @@ class ReportGenerator:
     # ==================================================================
     # SECTION 3: DATA HEALTH DASHBOARD
     # ==================================================================
-    def _add_health_dashboard(self, story):
-        self._add_section_header(story, "Data Health Dashboard")
-
-        # --- Risk Score Card (Left Content) ---
+    def _fallback_risk_card(self):
         risk_color = ReportColors.get_risk_color(self.risk_score)
         risk_label = ReportColors.get_risk_label(self.risk_score)
-        
-        # Compact Risk Table Layout
-        # Avoid showing "100" from /100 too prominently to confuse with the value
-        # Just show "15" and "Risk Score" stacked cleanly
-        
-        # Single cell approach with cleaner formatting
         risk_data = [[
             Paragraph(
                 f'<font size="24" color="{risk_color.hexval()}"><b>{self.risk_score}</b></font>'
@@ -748,6 +861,47 @@ class ReportGenerator:
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('TOPPADDING', (0, 0), (-1, -1), 8),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        return risk_table
+
+    def _add_health_dashboard(self, story):
+        self._add_section_header(story, "Data Health Dashboard")
+
+        # --- Risk Score Infographic (Left Content) ---
+        img_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images', 'icon_health_dashboard.png')
+        
+        risk_color = ReportColors.get_risk_color(self.risk_score)
+        risk_label = ReportColors.get_risk_label(self.risk_score)
+        
+        risk_text = Paragraph(
+            f'<font size="24" color="{risk_color.hexval()}"><b>{self.risk_score}</b></font>'
+            f'<font size="12" color="{ReportColors.TEXT_SECONDARY.hexval()}">/100</font><br/>'
+            f'<font size="4"> </font><br/>'
+            f'<font size="11" color="{ReportColors.TEXT_PRIMARY.hexval()}"><b>{risk_label}</b></font><br/>'
+            f'<font size="9" color="{ReportColors.TEXT_CAPTION.hexval()}">Data Risk Level</font>',
+            ParagraphStyle('RiskCell', parent=self.styles['ReportBody'], alignment=TA_CENTER, leading=14)
+        )
+        
+        left_items = []
+        if os.path.exists(img_path):
+            try:
+                icon_img = Image(img_path, width=1.4 * inch, height=1.4 * inch)
+                icon_img.hAlign = 'CENTER'
+                left_items.append(icon_img)
+            except Exception as e:
+                logger.warning(f"Could not load health dashboard icon: {e}")
+        
+        left_items.append(risk_text)
+
+        # Wrap in a card table
+        left_content = Table([[item] for item in left_items], colWidths=[2.5 * inch])
+        left_content.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), ReportColors.CARD_BG),
+            ('BOX', (0, 0), (-1, -1), 1, risk_color),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('TOPPADDING', (0, 0), (-1, -1), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
         ]))
 
         # --- Metric Cards (Right Content) ---
@@ -772,29 +926,45 @@ class ReportGenerator:
              ]
         ]
         
-        card_table = Table(metric_grid, colWidths=[1.9 * inch, 1.9 * inch])
+        card_table = Table(metric_grid, colWidths=[1.8 * inch, 1.8 * inch])
         card_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), ReportColors.CARD_BG),
             ('GRID', (0, 0), (-1, -1), 0.5, ReportColors.BORDER),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 16),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 16),
+        ]))
+
+        # Data Quality Score Gauge (Bottom Right)
+        dq_score = max(0, 100 - self.risk_score)
+        
+        drawing = Drawing(3.6 * inch, 30)
+        # Background bar
+        drawing.add(Rect(0, 0, 3.6 * inch, 12, rx=4, ry=4, fillColor=colors.HexColor('#E2E8F0'), strokeColor=None))
+        # Active bar
+        bar_width = (3.6 * inch) * (dq_score / 100)
+        color = ReportColors.RISK_HIGH
+        if dq_score > 60: color = ReportColors.RISK_MODERATE
+        if dq_score > 80: color = ReportColors.RISK_LOW
+        if bar_width > 0:
+            drawing.add(Rect(0, 0, bar_width, 12, rx=4, ry=4, fillColor=color, strokeColor=None))
+        # Label
+        drawing.add(String(1.8 * inch, 16, f"Data Quality Score: {dq_score:.1f}/100", 
+                           fontSize=10, fontName=self.font_bold, 
+                           textAnchor='middle', fillColor=ReportColors.TEXT_PRIMARY))
+
+        right_items = [[card_table], [Spacer(1, 0.2 * inch)], [drawing]]
+        right_content = Table(right_items, colWidths=[3.7 * inch])
+        right_content.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
 
         # Layout Side-by-Side
-        layout = self._create_side_by_side(risk_table, card_table, widths=[3.0 * inch, 4.0 * inch])
+        layout = self._create_side_by_side(left_content, right_content, widths=[3.0 * inch, 3.8 * inch])
         story.append(layout)
-        story.append(Spacer(1, 0.2 * inch))
-
-        # Data Quality Score Gauge
-        # STRICTLY enforce consistency with Risk Score to avoid user confusion.
-        # DQ Score = 100 - Risk Score.
-        # This overrides any independent calculation in DataProfiler which might use different heuristics.
-        dq_score = max(0, 100 - self.risk_score)
-             
-        self._add_data_quality_gauge(story, dq_score)
-        story.append(Spacer(1, 0.2 * inch))
+        story.append(Spacer(1, 0.3 * inch))
 
 
         # --- Risk Factors Table ---
@@ -870,46 +1040,57 @@ class ReportGenerator:
             if not cols:
                 return None
 
+            # Premium Seaborn Theme
+            sns.set_theme(style="white", palette="deep", rc={
+                "axes.facecolor": "#FFFFFF",
+                "figure.facecolor": "#FFFFFF",
+                "grid.color": "#F1F5F9",
+                "axes.spines.right": False,
+                "axes.spines.top": False,
+            })
+
             n_cols = len(cols)
-            fig, axes = plt.subplots(n_cols, 2, figsize=(10, 2.8 * n_cols))
+            fig, axes = plt.subplots(n_cols, 2, figsize=(10, 2.5 * n_cols))
             if n_cols == 1:
                 axes = [axes]  # Ensure iterable
 
-            NAVY = '#1B3A5C'
-            TEAL = '#27AE60'
-            ALPHA = 0.75
+            NAVY = '#0F172A'  # Slate 900
+            TEAL = '#10B981'  # Emerald 500
 
             for i, col in enumerate(cols):
                 ax_raw = axes[i][0]
                 ax_clean = axes[i][1]
 
                 raw_data = raw_df[col].dropna()
-                ax_raw.hist(raw_data, bins=30, color=NAVY, alpha=ALPHA, edgecolor='white', linewidth=0.4)
-                ax_raw.set_title(f'{col}  [RAW]', fontsize=9, fontweight='bold', color=NAVY)
-                ax_raw.set_ylabel('Count', fontsize=8)
-                ax_raw.tick_params(labelsize=7)
-                ax_raw.spines['top'].set_visible(False)
-                ax_raw.spines['right'].set_visible(False)
+                sns.histplot(raw_data, kde=True, ax=ax_raw, color=NAVY, alpha=0.6, linewidth=0)
+                ax_raw.set_title(f'RAW: {col}', fontsize=10, fontweight='bold', color=NAVY, loc='left')
+                ax_raw.set_ylabel('Density', fontsize=8, color='#64748B')
+                ax_raw.set_xlabel('')
+                ax_raw.tick_params(labelsize=8, colors='#64748B')
 
                 if col in clean_df.columns:
                     clean_data = clean_df[col].dropna()
                 else:
                     clean_data = raw_data  # Fallback
-                ax_clean.hist(clean_data, bins=30, color=TEAL, alpha=ALPHA, edgecolor='white', linewidth=0.4)
-                ax_clean.set_title(f'{col}  [CLEAN]', fontsize=9, fontweight='bold', color=TEAL)
-                ax_clean.tick_params(labelsize=7)
-                ax_clean.spines['top'].set_visible(False)
-                ax_clean.spines['right'].set_visible(False)
+                    
+                sns.histplot(clean_data, kde=True, ax=ax_clean, color=TEAL, alpha=0.6, linewidth=0)
+                ax_clean.set_title(f'CLEANED: {col}', fontsize=10, fontweight='bold', color=TEAL, loc='left')
+                ax_clean.set_ylabel('')
+                ax_clean.set_xlabel('')
+                ax_clean.tick_params(labelsize=8, colors='#64748B')
 
-            fig.suptitle('Feature Distributions: Before vs After Cleaning',
-                         fontsize=11, fontweight='bold', color=NAVY, y=1.01)
+            fig.suptitle('Distribution Shift: The Impact of OctoLearn Cleaning',
+                         fontsize=14, fontweight='bold', color=NAVY, y=1.03, ha='center')
             plt.tight_layout()
 
             tmp = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
-            fig.savefig(tmp.name, dpi=130, bbox_inches='tight',
+            fig.savefig(tmp.name, dpi=150, bbox_inches='tight',
                         facecolor='white', edgecolor='none')
             plt.close(fig)
             self._temp_files.append(tmp.name)
+            
+            # Reset style
+            sns.set_theme(style="whitegrid")
             return tmp.name
 
         except Exception as e:
@@ -974,63 +1155,81 @@ class ReportGenerator:
         story.append(compare_table)
         story.append(Spacer(1, 0.2 * inch))
 
-        # Cleaning Log narrative
+        # Cleaning Log Flowchart
         if self.cleaning_log:
-            story.append(Paragraph("What OctoLearn Did", self.styles['SubsectionHeading']))
+            story.append(Paragraph("The Data Journey", self.styles['SubsectionHeading']))
             story.append(Spacer(1, 0.05 * inch))
 
-            actions = []
+            # Gather actions
             dupes = self.cleaning_log.get('duplicates_removed', 0)
-            if dupes and dupes > 0:
-                actions.append(f"Removed <b>{dupes}</b> duplicate rows to prevent data leakage")
-
-            id_cols = self.cleaning_log.get('id_columns_removed', 0)
-            if id_cols and id_cols > 0:
-                actions.append(f"Dropped <b>{id_cols}</b> ID-like columns (no predictive value)")
-
-            const_cols = self.cleaning_log.get('constant_columns_removed', 0)
-            if const_cols and const_cols > 0:
-                actions.append(f"Removed <b>{const_cols}</b> constant columns (zero variance)")
-
-            low_var = self.cleaning_log.get('low_variance_removed', 0)
-            if low_var and low_var > 0:
-                actions.append(f"Dropped <b>{low_var}</b> low-variance features")
-
+            dropped = self.cleaning_log.get('id_columns_removed', 0) + self.cleaning_log.get('constant_columns_removed', 0) + self.cleaning_log.get('low_variance_removed', 0)
             imputed = self.cleaning_log.get('missing_imputed', 0)
-            if imputed and imputed > 0:
-                actions.append(f"Imputed missing values across <b>{imputed}</b> columns")
-
-            if imputed and imputed > 0:
-                actions.append(f"Imputed missing values across <b>{imputed}</b> columns")
-            
-            # Add Encoding Narrative
-            ordinal = self.cleaning_log.get('ordinal_encoder')
-            ohe = self.cleaning_log.get('onehot_encoder')
-            if ordinal or ohe:
-                actions.append("Encoded categorical variables (Ordinal/OneHot) for model compatibility")
-            
-            # Add Scaling Narrative
             scaling = self.cleaning_log.get('scaling_method', 'none')
-            if scaling and scaling != 'none':
-                actions.append(f"Standardized features using <b>{scaling}</b> scaling")
 
-            if not actions:
-                actions.append("Data was already clean — no major transformations needed")
+            img_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images')
+            icon_raw = os.path.join(img_dir, 'icon_raw_data.png')
+            icon_clean = os.path.join(img_dir, 'icon_cleansed.png')
+            icon_eng = os.path.join(img_dir, 'icon_engineered.png')
+            icon_ready = os.path.join(img_dir, 'icon_ready.png')
+            
+            # Helper to safely load images
+            def get_icon(path, size=0.9):
+                if os.path.exists(path):
+                    try:
+                        img = Image(path, width=size * inch, height=size * inch)
+                        img.hAlign = 'CENTER'
+                        return img
+                    except: pass
+                # fallback text if icon fails
+                return Paragraph('&#9632;', ParagraphStyle('FI', parent=self.styles['MetricLabel'], alignment=TA_CENTER))
 
-            for action in actions:
-                story.append(Paragraph(f"  ➜  {action}", self.styles['Narrative']))
+            # Assemble visual row
+            arrow_html = '<font size=18 color="#94A3B8" name="Helvetica-Bold">&gt;&gt;</font>'
+            flow_data = [[
+                get_icon(icon_raw),
+                Paragraph(arrow_html, ParagraphStyle('FArr', parent=self.styles['MetricLabel'], alignment=TA_CENTER)),
+                get_icon(icon_clean),
+                Paragraph(arrow_html, ParagraphStyle('FArr', parent=self.styles['MetricLabel'], alignment=TA_CENTER)),
+                get_icon(icon_eng),
+                Paragraph(arrow_html, ParagraphStyle('FArr', parent=self.styles['MetricLabel'], alignment=TA_CENTER)),
+                get_icon(icon_ready)
+            ]]
+            
+            flow_table = Table(flow_data, colWidths=[1.3*inch, 0.4*inch, 1.3*inch, 0.4*inch, 1.3*inch, 0.4*inch, 1.3*inch])
+            flow_table.setStyle(TableStyle([
+                ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ]))
+            story.append(flow_table)
+            story.append(Spacer(1, 0.05 * inch))
 
-        story.append(Spacer(1, 0.2 * inch))
+            # Sub-descriptions
+            desc_data = [[
+                Paragraph(f"<font size=8 color='#1E293B'><b>RAW DATA</b></font><br/><font size=7 color='#64748B'>Initial ingestion of {raw.n_rows:,} rows</font>", self.styles['Caption']),
+                Paragraph("", self.styles['Caption']),
+                Paragraph(f"<font size=8 color='#1E293B'><b>CLEANSED</b></font><br/><font size=7 color='#64748B'>{dupes} dupes, {dropped} cols dropped</font>", self.styles['Caption']),
+                Paragraph("", self.styles['Caption']),
+                Paragraph(f"<font size=8 color='#1E293B'><b>ENGINEERED</b></font><br/><font size=7 color='#64748B'>{imputed} imputed, {scaling} scaled</font>", self.styles['Caption']),
+                Paragraph("", self.styles['Caption']),
+                Paragraph(f"<font size=8 color='#1E293B'><b>READY</b></font><br/><font size=7 color='#64748B'>Optimized for modeling</font>", self.styles['Caption']),
+            ]]
+            desc_table = Table(desc_data, colWidths=[1.3*inch, 0.4*inch, 1.3*inch, 0.4*inch, 1.3*inch, 0.4*inch, 1.3*inch])
+            desc_table.setStyle(TableStyle([
+                ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                ('TOPPADDING', (0,0), (-1,-1), 0),
+            ]))
+            story.append(desc_table)
+            story.append(Spacer(1, 0.2 * inch))
 
         # Before/After distribution plots
         ba_plot_path = self._generate_before_after_plots()
         if ba_plot_path and os.path.exists(ba_plot_path):
-            story.append(Paragraph("Distribution Comparison: Raw vs Cleaned",
+            story.append(Paragraph("Distribution Topography",
                                    self.styles['SubsectionHeading']))
             story.append(Spacer(1, 0.05 * inch))
             story.append(Paragraph(
-                "The histograms below show how OctoLearn's cleaning pipeline changed the "
-                "distribution of your top numeric features. Navy = raw data, Green = cleaned data.",
+                "The density plots below illustrate the structural shifts in feature distributions after OctoLearn's transformations. "
+                "Notice how outliers and skewness are mitigated in the cleansed density curves.",
                 self.styles['Narrative']
             ))
             story.append(Spacer(1, 0.1 * inch))
@@ -1127,11 +1326,31 @@ class ReportGenerator:
                     ))
                 except Exception:
                     pass
-            if not right_content:
+            
+            # Generate ROI Narrative
+            if not right_content or len(right_content) > 0:
+                # Add an ROI narrative regardless of image success
+                top_3_feats = [f for f, s in top_feats[:3]]
+                top_3_str = ", ".join([f'<b>{f}</b>' for f in top_3_feats])
+                
+                total_importance = sum(self.feature_importance.values())
+                top_3_importance = sum([s for f, s in top_feats[:3]])
+                impact_pct = (top_3_importance / total_importance * 100) if total_importance > 0 else 0
+                
+                narrative_text = "<b>Strategic Business Impact</b><br/><br/>"
+                if impact_pct > 0:
+                    narrative_text += (
+                        f"The top 3 features ({top_3_str}) account for approximately <b>{impact_pct:.1f}%</b> of the model's predictive power. "
+                        f"Focusing operational and business efforts on optimizing these specific levers will likely yield the highest direct ROI on your target outcome."
+                    )
+                else:
+                    narrative_text += (
+                        "Understanding which features drive your model's predictions is crucial "
+                        "for trust and debugging. The table on the left shows the top contributors."
+                    )
+                
                 right_content.append(Paragraph(
-                    "<b>Why Feature Intelligence Matters</b><br/><br/>"
-                    "Understanding which features drive your model's predictions is crucial "
-                    "for trust and debugging. The table on the left shows the top contributors.",
+                    narrative_text,
                     self.styles['Narrative']
                 ))
 
@@ -1161,11 +1380,21 @@ class ReportGenerator:
         best_name = str(internal_best_name).replace('_', ' ').title()
         best_score = best.get('score', 0)
 
+        if "xgboost" in internal_best_name.lower() or "lightgbm" in internal_best_name.lower() or "gradient_boosting" in internal_best_name.lower():
+            arch_insight = f"{best_name}'s dominance suggests your dataset contains strong, non-linear feature interactions that tree-based gradient boosting methods excel at capturing."
+        elif "random_forest" in internal_best_name.lower():
+            arch_insight = f"{best_name}'s success indicates a dataset with complex, possibly noisy relationships where ensemble bagging provides necessary variance reduction."
+        elif "logistic" in internal_best_name.lower() or "linear" in internal_best_name.lower() or "ridge" in internal_best_name.lower():
+            arch_insight = f"The victory of a linear model like {best_name} strongly implies the dataset's features have monotonic, proportional relationships with the target variable."
+        elif "svm" in internal_best_name.lower() or "svr" in internal_best_name.lower():
+            arch_insight = f"{best_name}'s performance suggests the data possesses complex boundary margins that are well-separated in high-dimensional kernel space."
+        else:
+            arch_insight = "This model architecture proved optimal for uncovering the underlying predictive patterns."
+
         story.append(Paragraph(
-            f"OctoLearn trained <b>{n_models} models</b> with automated hyperparameter tuning. "
-            f"Each model was evaluated on a held-out test set to ensure unbiased comparison. "
-            f"The champion is <b>{best_name}</b> "
-            f"with a primary score of <b>{best_score:.4f}</b>.",
+            f"OctoLearn explored <b>{n_models} model architectures</b> through a joint Bayesian hyperparameter space. "
+            f"Evaluated rigorously on a held-out test set, the undisputed champion is <b>{best_name}</b> "
+            f"with a primary score of <b>{best_score:.4f}</b>. {arch_insight}",
             self.styles['Narrative']
         ))
         story.append(Spacer(1, 0.15 * inch))
@@ -1370,7 +1599,7 @@ class ReportGenerator:
                     impact = "Critical" if abs(corr) > 0.7 else ("Strong" if abs(corr) > 0.5 else "Moderate")
                     top_strs.append(f"<b>{feat}</b> ({impact} {direction} relationship, Pearson r={corr:.2f})")
 
-                top_text = "<br/>".join([f"  • {x}" for x in top_strs]) if top_strs else "no significant linear relationships identified."
+                top_text = "<br/>".join([f"  - {x}" for x in top_strs]) if top_strs else "no significant linear relationships identified."
 
                 viz_note = (
                     f"Mathematically, this implies that variance in these top features "
@@ -1461,7 +1690,7 @@ class ReportGenerator:
             for inter in interactions[:5]:
                 if isinstance(inter, (tuple, list)) and len(inter) >= 2:
                     story.append(Paragraph(
-                        f"  ➜  <b>{inter[0]}</b> ↔ <b>{inter[1]}</b>",
+                        f"  <font color='#94A3B8' name='Helvetica-Bold'>&gt;&gt;</font>  <b>{inter[0]}</b> &lt;-&gt; <b>{inter[1]}</b>",
                         self.styles['Narrative']
                     ))
 
@@ -1636,9 +1865,8 @@ class ReportGenerator:
             # 1. Cover page (kept separate — has its own canvas callback)
             _safe_section(lambda: self._add_cover_page(story), "Cover Page")
 
-            # 2. Recommendations (moved to top as executive summary)
-            _safe_section(lambda: self._add_recommendations(story), "Recommendations")
-            story.append(Spacer(1, 0.4 * inch))
+            # 1.5 Executive Summary
+            _safe_section(lambda: self._add_executive_summary(story), "Executive Summary")
 
             # 3. Data Story narrative
             _safe_section(lambda: self._add_data_story(story), "Data Story")
@@ -1725,11 +1953,6 @@ class ReportGenerator:
             visuals.append((self.roc_curve_plot, "ROC Curve"))
         if self.residual_plot and os.path.exists(self.residual_plot):
             visuals.append((self.residual_plot, "Residual Analysis"))
-        if self.feature_importance_plot and os.path.exists(self.feature_importance_plot):
-            visuals.append((self.feature_importance_plot, "Feature Importance"))
-        if self.feature_importance_plot and os.path.exists(self.feature_importance_plot):
-            visuals.append((self.feature_importance_plot, "Feature Importance"))
-            
         if not visuals:
             return
             

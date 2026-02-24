@@ -3,4 +3,3 @@ mkdocstrings[python]>=0.20
 mkdocs-autorefs
 pymdown-extensions
 pyyaml
-mkdocs-mermaid2

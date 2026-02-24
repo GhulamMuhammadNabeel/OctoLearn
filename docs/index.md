@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://octolearn.vercel.app/"><strong>Official Documentation</strong></a>
+  <a href="./#quick-start"><strong>Official Documentation</strong></a>
 </p>
 
 <p align="center">
@@ -156,7 +156,7 @@ automl.fit(X, y, models=['xgboost', 'lightgbm'])
 !!! tip "Non-Destructive Overrides"
     Overrides configured during `fit()` are applied non-destructively. The original config is fully restored after `fit()` completes, so subsequent executions use the original baseline configurations.
 
-## 🔧 Advanced Usage
+## Advanced Usage
 
 ### Deployment: Exporting the Best Pipeline
 OctoLearn makes it easy to move from experimentation to production. You can export the entire "Best Pipeline" (Preprocessing + Model) as a standalone scikit-learn object.

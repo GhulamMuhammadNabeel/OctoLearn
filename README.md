@@ -114,7 +114,7 @@ pip install git+https://github.com/GhulamMuhammadNabeel/OctoLearn.git
 
 ---
 
-## ⚡ Per-Run `fit()` Overrides
+## Per-Run fit() Overrides
 
 You can override key configuration settings for a **single run** without re-creating the `AutoML` instance. This is ideal for rapid experimentation:
 
@@ -157,7 +157,7 @@ automl.fit(X, y, models=['xgboost', 'lightgbm'])
 
 ## 🔧 Advanced Usage
 
-### 🚀 Deployment: Exporting the Best Pipeline
+### Deployment: Exporting the Best Pipeline
 OctoLearn makes it easy to move from experimentation to production. You can export the entire "Best Pipeline" (Preprocessing + Model) as a standalone scikit-learn object.
 
 ```python
@@ -177,7 +177,7 @@ joblib.dump(pipeline, "octolearn_prod_pipeline.pkl")
 
 ---
 
-### 🏋️‍♂️ Training on Full Data
+### Training on Full Data
 After finding the best model and hyperparameters, you may want to retrain on your **entire** dataset (train + test combined) to maximize performance before deployment.
 
 ```python
@@ -197,7 +197,7 @@ joblib.dump(pipeline, "final_model_full_data.pkl")
 
 ---
 
-### 📍 Accessing Data at Specific Points
+### Accessing Data at Specific Points
 Need to inspect the data after cleaning but before model training? Or want to see the raw samples? OctoLearn exposes all intermediate states:
 
 ```python
@@ -463,7 +463,7 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 octolearn/
@@ -524,7 +524,7 @@ The pipeline executes 6 phases:
 
 ---
 
-## 🧪 Running Tests
+## Running Tests
 
 ```bash
 # Activate virtual environment first
@@ -535,13 +535,13 @@ This exercises all pipeline phases with the Titanic dataset.
 
 ---
 
-## 📝 License
+## License
 
 MIT License — see [LICENSE](https://github.com/GhulamMuhammadNabeel/OctoLearn/blob/main/LICENSE) for details.
 
 ---
 
-## 👤 Author
+## Author
 
 **Ghulam Muhammad Nabeel**
 

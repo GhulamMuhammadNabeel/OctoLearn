@@ -1,6 +1,9 @@
 # Deployment Guide
 
-Learn how to deploy your OctoLearn models to production and keep your documentation updated using GitHub Pages.
+Learn how to deploy your OctoLearn models to production and manage your live documentation. 
+
+> [!NOTE]
+> While GitHub Pages is a standard option, this documentation is currently hosted on **Vercel** ([octolearn.vercel.app](https://octolearn.vercel.app)) for superior reliability and to bypass GitHub Actions billing limitations.
 
 ---
 

@@ -1,4 +1,4 @@
-# OctoLearn Architecture Guide
+# Architecture Guide
 
 Welcome to the complete architectural reference for **OctoLearn** — an enterprise-grade AutoML library built for transparency, robustness, and ease of use. This document explains *how* the library is built, *why* specific design choices were made, and *how to extend* it.
 

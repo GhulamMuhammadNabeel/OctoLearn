@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://GhulamMuhammadNabeel.github.io/OctoLearn/"><strong>Official Documentation</strong></a>
+  <a href="https://octolearn.vercel.app/"><strong>Official Documentation</strong></a>
 </p>
 
 <p align="center">
@@ -61,9 +61,9 @@ pip install git+https://github.com/GhulamMuhammadNabeel/OctoLearn.git
 
 ## Quick Start: Production Pipeline in 30 Seconds
 
-=== "🌟 Surprise Me API"
+=== "Surprise Me API"
 
-    Want to see OctoLearn in action instantly without providing your own data? Use the `surprise_me` API down automatically download a benchmark dataset, run the full pipeline, and generate a beautiful intelligence report.
+    Want to see OctoLearn in action instantly without providing your own data? Use the `surprise_me` API to automatically download a benchmark dataset, run the full pipeline, and generate a beautiful intelligence report.
 
     ```python
     from octolearn import AutoML
@@ -73,7 +73,7 @@ pip install git+https://github.com/GhulamMuhammadNabeel/OctoLearn.git
     print(f"Report saved to: {pdf_path}")
     ```
 
-=== "🔥 Standard Usage"
+=== "Standard Usage"
 
     Bring your own dataset and let OctoLearn orchestrate the profiling, cleaning, tuning, and evaluation out of the box.
 
@@ -94,7 +94,7 @@ pip install git+https://github.com/GhulamMuhammadNabeel/OctoLearn.git
     print(f"Analysis complete: {pdf_report}")
     ```
 
-=== "🔍 Profile Only"
+=== "Profile Only"
 
     Need deep visibility into your dataset without the computational cost of training models? OctoLearn's profiler can execute independently.
 
@@ -115,7 +115,7 @@ pip install git+https://github.com/GhulamMuhammadNabeel/OctoLearn.git
 
 ---
 
-## ⚡ Per-Run `fit()` Overrides
+## Per-Run fit() Overrides
 
 You can override key configuration settings for a **single run** without re-creating the `AutoML` instance. This is ideal for rapid experimentation:
 
@@ -158,7 +158,7 @@ automl.fit(X, y, models=['xgboost', 'lightgbm'])
 
 ## 🔧 Advanced Usage
 
-### 🚀 Deployment: Exporting the Best Pipeline
+### Deployment: Exporting the Best Pipeline
 OctoLearn makes it easy to move from experimentation to production. You can export the entire "Best Pipeline" (Preprocessing + Model) as a standalone scikit-learn object.
 
 ```python
@@ -178,7 +178,7 @@ joblib.dump(pipeline, "octolearn_prod_pipeline.pkl")
 
 ---
 
-### 🏋️‍♂️ Training on Full Data
+### Training on Full Data
 After finding the best model and hyperparameters, you may want to retrain on your **entire** dataset (train + test combined) to maximize performance before deployment.
 
 ```python
@@ -198,7 +198,7 @@ joblib.dump(pipeline, "final_model_full_data.pkl")
 
 ---
 
-### 📍 Accessing Data at Specific Points
+### Accessing Data at Specific Points
 Need to inspect the data after cleaning but before model training? Or want to see the raw samples? OctoLearn exposes all intermediate states:
 
 ```python

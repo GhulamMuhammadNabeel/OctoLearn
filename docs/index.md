@@ -350,7 +350,7 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
 
 ---
 
-## 📖 API Reference
+## API Reference
 
 ### `AutoML` — Main Orchestrator
 
@@ -464,7 +464,7 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 octolearn/
@@ -525,7 +525,7 @@ The pipeline executes 6 phases:
 
 ---
 
-## 🧪 Running Tests
+## Running Tests
 
 ```bash
 # Activate virtual environment first
@@ -536,13 +536,13 @@ This exercises all pipeline phases with the Titanic dataset.
 
 ---
 
-## 📝 License
+## License
 
 MIT License — see [LICENSE](https://github.com/GhulamMuhammadNabeel/OctoLearn/blob/main/LICENSE) for details.
 
 ---
 
-## 👤 Author
+## Author
 
 **Ghulam Muhammad Nabeel**
 

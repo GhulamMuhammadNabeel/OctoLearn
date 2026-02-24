@@ -441,6 +441,7 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
 | `evaluation_metric` | `str` | `None` | Primary evaluation metric |
 | `n_models` | `int` | `5` | Number of models to train |
 | `test_size` | `float` | `0.2` | Test split ratio |
+| `use_stacking` | `bool` | `True` | Enable stacking ensemble |
 </details>
 
 <details>
@@ -453,6 +454,7 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
 | `optuna_timeout_seconds` | `int` | `300` | Timeout per model |
 | `optuna_parallel_jobs` | `int` | `-1` | Parallel Optuna workers |
 | `use_registry` | `bool` | `True` | Save models to registry |
+| `baseline_score` | `float` | `None` | Target performance score |
 </details>
 
 <details>
@@ -461,10 +463,11 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `generate_report` | `bool` | `True` | Generate PDF report |
+| `report_title` | `str` | `"OctoLearn..."` | Report header title |
 | `report_detail` | `str` | `"detailed"` | `"brief"` or `"detailed"` |
-| `include_shap` | `bool` | `True` | Include SHAP analysis |
-| `plot_mode` | `str` | `"simple"` | `"simple"` or `"dashboard"` |
-| `visuals_limit` | `int` | `10` | Max plots in report |
+| `include_data_journey` | `bool` | `True` | Include before/after plots |
+| `include_shap` | `bool" | `True` | Include SHAP analysis |
+| `color_scheme` | `str` | `"light"` | Theme ('light', 'dark', 'neon') |
 </details>
 
 <details>
@@ -475,7 +478,7 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
 | `parallel_processing` | `bool` | `True` | Enable parallelism |
 | `n_jobs` | `int` | `-1` | Number of cores (-1 = all) |
 | `backend` | `str` | `"threading"` | Joblib backend |
-| `verbose` | `int` | `0` | Verbosity level |
+| `enable_gpu` | `bool` | `False` | Attempt hardware acceleration |
 </details>
 
 ---
@@ -520,14 +523,17 @@ octolearn/
 
 ### Pipeline Flow
 
-```
-Raw Data ──► Profiling ──► Train/Test Split ──► Auto Cleaning ──► Clean Profiling
-                                                      │
-                                                      ▼
-                    PDF Report ◄── Model Training ◄── Feature Engineering
-                                       │
-                                       ▼
-                              Optuna Optimization ──► Model Registry
+```mermaid
+graph LR
+    A[Raw Data] --> B[Profiling]
+    B --> C[Train/Test Split]
+    C --> D[Auto Cleaning]
+    D --> E[Clean Profiling]
+    E --> F[Feature Engineering]
+    F --> G[Model Training]
+    G --> H[Optuna Optimization]
+    H --> I[Model Registry]
+    G --> J[PDF Report]
 ```
 
 The pipeline executes 6 phases:

@@ -48,8 +48,16 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/GhulamMuhammadNabeel/OctoLearn
-    - icon: fontawesome/brands/linkedin
-      link: https://linkedin.com/in/GhulamMuhammadNabeel
+    - icon: fontawesome/brands/linkedin-in
+      link: https://www.linkedin.com/in/ghulam-muhammad-nabeel-a6997a313/
+    - icon: fontawesome/brands/kaggle
+      link: https://www.kaggle.com/nabeelqureshitiii
+    - icon: fontawesome/brands/docker
+      link: https://hub.docker.com/repositories/ghulammuhammadnabeel
+    - icon: fontawesome/brands/google
+      link: https://www.google.com/search?q=Ghulam+Muhammad+Nabeel
+    - icon: fontawesome/brands/facebook
+      link: https://www.facebook.com/ghulammuhammadnabeel
 
 markdown_extensions:
   - admonition

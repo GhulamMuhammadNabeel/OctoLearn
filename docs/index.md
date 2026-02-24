@@ -394,92 +394,78 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
 
 ### Configuration Dataclasses
 
-<details>
-<summary><strong>DataConfig</strong></summary>
+???+ info "DataConfig"
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `use_full_data` | `bool` | `False` | Use entire dataset (no sampling) |
-| `sample_size` | `int` | `500` | Rows to sample if not using full data |
-| `test_size` | `float` | `0.2` | Fraction for test split |
-| `random_state` | `int` | `42` | Random seed for reproducibility |
-| `stratify_target` | `bool` | `True` | Stratify split on target |
-</details>
+    | Field | Type | Default | Description |
+    |-------|------|---------|-------------|
+    | `use_full_data` | `bool` | `False` | Use entire dataset (no sampling) |
+    | `sample_size` | `int` | `500` | Rows to sample if not using full data |
+    | `test_size` | `float` | `0.2` | Fraction for test split |
+    | `random_state` | `int` | `42` | Random seed for reproducibility |
+    | `stratify_target` | `bool` | `True` | Stratify split on target |
 
-<details>
-<summary><strong>ProfilingConfig</strong></summary>
+???+ info "ProfilingConfig"
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `detect_outliers` | `bool` | `True` | Run outlier detection |
-| `analyze_interactions` | `bool` | `False` | Analyze feature interactions |
-| `generate_risk_score` | `bool` | `True` | Calculate risk score |
-| `calculate_feature_importance` | `bool` | `True` | Compute importance |
-| `generate_recommendations` | `bool` | `True` | Generate ML recommendations |
-| `include_duplicates_analysis` | `bool` | `True` | Analyze duplicates |
-</details>
+    | Field | Type | Default | Description |
+    |-------|------|---------|-------------|
+    | `detect_outliers` | `bool` | `True` | Run outlier detection |
+    | `analyze_interactions` | `bool` | `False` | Analyze feature interactions |
+    | `generate_risk_score` | `bool` | `True` | Calculate risk score |
+    | `calculate_feature_importance` | `bool` | `True` | Compute importance |
+    | `generate_recommendations` | `bool` | `True` | Generate ML recommendations |
+    | `include_duplicates_analysis` | `bool` | `True` | Analyze duplicates |
 
-<details>
-<summary><strong>PreprocessingConfig</strong></summary>
+???+ info "PreprocessingConfig"
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `auto_clean` | `bool` | `True` | Enable auto cleaning |
-| `imputer_strategy` | `Dict` | `None` | Imputation methods per type |
-| `encoder_strategy` | `Dict` | `None` | Encoding strategy |
-| `scaler` | `str` | `"standard"` | Scaling method |
-| `id_columns` | `List[str]` | `None` | Columns to remove |
-</details>
+    | Field | Type | Default | Description |
+    |-------|------|---------|-------------|
+    | `auto_clean` | `bool` | `True` | Enable auto cleaning |
+    | `imputer_strategy` | `Dict` | `None` | Imputation methods per type |
+    | `encoder_strategy` | `Dict` | `None` | Encoding strategy |
+    | `scaler` | `str` | `"standard"` | Scaling method |
+    | `id_columns` | `List[str]` | `None` | Columns to remove |
 
-<details>
-<summary><strong>ModelingConfig</strong></summary>
+???+ info "ModelingConfig"
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `train_models` | `bool` | `True` | Whether to train models |
-| `models_to_train` | `List[str]` | `None` | Specific models to train |
-| `evaluation_metric` | `str` | `None` | Primary evaluation metric |
-| `n_models` | `int` | `5` | Number of models to train |
-| `test_size` | `float` | `0.2` | Test split ratio |
-| `use_stacking` | `bool` | `True` | Enable stacking ensemble |
-</details>
+    | Field | Type | Default | Description |
+    |-------|------|---------|-------------|
+    | `train_models` | `bool` | `True` | Whether to train models |
+    | `models_to_train` | `List[str]` | `None` | Specific models to train |
+    | `evaluation_metric` | `str` | `None` | Primary evaluation metric |
+    | `n_models` | `int` | `5` | Number of models to train |
+    | `test_size` | `float` | `0.2` | Test split ratio |
+    | `use_stacking` | `bool` | `True` | Enable stacking ensemble |
 
-<details>
-<summary><strong>OptimizationConfig</strong></summary>
+???+ info "OptimizationConfig"
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `use_optuna` | `bool` | `True` | Enable Optuna tuning |
-| `optuna_trials_per_model` | `int` | `20` | Trials per model |
-| `optuna_timeout_seconds` | `int` | `300` | Timeout per model |
-| `optuna_parallel_jobs` | `int` | `-1` | Parallel Optuna workers |
-| `use_registry` | `bool` | `True` | Save models to registry |
-| `baseline_score` | `float` | `None` | Target performance score |
-</details>
+    | Field | Type | Default | Description |
+    |-------|------|---------|-------------|
+    | `use_optuna` | `bool` | `True` | Enable Optuna tuning |
+    | `optuna_trials_per_model` | `int` | `20` | Trials per model |
+    | `optuna_timeout_seconds` | `int` | `300` | Timeout per model |
+    | `optuna_parallel_jobs` | `int` | `-1` | Parallel Optuna workers |
+    | `use_registry` | `bool` | `True` | Save models to registry |
+    | `baseline_score` | `float` | `None` | Target performance score |
 
-<details>
-<summary><strong>ReportingConfig</strong></summary>
+???+ info "ReportingConfig"
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `generate_report` | `bool` | `True` | Generate PDF report |
-| `report_title` | `str` | `"OctoLearn..."` | Report header title |
-| `report_detail` | `str` | `"detailed"` | `"brief"` or `"detailed"` |
-| `include_data_journey` | `bool` | `True` | Include before/after plots |
-| `include_shap` | `bool" | `True` | Include SHAP analysis |
-| `color_scheme` | `str` | `"light"` | Theme ('light', 'dark', 'neon') |
-</details>
+    | Field | Type | Default | Description |
+    |-------|------|---------|-------------|
+    | `generate_report` | `bool` | `True` | Generate PDF report |
+    | `report_title` | `str` | `"OctoLearn..."` | Report header title |
+    | `report_detail` | `str` | `"detailed"` | `"brief"` or `"detailed"` |
+    | `include_data_journey` | `bool` | `True` | Include before/after plots |
+    | `include_shap` | `bool` | `True` | Include SHAP analysis |
+    | `color_scheme` | `str` | `"light"` | Theme ('light', 'dark', 'neon') |
 
-<details>
-<summary><strong>ParallelConfig</strong></summary>
+???+ info "ParallelConfig"
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `parallel_processing` | `bool` | `True` | Enable parallelism |
-| `n_jobs` | `int` | `-1` | Number of cores (-1 = all) |
-| `backend` | `str` | `"threading"` | Joblib backend |
-| `enable_gpu` | `bool` | `False` | Attempt hardware acceleration |
-</details>
+    | Field | Type | Default | Description |
+    |-------|------|---------|-------------|
+    | `parallel_processing` | `bool` | `True` | Enable parallelism |
+    | `n_jobs` | `int` | `-1` | Number of cores (-1 = all) |
+    | `backend` | `str` | `"threading"` | Joblib backend |
+    | `enable_gpu` | `bool` | `False` | Attempt hardware acceleration |
 
 ---
 
@@ -584,7 +570,7 @@ This exercises all pipeline phases with the Titanic dataset.
 
 ## License
 
-MIT License — see [LICENSE](https://github.com/GhulamMuhammadNabeel/OctoLearn/blob/main/LICENSE) for details.
+MIT License — see [LICENSE](https://github.com/GhulamMuhammadNabeel/OctoLearn/blob/master/LICENSE) for details.
 
 ---
 

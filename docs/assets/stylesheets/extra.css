@@ -33,26 +33,25 @@
 
 /* Glassmorphism for the Header */
 .md-header {
-    background-color: rgba(26, 35, 126, 0.8) !important;
-    /* Indigo with transparency */
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background-color: rgba(26, 35, 126, 0.9) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    height: 3.5rem;
+    /* Reduced height */
 }
 
-/* Premium Branding - High Impact Header */
+/* Balanced Logo Sizing */
 .md-logo img {
-    height: 72px !important;
+    height: 56px !important;
     width: auto !important;
-    transition: transform 0.3s ease;
-}
-
-.md-logo:hover img {
-    transform: scale(1.05);
+    margin: 0 !important;
+    padding: 0.2rem 0;
 }
 
 .md-header__title {
-    margin-left: 2rem !important;
+    margin-left: 1rem !important;
+    line-height: normal !important;
 }
 
 /* Premium Typography Body */
@@ -62,7 +61,6 @@ body,
     font-size: 0.85rem;
     line-height: 1.6;
     color: #37474f;
-    /* Muted Slate */
 }
 
 /* Elegant Headers */
@@ -74,17 +72,7 @@ body,
     font-weight: 800;
     color: #1a237e;
     letter-spacing: -0.01em;
-    margin-top: 1.8em;
-}
-
-/* Glassmorphic Cards for Home Hero */
-.md-main__inner {
-    margin-top: 2rem;
-}
-
-/* Remove standard shadow and add sophisticated border */
-.md-content__inner {
-    margin-top: 0;
+    margin-top: 1.5rem;
 }
 
 /* Custom TOC style */
@@ -93,68 +81,46 @@ body,
     color: var(--md-primary-fg-color) !important;
 }
 
-/* Admonition Overhaul - Elegant & Flat */
-.admonition {
+/* Admonition/Details Overhaul */
+.admonition,
+details {
     border-radius: 12px;
     border-left-width: 0;
-    padding: 1.2rem;
+    padding: 1rem;
     margin-bottom: 1.5rem;
     background-color: #f5f7fa;
     border: 1px solid #e1e8ed;
     box-shadow: none;
 }
 
-.admonition-title {
+.admonition-title,
+summary {
     background-color: transparent !important;
     font-weight: 800 !important;
     color: #1a237e !important;
-    padding-left: 2.8rem !important;
+    padding-left: 2.5rem !important;
+    cursor: pointer;
 }
 
-.admonition.info {
+.admonition.info,
+details.info {
     border-top: 4px solid #3f51b5;
-}
-
-.admonition.tip {
-    border-top: 4px solid #00bfa5;
-}
-
-.admonition.warning {
-    border-top: 4px solid #ff9100;
-}
-
-.admonition.danger {
-    border-top: 4px solid #ff5252;
 }
 
 /* Code block enhancements */
 .highlight {
     border-radius: 12px;
     background-color: #263238 !important;
-    /* Professional Dark Slate */
 }
 
 /* Premium Buttons */
 .md-button {
     font-family: "Shantell Sans";
     border-radius: 30px;
-    padding: 0.8em 2.4em;
+    padding: 0.6em 1.8em;
     font-weight: 800;
-    font-size: 0.9rem;
-    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-    border: 2px solid var(--md-primary-fg-color);
-}
-
-.md-button--primary {
-    background-color: var(--md-primary-fg-color);
-    color: white !important;
-}
-
-.md-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-    background-color: white !important;
-    color: var(--md-primary-fg-color) !important;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
 }
 
 /* Dark Mode Adjustments */
@@ -167,68 +133,21 @@ body,
     color: #cfd8dc;
 }
 
-[data-md-color-scheme="slate"] .md-typeset h1,
-[data-md-color-scheme="slate"] .md-typeset h2,
-[data-md-color-scheme="slate"] .md-typeset h3 {
-    color: #e8eaf6;
-}
-
-[data-md-color-scheme="slate"] .admonition {
+[data-md-color-scheme="slate"] .admonition,
+[data-md-color-scheme="slate"] details {
     background-color: #263238;
     border: 1px solid #37474f;
 }
 
-[data-md-color-scheme="slate"] .admonition-title {
-    color: #e8eaf6 !important;
+/* Back to Top Button positioning fix (Material Default is bottom right) */
+.md-top {
+    bottom: 2rem !important;
+    right: 2rem !important;
 }
 
-/* Details Tag & Table Structural Fixes */
-details {
-    margin: 2rem 0;
-    padding: 1.5rem;
-    border: 1px solid var(--md-primary-fg-color--light);
-    border-radius: 16px;
-    background: rgba(121, 134, 203, 0.03);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-details summary {
-    cursor: pointer;
-    font-weight: 800;
-    color: var(--md-primary-fg-color);
-    padding: 0.5rem 0;
-    font-size: 1rem;
-}
-
-details[open] summary {
-    border-bottom: 2px solid var(--md-primary-fg-color--light);
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-}
-
+/* Table rendering fix for md_in_html or pymdownx.details */
 .md-typeset table {
     width: 100% !important;
     display: table !important;
-    margin-bottom: 2rem !important;
-    border-collapse: collapse;
-}
-
-.md-typeset td,
-.md-typeset th {
-    padding: 12px 16px !important;
-}
-
-/* Mobile Responsiveness Audit */
-@media screen and (max-width: 60rem) {
-    .md-logo img {
-        height: 52px !important;
-    }
-
-    .md-header__title {
-        margin-left: 1rem !important;
-    }
-
-    details {
-        padding: 1rem;
-    }
+    margin: 1rem 0 !important;
 }

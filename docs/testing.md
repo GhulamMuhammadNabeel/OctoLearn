@@ -43,46 +43,92 @@ We bench OctoLearn against standard industry datasets to ensures zero-regression
 
 ---
 
-## The Data Journey: Full Depth Trace
+## The Lifecycle of an AutoML Run: A Technical Deep Dive
 
-Based on our intensive architectural audit (last run: 2026-02-24), here is how OctoLearn transforms data through various configuration permutations.
+OctoLearn is designed for high observability. Below is a step-by-step trace of how the core orchestrator processes a dataset, comparing **Default behavior** against **Overridden configurations**.
 
-### Stage 1: Structural Ingestion
-**Input**: `['age', 'salary', 'gender', 'id_col', 'constant', 'missing']`
+### Phase 1: Ingestion & Smart Sampling
+The `AutoML` constructor sets the stage. Sampling ensures performance on large datasets without losing statistical significance.
 
-| Configuration | Action | Transformation Result |
-|---------------|--------|-----------------------|
-| **Default** | Auto-detect ID & Constant | Dropped `id_col`, `constant` |
-| **PreprocessingConfig** | `id_columns=['age']` | Dropped `age`, kept `id_col` |
+???+ example "Chunk 1: Initialization"
+    ```python
+    # Path A: Default (Safe Sampling)
+    automl = AutoML() 
+    
+    # Path B: Full Depth (No Sampling)
+    automl = AutoML(data_config=DataConfig(use_full_data=True))
+    ```
+    
+    | Parameter | Default (`False`) | Override (`True`) |
+    |-----------|-------------------|-------------------|
+    | `use_full_data` | Samples 500 rows for speed. | Processes every single row. |
+    | `stratify_target` | Ensures class balance in split. | (Same by default) |
 
-### Stage 2: Preprocessing & Imputation
-**Trace Log from Audit Output:**
+---
 
-```json
-{
-  "Default": {
-    "numeric_imputation": "mean",
-    "scaling": "standard",
-    "result": "4 columns final"
-  },
-  "Override": {
-    "numeric_imputation": "median",
-    "scaling": "robust",
-    "test_size": 0.3
-  },
-  "Per-Call": {
-    "numeric_imputation": "constant",
-    "reason": "fit() override"
-  }
-}
-```
+### Phase 2: Structural Foundation (AutoCleaner)
+Before ML begins, OctoLearn cleans the "noise".
 
-### Stage 3: Optimization Trace
-**Config: OptimizationConfig(use_optuna=True, trials=5)**
+???+ observation "Chunk 2: Structural Logs"
+    ```text
+    INFO - [AutoCleaner] Starting structural transformation...
+    INFO - Dropped ID columns: ['user_id', 'uuid']
+    INFO - Dropped Constant columns: ['is_human', 'version']
+    INFO - Removed 14 duplicates rows.
+    ```
 
-1. **Trial 0**: Baseline model training (Random Forest).
-2. **Trial 1-4**: Bayesian sampling of `max_depth` and `n_estimators`.
-3. **Registry**: Winning parameters saved to `octolearn_artifacts/registry.v1`.
+    **Parameter Impact**:
+    - `auto_clean=True`: Automatically handles the drops above.
+    - `auto_clean=False` (NOT RECOMMENDED): Passes IDs to the model, likely causing overfitting or target leakage.
+
+---
+
+### Phase 3: Intelligent Preprocessing
+OctoLearn chooses imputation and scaling strategies based on distribution patterns.
+
+???+ bug "What if we override strategies?"
+    ```python
+    # Overriding Imputation Logic
+    config = PreprocessingConfig(
+        imputer_strategy={'numeric': 'median', 'categorical': 'mode'},
+        scaler='robust'
+    )
+    automl = AutoML(preprocessing_config=config)
+    ```
+
+    | Component | Default | Override Result |
+    |-----------|---------|-----------------|
+    | **Numeric Imputer** | `mean` (standard) | `median` (handled skewed outliers) |
+    | **Scaler** | `standard` | `robust` (used Interquartile Range) |
+    | **Final State** | Matrix: 160x12 | Matrix: 160x12 (different distribution) |
+
+---
+
+### Phase 4: The Model Arena (Bayesian HPO)
+This is where the magic happens. OctoLearn doesn't just train; it evolves.
+
+???+ success "Expected Output: Optuna Trace"
+    ```text
+    INFO - Starting Bayesian Optimization for XGBoost...
+    [Trial 1] Value: 0.842 (Params: max_depth=3, lr=0.1)
+    [Trial 2] Value: 0.875 (Params: max_depth=6, lr=0.01) [New Best]
+    INFO - Best Model: XGBoost with 0.912 F1-Score
+    ```
+
+    | Parameter | Default (`True`) | Override (`False`) |
+    |-----------|-------------------|-------------------|
+    | `use_optuna` | Runs 20 trials of HPO. | Trains model with default params. |
+    | `use_stacking` | Blends top 3 into an ensemble. | Returns a single best model. |
+
+---
+
+### Phase 5: Delivery & Insight
+The final artifacts are generated based on the `ReportingConfig`.
+
+???+ info "Chunk 5: Artifact Registry"
+    - **`trained_models_`**: Dictionary of all fitted sklearn/XGB objects.
+    - **`best_model_`**: The winning serialized model.
+    - **`octolearn_report.pdf`**: The full visual trace of the journey above.
 
 ---
 
@@ -92,4 +138,4 @@ When updates are made to the core logic, we verify the following:
 - [x] **Preprocessing Consistency**: `transform()` matches `fit()`.
 - [x] **Risk Score Accuracy**: Validated via high-missingness synthetic data.
 - [x] **Report Fidelity**: Verified across 10+ PDF compositions.
-- [x] **UI Responsiveness**: Verified on mobile, tablet, and desktop viewports.
+- [x] **UI Responsiveness**: Verified header autohide and mobile logo scaling.

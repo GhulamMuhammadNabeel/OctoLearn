@@ -537,7 +537,7 @@ This exercises all pipeline phases with the Titanic dataset.
 
 ## License
 
-MIT License — see [LICENSE](https://github.com/GhulamMuhammadNabeel/OctoLearn/blob/main/LICENSE) for details.
+MIT License — see [LICENSE](https://github.com/GhulamMuhammadNabeel/OctoLearn/blob/master/LICENSE) for details.
 
 ---
 

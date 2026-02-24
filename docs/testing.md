@@ -20,14 +20,20 @@ OctoLearn uses a multi-layered, exhaustive testing approach managed via `pytest`
     python -m pytest tests/ -v
     ```
 
+## The Model Arena: Champion Search
+
+OctoLearn's internal `ModelArena` is where hyperparameter optimization and cross-validation meet. We use **Bayesian Search** (via Optuna) to navigate complex parameter spaces for:
+
+- **XGBoost & LightGBM**: Fine-tuning learning rates, depths, and tree counts.
+- **Random Forest**: Optimizing split criteria and ensemble size.
+- **Stacking Ensemble**: Using the top 3 performers as base learners with a meta-regressor/classifier.
+
+### Benchmarking Protocols
+We bench OctoLearn against standard industry datasets to ensures zero-regression in performance:
+- **Tabular Benchmarks**: Titanic (Classification), Housing (Regression).
+- **Stress Datasets**: High-cardinality churn datasets and sparse clinical data.
+
 ---
-
-## Benchmarking Methodology
-
-We evaluate OctoLearn based on three pillars:
-1.  **Predictive Accuracy**: Comparison against vanilla scikit-learn baselines.
-2.  **Orchestration Time**: Efficiency of the profiling and cleaning stages.
-3.  **Stability**: Performance on datasets with high missingness, extreme counts, and high cardinality.
 
 !!! success "Performance Highlights"
     On our baseline benchmark datasets (e.g., Titanic, Breast Cancer), the OctoLearn automated pipeline consistently achieves:

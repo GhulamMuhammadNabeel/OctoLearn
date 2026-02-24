@@ -176,6 +176,27 @@ For production-grade performance, `ModelTrainer` can generate a **Stacking Ensem
 
 ## 9. Model Registry (`models/registry.py`)
 
+### The Model Registry
+
+OctoLearn doesn't just train models; it manages their lifecycle. The `ModelRegistry` ensures that every champion model is versioned and stored with its metadata.
+
+```mermaid
+graph LR
+    A[ModelTrainer] -->|Champion| B(ModelRegistry)
+    B --> C{Storage Protocol}
+    C -->|Local| D[./models/pk_...]
+    C -->|Search| E[best_model.pkl]
+    B --> F[Metadata Log]
+    F -->|Metrics| G[json/csv]
+```
+
+### DatasetProfile: The Brain of OctoLearn
+The `DatasetProfile` is a metadata-rich object that drives the entire pipeline. It contains:
+- **Task Type Inference**: Automatic detection of classification vs. regression.
+- **Leakage Analysis**: Statistical flags for features that mirror the target.
+- **Quality Scoring**: A 0-100 score based on missingness, skew, and cardinality.
+
+---
 OctoLearn includes a local **Model Registry** for version control.
 - **Versioned Artifacts**: Models are saved as `.pkl` files with version stamps.
 - **Metadata Database**: A JSON backend tracks performance metrics, training timestamps, and hyperparameters for every version.

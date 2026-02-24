@@ -2,12 +2,6 @@
 
 Welcome to the comprehensive guide for OctoLearn. This document provides in-depth information on how to configure and extend the AutoML pipeline.
 
-## Table of Contents
-- [Core Concepts](#core-concepts)
-- [Configuration Reference](#configuration-reference)
-- [Advanced Features](#advanced-features)
-- [Methodology](#methodology)
-- [Troubleshooting](#troubleshooting)
 
 ---
 

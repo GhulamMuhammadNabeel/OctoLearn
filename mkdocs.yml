@@ -18,6 +18,8 @@ theme:
     - content.code.copy
     - content.tabs.link
     - toc.follow
+    - toc.integrate
+    - navigation.expand
   palette:
     - scheme: default
       primary: deep purple
@@ -37,7 +39,6 @@ nav:
   - Home: index.md
   - Architecture: architecture.md
   - User Guide: guide.md
-  - Deployment: deployment.md
   - Testing: testing.md
 
 extra_css:

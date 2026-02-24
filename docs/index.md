@@ -36,6 +36,21 @@ Most AutoML libraries focus solely on leaderboard scores. OctoLearn focuses on t
 
 ---
 
+## Enterprise DNA: Our Philosophy
+
+OctoLearn was built on the belief that **Automation should not mean Blindness**. In high-stakes environments (Finance, Healthcare, Engineering), a high F1-score is useless if you don't understand the risks in your training set.
+
+### 🛡️ Observability First
+Every run begins with a deep statistical audit. We don't just find missing values; we analyze their pattern to detect **Systemic Missingness** and **Data Leakage**.
+
+### 🎮 Total Control
+While we provide "Surprise Me" defaults, the library is designed for power users. Every phase of the pipeline—from the imputer strategy to the Bayesian search space—is fully customizable.
+
+### 📊 Production-Ready Insights
+We believe the output of an AutoML run should be as much a **Decision Support Tool** as it is a model file. Our PDF reports translate complex SHAP values and residuals into actionable business narratives.
+
+---
+
 ## Features at a Glance
 
 | Pillar | Capability |
@@ -357,6 +372,7 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
 | Method | Description |
 |--------|-------------|
 | `fit(X, y)` | Run the complete pipeline |
+| `surprise_me(task='classification')` | **Instant benchmark** with auto-data & report |
 | `predict(X_new)` | Make predictions using best model |
 | `generate_report()` | Generate PDF report |
 | `get_risk_score()` | Get data quality risk score (0-100) |

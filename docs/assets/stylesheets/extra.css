@@ -37,13 +37,13 @@
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    height: 3.5rem;
-    /* Reduced height */
+    height: 4rem;
+    /* Balanced height */
 }
 
 /* Balanced Logo Sizing */
 .md-logo img {
-    height: 56px !important;
+    height: 64px !important;
     width: auto !important;
     margin: 0 !important;
     padding: 0.2rem 0;
@@ -139,10 +139,24 @@ details.info {
     border: 1px solid #37474f;
 }
 
-/* Back to Top Button positioning fix (Material Default is bottom right) */
+/* Back to Top Button positioning fix */
 .md-top {
     bottom: 2rem !important;
     right: 2rem !important;
+    background-color: var(--md-primary-fg-color) !important;
+    color: white !important;
+    border-radius: 50% !important;
+    width: 48px !important;
+    height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    transition: transform 0.3s ease !important;
+}
+
+.md-top:hover {
+    transform: translateY(-5px) !important;
 }
 
 /* Table rendering fix for md_in_html or pymdownx.details */

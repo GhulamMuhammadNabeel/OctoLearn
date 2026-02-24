@@ -4,7 +4,7 @@ Learn how to deploy your OctoLearn models to production and keep your documentat
 
 ---
 
-## 🚀 Deploying OctoLearn Models
+## Deploying OctoLearn Models
 
 Moving from training to production with OctoLearn follows a two-step process: **Export** and **Inference**.
 
@@ -43,7 +43,7 @@ predictions = pipeline.predict(new_data)
 
 ---
 
-## 📖 Deploying Documentation to GitHub Pages
+## Deploying Documentation to GitHub Pages
 
 OctoLearn uses **MkDocs** to generate its documentation website. You can automate the deployment process using GitHub Actions.
 
@@ -75,7 +75,7 @@ jobs:
 
 ---
 
-## 🏗️ Alternative Hosting Solutions
+## Alternative Hosting Solutions
 
 If you encounter issues with GitHub Actions, you can use these free alternatives that don't rely on GitHub's internal billing.
 
@@ -113,7 +113,7 @@ Vercel is another industrial-strength free alternative.
 
 ---
 
-## 🛡️ Production Best Practices
+## Production Best Practices
 
 - **Versioning**: Always tag your models with a version number or timestamp.
 - **Monitoring**: Use OctoLearn's `RiskScorer` on incoming live data periodically to detect feature drift.

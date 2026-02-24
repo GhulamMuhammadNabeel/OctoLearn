@@ -1,0 +1,87 @@
+/* Custom Styles for OctoLearn Documentation */
+
+:root {
+    --md-primary-fg-color: #6200ea;
+    --md-primary-fg-color--light: #b388ff;
+    --md-primary-fg-color--dark: #311b92;
+}
+
+/* Glassmorphism for the Header */
+.md-header {
+    background-color: rgba(98, 0, 234, 0.8) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* Smooth transitions for links */
+a {
+    transition: color 0.3s ease;
+}
+
+/* Elegant Cards for Admonitions */
+.admonition {
+    border-radius: 8px;
+    border-left-width: 6px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admonition:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Professional Typography */
+h1, h2, h3 {
+    font-weight: 700 !important;
+    color: var(--md-primary-fg-color--dark);
+    letter-spacing: -0.02em;
+    margin-top: 1.5em !important;
+}
+
+[data-md-color-scheme="slate"] h1, 
+[data-md-color-scheme="slate"] h2, 
+[data-md-color-scheme="slate"] h3 {
+    color: var(--md-primary-fg-color--light);
+}
+
+/* Custom TOC style */
+.md-nav__link--active {
+    font-weight: 600;
+    color: var(--md-primary-fg-color) !important;
+}
+
+/* Code block enhancements */
+.highlight {
+    border-radius: 6px;
+}
+
+/* Buttons and Pills */
+.md-button {
+    border-radius: 20px;
+    padding: 0.5em 1.5em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.3s ease;
+}
+
+.md-button:hover {
+    background-color: var(--md-primary-fg-color);
+    color: white !important;
+    border-color: var(--md-primary-fg-color);
+}
+
+/* Remove underline from links in headings */
+h1 a, h2 a, h3 a {
+    text-decoration: none !important;
+}
+
+/* Custom Footer */
+.md-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-md-color-scheme="slate"] .md-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}

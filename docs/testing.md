@@ -1,8 +1,8 @@
-# OctoLearn Testing & Benchmarking
+# OctoLearn Testing and Benchmarking
 
 Quality assurance is at the core of OctoLearn. This document outlines our testing strategies, benchmarking methodology, and how to verify the library's performance.
 
-## 🧪 Testing Strategy
+## Testing Strategy
 
 OctoLearn uses a multi-layered, exhaustive testing approach managed via `pytest`:
 1.  **Unit Tests**: Verify individual components (imputers, encoders, scorers).
@@ -22,7 +22,7 @@ OctoLearn uses a multi-layered, exhaustive testing approach managed via `pytest`
 
 ---
 
-## 📊 Benchmarking Methodology
+## Benchmarking Methodology
 
 We evaluate OctoLearn based on three pillars:
 1.  **Predictive Accuracy**: Comparison against vanilla scikit-learn baselines.
@@ -37,7 +37,7 @@ We evaluate OctoLearn based on three pillars:
 
 ---
 
-## 🛠️ Verification Checklist
+## Verification Checklist
 
 When updates are made to the core logic, we verify the following:
 - [ ] **Preprocessing Consistency**: Ensure `transform()` applies the exact same logic as `fit_transform()`.

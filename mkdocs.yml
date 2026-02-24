@@ -4,27 +4,36 @@ site_url: https://GhulamMuhammadNabeel.github.io/OctoLearn/
 
 theme:
   name: material
+  logo: assets/images/logo.png
+  favicon: assets/images/logo.png
   features:
     - navigation.tabs
     - navigation.sections
     - navigation.top
+    - navigation.indexes
+    - navigation.tracking
     - search.suggest
     - search.highlight
+    - search.share
     - content.code.copy
     - content.tabs.link
+    - toc.follow
   palette:
     - scheme: default
-      primary: indigo
-      accent: deep purple
+      primary: deep purple
+      accent: purple
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - scheme: slate
-      primary: indigo
-      accent: deep purple
+      primary: deep purple
+      accent: purple
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
 
 nav:
   - Home: index.md
@@ -32,6 +41,16 @@ nav:
   - User Guide: guide.md
   - Deployment: deployment.md
   - Testing: testing.md
+
+extra_css:
+  - assets/stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/GhulamMuhammadNabeel/OctoLearn
+    - icon: fontawesome/brands/linkedin
+      link: https://linkedin.com/in/GhulamMuhammadNabeel
 
 markdown_extensions:
   - admonition
@@ -43,9 +62,13 @@ markdown_extensions:
       alternate_style: true
   - pymdownx.highlight:
       anchor_linenums: true
-      use_pygments: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
 
 plugins:
   - search

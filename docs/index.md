@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../octolearn/images/logo.png" alt="OctoLearn Logo" width="220"/>
+  <img src="assets/images/logo.png" alt="OctoLearn Logo" width="220"/>
 </p>
 
 <h1 align="center">OctoLearn</h1>
@@ -10,13 +10,13 @@
 </p>
 
 <p align="center">
-  <a href="https://GhulamMuhammadNabeel.github.io/OctoLearn/"><strong>🚀 Official Documentation »</strong></a>
+  <a href="https://GhulamMuhammadNabeel.github.io/OctoLearn/"><strong>Official Documentation</strong></a>
 </p>
 
 <p align="center">
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-features">Key Capabilities</a> •
-  <a href="#-installation">Installation</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#features">Key Capabilities</a> •
+  <a href="#installation">Installation</a> •
   <a href="guide.md">User Guide</a> •
   <a href="testing.md">Testing</a>
 </p>
@@ -25,7 +25,7 @@
 
 OctoLearn is designed for data scientists and engineers who need more than just a "black box" model. It provides **transparent, controllable, and professional** machine learning workflows that automate the tedious parts of data science while giving you full oversight through high-fidelity intelligence reports.
 
-## 🚀 The OctoLearn Advantage
+## The OctoLearn Advantage
 
 Most AutoML libraries focus solely on leaderboard scores. OctoLearn focuses on the **entire lifecycle**:
 
@@ -36,19 +36,19 @@ Most AutoML libraries focus solely on leaderboard scores. OctoLearn focuses on t
 
 ---
 
-## ✨ Features at a Glance
+## Features at a Glance
 
 | Pillar | Capability |
 |:---|:---|
-| **🔍 Intelligence** | Auto-detects feature types, class imbalance, and **Data Leakage** suspects. |
-| **🧹 Resilience** | Industrial-strength cleaners handle outliers, missing values, and high-cardinality features. |
-| **📈 Performance** | Bayesian optimization via **Optuna** + Stacking Ensembles for maximum ROI. |
-| **📄 Clarity** | Magazine-style PDF reports with SHAP explainability and interactive-ready visuals. |
-| **🛡️ Reliability** | Built-in data quality risk scoring (0-100) to flag "garbage-in" scenarios. |
+| **Intelligence** | Auto-detects feature types, class imbalance, and **Data Leakage** suspects. |
+| **Resilience** | Industrial-strength cleaners handle outliers, missing values, and high-cardinality features. |
+| **Performance** | Bayesian optimization via **Optuna** + Stacking Ensembles for maximum ROI. |
+| **Clarity** | Magazine-style PDF reports with SHAP explainability and interactive-ready visuals. |
+| **Reliability** | Built-in data quality risk scoring (0-100) to flag "garbage-in" scenarios. |
 
 ---
 
-## 📦 Installation
+## Installation
 
 !!! info "Virtual Environment Recommended"
     Before installing OctoLearn, we recommend creating and activating a Python virtual environment to avoid dependency conflicts.
@@ -59,7 +59,7 @@ pip install git+https://github.com/GhulamMuhammadNabeel/OctoLearn.git
 
 ---
 
-## 🏎️ Quick Start: Production Pipeline in 30 Seconds
+## Quick Start: Production Pipeline in 30 Seconds
 
 === "🌟 Surprise Me API"
 

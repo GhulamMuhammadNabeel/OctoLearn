@@ -524,19 +524,43 @@ octolearn/
 ### Pipeline Flow
 
 ```mermaid
-graph LR
-    A[Raw Data] --> B[Profiling]
-    B --> C[Train/Test Split]
-    C --> D[Auto Cleaning]
-    D --> E[Clean Profiling]
-    E --> F[Feature Engineering]
-    F --> G[Model Training]
-    G --> H[Optuna Optimization]
-    H --> I[Model Registry]
-    G --> J[PDF Report]
+graph TD
+    %% Input Layer
+    Start(Raw Dataset) --> Profiling[Intelligent Profiling]
+
+    %% Structural Phase
+    subgraph "Phase 1: Foundation"
+        Profiling --> Clean[Structural Cleaning]
+        Clean --> Split[Stratified Splitting]
+    end
+
+    %% Intelligence Phase
+    subgraph "Phase 2: Intelligence"
+        Split --> FE[Feature Synthesis]
+        FE --> Out[Outlier Narratives]
+        Out --> Interaction[Interaction Analysis]
+    end
+
+    %% Optimization Phase
+    subgraph "Phase 3: Optimization"
+        Interaction --> Opt[Bayesian HPO - Optuna]
+        Opt --> Stk[Stacking Ensemble]
+    end
+
+    %% Delivery Phase
+    subgraph "Phase 4: Delivery"
+        Stk --> Reg[Model Registry]
+        Stk --> Rep[Intelligence Report]
+    end
+
+    %% Styling
+    style Start fill:#1a237e,color:#fff,stroke-width:2px
+    style Reg fill:#3f51b5,color:#fff
+    style Rep fill:#3f51b5,color:#fff
+    style Profiling fill:#7986cb,color:#fff
 ```
 
-The pipeline executes 6 phases:
+The OctoLearn pipeline moves through 4 distinct phases, each meticulously logged for full observability and reproducibility.
 
 1. **Profiling** — Infer types, detect quality issues, estimate task type
 2. **Splitting** — Stratified train/test split

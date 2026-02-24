@@ -10,15 +10,15 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/GhulamMuhammadNabeel/OctoLearn/blob/main/guide.md"><strong>Explore the User Guide »</strong></a>
+  <a href="https://GhulamMuhammadNabeel.github.io/OctoLearn/"><strong>🚀 Official Documentation »</strong></a>
 </p>
 
 <p align="center">
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-features">Key Capabilities</a> •
   <a href="#-installation">Installation</a> •
-  <a href="guide.md">Full Documentation</a> •
-  <a href="testing.md">Reliability & Testing</a>
+  <a href="guide.md">User Guide</a> •
+  <a href="testing.md">Testing</a>
 </p>
 
 ---
@@ -538,7 +538,7 @@ This exercises all pipeline phases with the Titanic dataset.
 
 ## 📝 License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](https://github.com/GhulamMuhammadNabeel/OctoLearn/blob/main/LICENSE) for details.
 
 ---
 

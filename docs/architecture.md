@@ -63,55 +63,37 @@ The orchestrator pattern keeps each component **single-responsibility** and **in
 
 ## 2. Directory Structure
 
-```mermaid
-flowchart LR
-    %% Main Project Root
-    Root(("OctoLearn/"))
-    
-    %% Top Level Folders
-    Src[/"octolearn/"\]
-    Tests[/"tests/"\]
-    Docs[/"Documentation Focus"/]
-    
-    Root --> Src
-    Root --> Tests
-    Root --> Docs
-    
-    %% Source Sub-modules
-    Src --> Core["core.py (Orchestrator)"]
-    Src --> Config["config.py (Constants)"]
-    Src --> Prof[/"profiling/"\]
-    Src --> Prep[/"preprocessing/"\]
-    Src --> Opt[/"optimization/"\]
-    Src --> Mods[/"models/"\]
-    Src --> Exp[/"experiments/"\]
-    Src --> Eval[/"evaluation/"\]
-    
-    %% Deep Files
-    Prof -.-> P1["data_profiler.py (Stats & Risk)"]
-    Prep -.-> PR1["auto_cleaner.py (Impute, Scale)"]
-    Prep -.-> PR2["sampler.py (SMOTE, Undersample)"]
-    Opt -.-> O1["feature_optimizer.py (Gen AI features)"]
-    Mods -.-> M1["model_trainer.py (Ensembles, Optuna)"]
-    Mods -.-> M2["registry.py (Model Versioning)"]
-    Exp -.-> E1["report_generator.py (PDF Engine)"]
-    Exp -.-> E2["recommendation_engine.py (Narratives)"]
-    Eval -.-> Ev1["metrics.py (Scoring)"]
-    
-    %% Tests & Docs
-    Tests -.-> T1["test_complete_pipeline.py"]
-    Docs -.-> D1["guide.md (Tutorials)"]
-    Docs -.-> D2["testing.md (Advanced Logs)"]
-    Docs -.-> D3["architecture.md"]
-    
-    %% Node Styling
-    classDef main fill:#000000,stroke:#E43636,stroke-width:2px,color:#F6EFD2;
-    classDef folder fill:#b82b2b,stroke:#000000,stroke-width:1px,color:#F6EFD2;
-    classDef file fill:#E2DDB4,stroke:#000000,stroke-width:1px,color:#000000;
-    
-    class Root main;
-    class Src,Tests,Docs,Prof,Prep,Opt,Mods,Exp,Eval folder;
-    class Core,Config,P1,PR1,PR2,O1,M1,M2,E1,E2,Ev1,T1,D1,D2,D3 file;
+```text
+OctoLearn/
+├── octolearn/
+│   ├── core.py                    # AutoML orchestrator + config dataclasses
+│   ├── config.py                  # Global constants (Optuna, model registry)
+│   ├── profiling/
+│   │   └── data_profiler.py       # Statistical analysis → DatasetProfile
+│   ├── preprocessing/
+│   │   ├── auto_cleaner.py        # Imputation, encoding, scaling
+│   │   └── sampler.py             # AutoSampler (SMOTE, Undersample)
+│   ├── optimization/
+│   │   └── feature_optimizer.py   # Optuna Feature Optimization Engine
+│   ├── models/
+│   │   ├── model_trainer.py       # Multi-model training + Optuna
+│   │   └── registry.py            # Model versioning and persistence
+│   ├── experiments/
+│   │   ├── report_generator.py    # PDF report (ReportLab)
+│   │   ├── plot_generator.py      # matplotlib/seaborn visualizations
+│   │   └── recommendation_engine.py # Narrative Summary Engine
+│   ├── evaluation/
+│   │   └── metrics.py             # Scoring functions
+│   ├── utils/
+│   │   └── helpers.py             # Logging, utilities
+│   ├── fonts/                     # ShantellSans TTF font files
+│   └── images/                    # logo.png
+├── tests/
+│   └── test_complete_pipeline.py  # Integration test suite
+├── ARCHITECTURE.md                # This file
+├── README.md                      # High-level overview
+├── guide.md                       # User manual & cookbook
+└── testing.md                     # Benchmarking & QA protocols
 ```
 
 ---

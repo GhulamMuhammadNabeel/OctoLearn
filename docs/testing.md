@@ -108,9 +108,65 @@ To demonstrate OctoLearn's capability to handle advanced configurations, we've d
 
 ---
 
+### Scenario 4: High-Risk Data & Target Leakage
+
+**Context**: Dealing with a messy dataset where a feature (`account_status`) perfectly predicts the target (`churn`), causing massive Data Leakage.
+**Configuration Focus**:
+- `auto_clean=True`: Enforce aggressive imputation and ID drops.
+- `train_models=True`: We want the orchestrator to try and train despite the mess.
+
+???+ example "Output: Risk Alert & Profiling Interception"
+    ```text
+    INFO - PHASE 1: Profiling raw data...
+    WARNING - Highly correlated feature detected: 'account_status' correlation with target 'churn' is 0.99
+    WARNING - Dataset Risk Score is high: 45/100 (Critical Risk). Potential target leakage.
+    INFO - PHASE 3: Data cleaning...
+    INFO - Dropping ID-like or useless columns: ['customer_uuid']
+    INFO - Imputing 'age' using median strategy.
+    INFO - OneHotEncoding applied to 5 high-cardinality features.
+    ...
+    ```
+
+    *📝 **Note**: The pipeline immediately flagged the `0.99` correlation between `account_status` and the target, saving hours of wasted training time by alerting the engineer of leakage before Phase 6 even begins.*
+
+---
+
 ## The Model Arena: Champion Search
 
-OctoLearn's internal `ModelArena` is where hyperparameter optimization and cross-validation meet. We use **Bayesian Search** (via Optuna) to navigate complex parameter spaces for:
+OctoLearn's internal `ModelArena` is where hyperparameter optimization and cross-validation meet. We use **Bayesian Search** (via Optuna) to navigate complex parameter spaces. 
+
+Here is the visual lifecycle of how OctoLearn selects the ultimate champion:
+
+```mermaid
+flowchart TD
+    %% Styling
+    classDef primary fill:#E43636,stroke:#000000,stroke-width:1px,color:#FFFFFF;
+    classDef secondary fill:#E2DDB4,stroke:#000000,stroke-width:1px,color:#000000;
+    classDef default fill:#000000,stroke:#E2DDB4,stroke-width:1px,color:#E2DDB4;
+
+    Start[Cleaned & Sampled Data]:::secondary --> Optimize{Is Optimization Enabled?}:::default
+    
+    Optimize -- Yes --> Optuna[Optuna Bayesian Search]:::primary
+    Optimize -- No --> DefaultP[Train on Default Params]:::secondary
+    
+    Optuna --> LGBM[LightGBM Trials]:::default
+    Optuna --> XGB[XGBoost Trials]:::default
+    Optuna --> RF[Random Forest Trials]:::default
+    
+    LGBM --> Eval[Cross-Validation Scoring]:::secondary
+    XGB --> Eval
+    RF --> Eval
+    DefaultP --> Eval
+    
+    Eval --> Top3{Is Stacking Enabled?}:::default
+    Top3 -- Yes --> Stack[Build Stacking Ensemble from Top 3]:::primary
+    Top3 -- No --> Pick[Pick Single Best Model]:::secondary
+    
+    Stack --> Champion[(Champion Model Registry)]:::primary
+    Pick --> Champion
+```
+
+Currently, the arena supports:
 
 - **XGBoost & LightGBM**: Fine-tuning learning rates, depths, and tree counts.
 - **Random Forest**: Optimizing split criteria and ensemble size.

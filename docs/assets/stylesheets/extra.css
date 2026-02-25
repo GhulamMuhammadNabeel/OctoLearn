@@ -44,7 +44,26 @@
     --md-code-font: "Roboto Mono", SFMono-Regular, Consolas, Menlo, monospace;
 }
 
+/* Custom Header Styling */
+.md-header {
+    background-color: #E2DDB4 !important;
+    /* Khaki */
+    color: #000000 !important;
+}
 
+/* Ensure all header text and icons are black */
+.md-header label,
+.md-header .md-header__button,
+.md-header .md-header__title,
+.md-header .md-search__input,
+.md-header .md-tabs__link,
+.md-header a.md-nav__link {
+    color: #000000 !important;
+}
+
+.md-header svg {
+    fill: #000000 !important;
+}
 
 /* Balanced Logo Sizing */
 .md-logo img {
@@ -154,13 +173,47 @@ details.info {
     border: 1px solid #E2DDB4;
 }
 
+/* Back to Top Button fixing shape and removing hover effects */
+.md-top {
+    background-color: #E43636 !important;
+    color: #FFFFFF !important;
+    border-radius: 50% !important;
+    width: 3.5rem !important;
+    height: 3.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 15px rgba(228, 54, 54, 0.4) !important;
+    transition: none !important;
+    font-size: 0 !important;
+    /* Hide the text inside */
+}
+
+.md-top:hover {
+    background-color: #E43636 !important;
+    transform: none !important;
+    box-shadow: 0 4px 15px rgba(228, 54, 54, 0.4) !important;
+}
+
+.md-top svg {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    margin: 0 !important;
+}
+
 /* Fix text color in Mermaid diagrams to black */
+.mermaid * {
+    color: #000000 !important;
+}
+
 .mermaid .node text,
 .mermaid .node tspan,
 .mermaid .edgeLabel,
 .mermaid text,
+.mermaid span,
 .mermaid .cluster text,
-.mermaid .cluster-label text {
+.mermaid .cluster-label text,
+.mermaid .nodeLabel {
     fill: #000000 !important;
     color: #000000 !important;
     font-weight: 600 !important;
@@ -171,4 +224,84 @@ details.info {
     width: 100% !important;
     display: table !important;
     margin: 1rem 0 !important;
+}
+
+/* ========================================================= */
+/* RESPONSIVE LAYOUT ENHANCEMENTS                            */
+/* ========================================================= */
+
+/* Prevent horizontal overflow on massive tables on smaller screens */
+.md-typeset .md-typeset__scrollwrap {
+    margin: 0 -0.8rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Tablet & Intermediate Desktop Breakpoint (< 1220px equivalent) */
+@media screen and (max-width: 76.1875em) {
+    .md-typeset h1 {
+        font-size: 1.8rem;
+    }
+
+    .md-typeset h2 {
+        font-size: 1.5rem;
+    }
+
+    .md-typeset h3 {
+        font-size: 1.25rem;
+    }
+
+    .md-typeset .admonition {
+        padding: 0.8rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Mobile Devices (Phones < 720px equivalent) */
+@media screen and (max-width: 44.9375em) {
+
+    /* Fluid typography shrinking */
+    .md-typeset h1 {
+        font-size: 1.5rem;
+    }
+
+    .md-typeset h2 {
+        font-size: 1.3rem;
+    }
+
+    .md-typeset h3 {
+        font-size: 1.1rem;
+    }
+
+    .md-header__title {
+        font-size: 1rem !important;
+    }
+
+    .md-logo img {
+        height: 48px !important;
+    }
+
+    /* Stack any custom grid elements vertically */
+    .grid {
+        display: block;
+    }
+
+    .grid>* {
+        margin-top: 1rem;
+    }
+
+    /* Make large interaction buttons full width for touch targets */
+    .md-button {
+        display: block;
+        width: 100%;
+        text-align: center;
+        margin: 0.5rem 0;
+        padding: 0.8em 1.2em;
+        /* Bigger touch target */
+    }
+
+    /* Shrink table text slightly to fit more data on screen */
+    .md-typeset table {
+        font-size: 0.75rem;
+    }
 }

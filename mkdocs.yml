@@ -27,10 +27,10 @@ theme:
   font: false # Disable default font to use custom CSS Shantell Sans
 
 nav:
-  - '🏠 Home': index.md
-  - '🏗️ Architecture': architecture.md
-  - '📖 User Guide': guide.md
-  - '🧪 Testing': testing.md
+  - 'Home': index.md
+  - 'Architecture': architecture.md
+  - 'User Guide': guide.md
+  - 'Testing': testing.md
 
 extra_css:
   - assets/stylesheets/extra.css

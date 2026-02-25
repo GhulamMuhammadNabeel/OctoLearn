@@ -44,108 +44,7 @@
     --md-code-font: "Roboto Mono", SFMono-Regular, Consolas, Menlo, monospace;
 }
 
-/* Custom Header Styling */
-.md-header {
-    background-color: #E2DDB4 !important;
-    /* Khaki */
-    color: #000000 !important;
-    height: 4rem !important;
-}
 
-/* Flexbox Centering for Header Inner Items */
-.md-header__inner {
-    height: 100% !important;
-    align-items: center !important;
-    display: flex !important;
-}
-
-.md-header__button.md-logo {
-    display: flex !important;
-    align-items: center !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
-/* Balanced Logo Sizing */
-.md-logo img {
-    height: 40px !important;
-    width: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-.md-header__title {
-    margin-left: 0.75rem !important;
-    display: flex !important;
-    align-items: center !important;
-    height: 100% !important;
-    padding: 0 !important;
-}
-
-/* Ensure all header text and icons are black */
-.md-header label,
-.md-header .md-header__button,
-.md-header .md-title,
-.md-header .md-header__title,
-.md-header .md-search__input,
-.md-header .md-tabs__link,
-.md-header a.md-nav__link,
-.md-tabs__link {
-    color: #000000 !important;
-}
-
-.md-header svg {
-    fill: #000000 !important;
-}
-
-/* Inject Navigation Tabs into Primary Header */
-@media screen and (min-width: 76.25em) {
-    .md-tabs {
-        position: absolute !important;
-        top: 0 !important;
-        left: 17rem !important;
-        /* Start after Title/Logo */
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        height: 4rem !important;
-        z-index: 100 !important;
-        pointer-events: none;
-        /* Let clicks pass if not on link */
-    }
-
-    .md-tabs__list {
-        display: flex !important;
-        align-items: center !important;
-        height: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        pointer-events: auto;
-        /* Re-enable clicks for list */
-    }
-
-    .md-tabs__item {
-        height: 100% !important;
-        display: flex !important;
-        align-items: center !important;
-    }
-
-    .md-tabs__link {
-        font-weight: 800 !important;
-        font-size: 0.95rem !important;
-        padding: 0.5rem 1rem !important;
-        margin: 0 !important;
-        opacity: 0.7 !important;
-        transition: opacity 0.2s, color 0.2s !important;
-    }
-
-    .md-tabs__item--active .md-tabs__link,
-    .md-tabs__link:hover {
-        opacity: 1 !important;
-        color: #E43636 !important;
-        /* Red hover */
-    }
-}
 
 /* Premium Typography Body */
 body,
@@ -242,50 +141,37 @@ details.info {
     border: 1px solid #E2DDB4;
 }
 
-/* Back to Top Button fixing shape and removing hover effects */
-.md-top {
-    background-color: #E43636 !important;
-    color: #FFFFFF !important;
-    border-radius: 50% !important;
-    width: 3.5rem !important;
-    height: 3.5rem !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-shadow: 0 4px 15px rgba(228, 54, 54, 0.4) !important;
-    transition: none !important;
-    font-size: 0 !important;
-    /* Hide the text inside */
-}
 
-.md-top:hover {
-    background-color: #E43636 !important;
-    transform: none !important;
-    box-shadow: 0 4px 15px rgba(228, 54, 54, 0.4) !important;
-}
-
-.md-top svg {
-    width: 1.5rem !important;
-    height: 1.5rem !important;
-    margin: 0 !important;
-}
 
 /* Fix text color in Mermaid diagrams to black */
 .mermaid * {
     color: #000000 !important;
 }
 
+.mermaid * {
+    color: #000000 !important;
+}
+
+/* Aggressively target SVG text and HTML labels (foreignObjects) inside mermaid */
 .mermaid .node text,
 .mermaid .node tspan,
 .mermaid .edgeLabel,
 .mermaid text,
 .mermaid span,
+.mermaid div,
+.mermaid p,
+.mermaid foreignObject,
+.mermaid foreignObject div,
+.mermaid foreignObject span,
 .mermaid .cluster text,
 .mermaid .cluster-label text,
+.mermaid .cluster-label span,
 .mermaid .nodeLabel {
     fill: #000000 !important;
     color: #000000 !important;
     font-weight: 600 !important;
+    stroke: none !important;
+    /* Prevents blurry white outlines on text */
 }
 
 /* Table rendering fix for md_in_html or pymdownx.details */
@@ -376,17 +262,23 @@ details.info {
 }
 
 /* ========================================================= */
-/* HEADER CENTERING & INLINED NAVIGATION TABS                */
+/* COMPLETELY REDESIGNED HEADER                              */
 /* ========================================================= */
 
 .md-header {
+    background-color: #E2DDB4 !important;
+    /* Khaki */
+    color: #000000 !important;
     height: 4rem !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 }
 
+/* Flexbox to keep everything vertically centered natively */
 .md-header__inner {
     height: 100% !important;
     display: flex !important;
     align-items: center !important;
+    position: relative !important;
 }
 
 .md-logo img {
@@ -403,24 +295,38 @@ details.info {
     align-items: center !important;
     height: 100% !important;
     padding: 0 !important;
-}
-
-/* Ensure tabs link is black */
-.md-tabs__link {
     color: #000000 !important;
 }
 
-/* Inject Navigation Tabs into Primary Header */
+/* Ensure all header text and icons are black */
+.md-header label,
+.md-header .md-header__button,
+.md-header .md-title,
+.md-header .md-header__title,
+.md-header .md-search__input {
+    color: #000000 !important;
+}
+
+.md-header svg {
+    fill: #000000 !important;
+}
+
+/* ========================================================= */
+/* NAVIGATION BUTTONS WITH ICONS IN HEADER (DESKTOP)          */
+/* ========================================================= */
+
 @media screen and (min-width: 76.25em) {
     .md-tabs {
         position: absolute !important;
         top: 0 !important;
-        left: 17rem !important;
-        /* Start after Title/Logo */
+        left: 15rem !important;
+        /* Starts after the Logo and Title */
+        right: 15rem !important;
+        /* Ends before the Search bar */
+        height: 100% !important;
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        height: 4rem !important;
         z-index: 100 !important;
         pointer-events: none;
         /* Let clicks pass if not on link */
@@ -429,6 +335,7 @@ details.info {
     .md-tabs__list {
         display: flex !important;
         align-items: center !important;
+        justify-content: flex-start !important;
         height: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -448,16 +355,64 @@ details.info {
         padding: 0.5rem 1rem !important;
         margin: 0 !important;
         opacity: 0.8 !important;
-        transition: opacity 0.2s, color 0.2s !important;
+        color: #000000 !important;
+        transition: none !important;
+        /* NO HOVER EFFECTS REQUESTED */
         display: flex !important;
         align-items: center !important;
         gap: 0.5rem !important;
+        border-radius: 8px !important;
     }
 
-    .md-tabs__item--active .md-tabs__link,
-    .md-tabs__link:hover {
+    /* Active state is distinct, but no hover transform */
+    .md-tabs__item--active .md-tabs__link {
         opacity: 1 !important;
         color: #E43636 !important;
-        /* Red hover */
+        /* Red */
     }
+}
+
+/* ========================================================= */
+/* COMPLETELY REDESIGNED BACK-TO-TOP BUTTON (NO HOVER)       */
+/* ========================================================= */
+
+.md-top {
+    background-color: #E2DDB4 !important;
+    /* Khaki */
+    color: #000000 !important;
+    /* Black arrow */
+    border: 2px solid #000000 !important;
+    /* Black border */
+    border-radius: 8px !important;
+    /* Slightly squared */
+    width: 3rem !important;
+    height: 3rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: none !important;
+    /* NO SHADOW */
+    transition: none !important;
+    /* NO HOVER EFFECTS */
+    font-size: 0 !important;
+    /* Hide text */
+    padding: 0 !important;
+}
+
+/* Explicitly overriding the hover state to do absolutely nothing */
+.md-top:hover,
+.md-top:focus {
+    background-color: #E2DDB4 !important;
+    transform: none !important;
+    box-shadow: none !important;
+    border: 2px solid #000000 !important;
+    color: #000000 !important;
+}
+
+.md-top svg {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    margin: 0 !important;
+    fill: #000000 !important;
+    /* Force black arrow */
 }

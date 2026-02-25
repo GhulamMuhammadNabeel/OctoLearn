@@ -9,18 +9,6 @@
   Deliver production-ready machine learning from messy data in minutes, not weeks.
 </p>
 
-<p align="center">
-  <a href="./#quick-start"><strong>Official Documentation</strong></a>
-</p>
-
-<p align="center">
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#features">Key Capabilities</a> •
-  <a href="#installation">Installation</a> •
-  <a href="guide.md">User Guide</a> •
-  <a href="testing.md">Testing</a>
-</p>
-
 ---
 
 OctoLearn is designed for data scientists and engineers who need more than just a "black box" model. It provides **transparent, controllable, and professional** machine learning workflows that automate the tedious parts of data science while giving you full oversight through high-fidelity intelligence reports.

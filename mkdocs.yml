@@ -19,19 +19,11 @@ theme:
     - search.share
     - content.code.copy
     - content.tabs.link
+    - toc.integrate
   palette:
-    - scheme: default
-      primary: deep purple
-      accent: purple
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
     - scheme: slate
-      primary: deep purple
-      accent: purple
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+      primary: custom
+      accent: custom
   font: false # Disable default font to use custom CSS Shantell Sans
 
 nav:

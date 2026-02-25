@@ -32,7 +32,8 @@ __license__ = "MIT"
 
 from .core import (
     AutoML, DataConfig, ProfilingConfig, PreprocessingConfig,
-    ModelingConfig, OptimizationConfig, ReportingConfig, ParallelConfig
+    ModelingConfig, OptimizationConfig, FeatureOptimizationConfig,
+    ReportingConfig, ParallelConfig
 )
 from .profiling.data_profiler import DataProfiler
 from .models.registry import ModelRegistry
@@ -46,6 +47,7 @@ __all__ = [
     "PreprocessingConfig",
     "ModelingConfig",
     "OptimizationConfig",
+    "FeatureOptimizationConfig",
     "ReportingConfig",
     "ParallelConfig"
 ]

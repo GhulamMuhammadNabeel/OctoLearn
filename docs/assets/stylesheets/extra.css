@@ -21,10 +21,18 @@
 }
 
 :root {
-    --md-primary-fg-color: #3f51b5;
-    /* Professional Deep Indigo */
-    --md-primary-fg-color--light: #7986cb;
-    --md-primary-fg-color--dark: #1a237e;
+    /* Base Material colors overridden for dark theme */
+    --md-primary-fg-color: #E43636; /* Red Accent */
+    --md-primary-fg-color--light: #E43636;
+    --md-primary-fg-color--dark: #b82b2b;
+    --md-primary-bg-color: #000000; /* Black */
+
+    /* Generic layout colors */
+    --md-default-bg-color: #000000; /* Black background */
+    --md-default-fg-color: #F6EFD2; /* Cream text */
+    --md-default-fg-color--light: #E2DDB4; /* Khaki secondary text */
+    --md-default-fg-color--lighter: #E2DDB4;
+    --md-default-fg-color--lightest: rgba(226, 221, 180, 0.5);
 
     /* Font Override */
     --md-text-font: "Shantell Sans", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
@@ -33,10 +41,10 @@
 
 /* Glassmorphism for the Header */
 .md-header {
-    background-color: rgba(26, 35, 126, 0.9) !important;
+    background-color: rgba(0, 0, 0, 0.9) !important;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(226, 221, 180, 0.2); /* Khaki subtle border */
     height: 4rem;
     /* Balanced height */
 }
@@ -60,7 +68,7 @@ body,
     font-family: var(--md-text-font);
     font-size: 0.85rem;
     line-height: 1.6;
-    color: #37474f;
+    color: var(--md-default-fg-color);
 }
 
 /* Elegant Headers */
@@ -70,7 +78,7 @@ body,
 .md-typeset h4 {
     font-family: "Shantell Sans";
     font-weight: 800;
-    color: #1a237e;
+    color: #F6EFD2; /* Cream */
     letter-spacing: -0.01em;
     margin-top: 1.5rem;
 }
@@ -78,7 +86,7 @@ body,
 /* Custom TOC style */
 .md-nav__link--active {
     font-weight: 800 !important;
-    color: var(--md-primary-fg-color) !important;
+    color: #E43636 !important; /* Red */
 }
 
 /* Admonition/Details Overhaul */
@@ -88,8 +96,8 @@ details {
     border-left-width: 0;
     padding: 1rem;
     margin-bottom: 1.5rem;
-    background-color: #f5f7fa;
-    border: 1px solid #e1e8ed;
+    background-color: #111111; /* Very dark gray just off black */
+    border: 1px solid #E2DDB4; /* Khaki */
     box-shadow: none;
 }
 
@@ -97,20 +105,21 @@ details {
 summary {
     background-color: transparent !important;
     font-weight: 800 !important;
-    color: #1a237e !important;
+    color: #E43636 !important; /* Red */
     padding-left: 2.5rem !important;
     cursor: pointer;
 }
 
 .admonition.info,
 details.info {
-    border-top: 4px solid #3f51b5;
+    border-top: 4px solid #E43636;
 }
 
 /* Code block enhancements */
 .highlight {
     border-radius: 12px;
-    background-color: #263238 !important;
+    background-color: #1a1a1a !important;
+    border: 1px solid rgba(246, 239, 210, 0.1);
 }
 
 /* Premium Buttons */
@@ -120,43 +129,50 @@ details.info {
     padding: 0.6em 1.8em;
     font-weight: 800;
     font-size: 0.85rem;
+    background-color: #E43636 !important;
+    color: #F6EFD2 !important;
+    border: none !important;
     transition: all 0.3s ease;
 }
 
 /* Dark Mode Adjustments */
 [data-md-color-scheme="slate"] {
-    --md-primary-fg-color: #7986cb;
+    --md-primary-fg-color: #E43636;
+    --md-default-bg-color: #000000;
 }
 
 [data-md-color-scheme="slate"] body,
 [data-md-color-scheme="slate"] .md-typeset {
-    color: #cfd8dc;
+    color: #F6EFD2;
 }
 
 [data-md-color-scheme="slate"] .admonition,
 [data-md-color-scheme="slate"] details {
-    background-color: #263238;
-    border: 1px solid #37474f;
+    background-color: #0a0a0a;
+    border: 1px solid #E2DDB4;
 }
 
 /* Back to Top Button positioning fix */
 .md-top {
+    position: fixed !important;
     bottom: 2rem !important;
     right: 2rem !important;
-    background-color: var(--md-primary-fg-color) !important;
-    color: white !important;
+    background-color: #E43636 !important; /* Red */
+    color: #FFFFFF !important;
     border-radius: 50% !important;
-    width: 48px !important;
-    height: 48px !important;
+    width: 3.5rem !important;
+    height: 3.5rem !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
-    transition: transform 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(228, 54, 54, 0.4) !important; /* Red ambient glow */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease !important;
+    z-index: 99 !important;
 }
 
 .md-top:hover {
-    transform: translateY(-5px) !important;
+    transform: translateY(-8px) scale(1.05) !important;
+    box-shadow: 0 8px 25px rgba(228, 54, 54, 0.6) !important;
 }
 
 /* Table rendering fix for md_in_html or pymdownx.details */

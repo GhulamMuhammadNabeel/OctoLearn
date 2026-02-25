@@ -83,8 +83,8 @@ Before ML begins, OctoLearn cleans the "noise".
 
 ---
 
-### Phase 3: Intelligent Preprocessing
-OctoLearn chooses imputation and scaling strategies based on distribution patterns.
+### Phase 3: Intelligent Preprocessing & Sampling
+OctoLearn chooses imputation and scaling strategies based on distribution patterns, followed by optional sampling for class imbalance.
 
 ???+ bug "What if we override strategies?"
     ```python
@@ -93,31 +93,38 @@ OctoLearn chooses imputation and scaling strategies based on distribution patter
         imputer_strategy={'numeric': 'median', 'categorical': 'mode'},
         scaler='robust'
     )
-    automl = AutoML(preprocessing_config=config)
+    # Using SMOTE for imbalance
+    data_config = DataConfig(sampling_strategy='smote')
+    automl = AutoML(preprocessing_config=config, data_config=data_config)
     ```
 
     | Component | Default | Override Result |
     |-----------|---------|-----------------|
     | **Numeric Imputer** | `mean` (standard) | `median` (handled skewed outliers) |
     | **Scaler** | `standard` | `robust` (used Interquartile Range) |
-    | **Final State** | Matrix: 160x12 | Matrix: 160x12 (different distribution) |
+    | **Sampling** | `none` | `smote` (Synthetic Minority Over-sampling) |
+    | **Final State** | Matrix: 160x12 | Matrix: 200x12 (classes balanced) |
 
 ---
 
-### Phase 4: The Model Arena (Bayesian HPO)
-This is where the magic happens. OctoLearn doesn't just train; it evolves.
+---
+
+### Phase 4: Feature Optimization & Model Arena
+This is where the magic happens. OctoLearn doesn't just train; it evolves features and models jointly.
 
 ???+ success "Expected Output: Optuna Trace"
     ```text
-    INFO - Starting Bayesian Optimization for XGBoost...
-    [Trial 1] Value: 0.842 (Params: max_depth=3, lr=0.1)
-    [Trial 2] Value: 0.875 (Params: max_depth=6, lr=0.01) [New Best]
-    INFO - Best Model: XGBoost with 0.912 F1-Score
+    INFO - [PHASE 5.5] Optuna Feature Optimization Engine...
+    INFO - Feature pool built: 10 original + 20 synthetic = 30 total
+    [Trial 1] Value: 0.842 (Features: 12, Model: XGBoost, Params: max_depth=3)
+    [Trial 2] Value: 0.875 (Features: 8, Model: LightGBM, Params: num_leaves=31) [New Best]
+    INFO - Best Model: LightGBM with 0.875 F1-Score
     ```
 
     | Parameter | Default (`True`) | Override (`False`) |
     |-----------|-------------------|-------------------|
-    | `use_optuna` | Runs 20 trials of HPO. | Trains model with default params. |
+    | `enable_feature_optimization` | Jointly searches feature subsets + models. | Trains on all original features. |
+    | `use_optuna` | Runs Bayesian search for hyperparameters. | Trains model with default params. |
     | `use_stacking` | Blends top 3 into an ensemble. | Returns a single best model. |
 
 ---

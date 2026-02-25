@@ -86,11 +86,15 @@ from .feature.interaction_analyzer import FeatureInteractionAnalyzer
 from .feature.generator import FeatureGenerator
 from .preprocessing.auto_cleaner import AutoCleaner
 from .preprocessing.pipeline_builder import PipelineBuilder
+from .preprocessing.sampler import AutoSampler
 
 # Phase 4 modules
 from .models.model_trainer import ModelTrainer
 from .models.registry import ModelRegistry
 from .evaluation.metrics import ModelEvaluator
+
+# Phase 5 modules (Feature Optimization)
+from .optimization.feature_optimizer import FeatureOptimizer, FeatureOptimizationResult
 
 # Utilities
 from .utils.helpers import setup_logger, validate_dataframe, validate_series
@@ -118,13 +122,22 @@ class DataConfig:
     random_state : int, default=42
         Determines random number generation for reproducibility across runs.
     stratify_target : bool, default=True
-        If True, data is split in a stratified fashion using the target labels.
+        Whether to stratify the train-test split based on the target variable.
         Only applicable for classification tasks.
-
+    sampling_strategy : str, default='auto'
+        Strategy to handle imbalanced datasets in classification tasks.
+        Applied *after* train-test split to avoid data leakage. Options:
+        - 'none': Do not apply any sampling.
+        - 'auto': Automatically select based on severe imbalance.
+        - 'smote': Synthetic Minority Over-sampling Technique.
+        - 'adasyn': Adaptive Synthetic Sampling.
+        - 'undersample': Random under-sampling of majority classes.
+        - 'combine': SMOTE combined with Tomek links.
+    
     Examples
     --------
     >>> from octolearn import AutoML, DataConfig
-    >>> config = DataConfig(sample_size=1000, test_size=0.3)
+    >>> config = DataConfig(sample_size=1000, test_size=0.3, sampling_strategy='smote')
     >>> automl = AutoML(data_config=config)
     """
     use_full_data: bool = False
@@ -132,6 +145,7 @@ class DataConfig:
     test_size: float = 0.2
     random_state: int = 42
     stratify_target: bool = True
+    sampling_strategy: str = 'auto'
 
 
 @dataclass
@@ -231,6 +245,57 @@ class ModelingConfig:
     n_models: int = 5
     test_size: float = 0.2
     use_stacking: bool = True
+
+
+@dataclass
+class FeatureOptimizationConfig:
+    """
+    Configuration for Optuna-driven intelligent feature optimization.
+
+    When enabled, OctoLearn will use Optuna to jointly search over
+    feature subsets, synthetic features, model types, and hyperparameters
+    to find the optimal pipeline that maximizes cross-validated performance.
+
+    Parameters
+    ----------
+    enable_feature_optimization : bool, default=True
+        Whether to run the feature optimization engine. When False, the
+        pipeline uses the static feature engineering path.
+    n_trials : int, default=40
+        Number of Optuna trials to run.
+    timeout : int, default=300
+        Maximum seconds for the optimization.
+    cv_folds : int, default=3
+        Cross-validation folds per trial.
+    max_synthetic_features : int, default=30
+        Maximum number of synthetic features to consider.
+    min_features : int, default=3
+        Minimum features per trial.
+    generate_interactions : bool, default=True
+        Whether to generate A*B interaction features.
+    generate_ratios : bool, default=True
+        Whether to generate A/B ratio features.
+    generate_polynomials : bool, default=True
+        Whether to generate A² polynomial features.
+    generate_log_transforms : bool, default=True
+        Whether to generate log-transformed features.
+
+    Examples
+    --------
+    >>> from octolearn import AutoML, FeatureOptimizationConfig
+    >>> config = FeatureOptimizationConfig(n_trials=60, timeout=600)
+    >>> automl = AutoML(feature_optimization_config=config)
+    """
+    enable_feature_optimization: bool = True
+    n_trials: int = 40
+    timeout: int = 300
+    cv_folds: int = 3
+    max_synthetic_features: int = 30
+    min_features: int = 3
+    generate_interactions: bool = True
+    generate_ratios: bool = True
+    generate_polynomials: bool = True
+    generate_log_transforms: bool = True
 
 
 @dataclass
@@ -387,6 +452,7 @@ class AutoML:
         preprocessing_config: Optional[PreprocessingConfig] = None,
         modeling_config: Optional[ModelingConfig] = None,
         optimization_config: Optional[OptimizationConfig] = None,
+        feature_optimization_config: Optional[FeatureOptimizationConfig] = None,
         reporting_config: Optional[ReportingConfig] = None,
         parallel_config: Optional[ParallelConfig] = None,
         show_progress: bool = True,
@@ -433,6 +499,7 @@ class AutoML:
         self.preprocessing_config = preprocessing_config or PreprocessingConfig()
         self.modeling_config = modeling_config or ModelingConfig()
         self.optimization_config = optimization_config or OptimizationConfig()
+        self.feature_optimization_config = feature_optimization_config or FeatureOptimizationConfig()
         self.reporting_config = reporting_config or ReportingConfig()
         self.parallel_config = parallel_config or ParallelConfig()
         
@@ -482,6 +549,9 @@ class AutoML:
         self.best_model_ = None
         self.model_benchmarks_ = None
         self.registry_ = None
+        
+        # Feature optimization result
+        self.feature_optimization_result_ = None
         
         if self.show_progress:
             logger.info(f"AutoML initialized (v0.9.0)")
@@ -559,6 +629,7 @@ class AutoML:
         logger.info(f"  - Number of models: {self.modeling_config.n_models}")
         logger.info(f"  - Use Optuna: {self.optimization_config.use_optuna}")
         logger.info(f"  - Optuna trials per model: {self.optimization_config.optuna_trials_per_model}")
+        logger.info(f"  - Feature optimization: {self.feature_optimization_config.enable_feature_optimization}")
         
         logger.info(f"\nReporting Configuration:")
         logger.info(f"  - Report detail: {self.reporting_config.report_detail}")
@@ -914,6 +985,13 @@ class AutoML:
             logger.info("PHASE 5: Feature engineering...")
         self._feature_engineering()
         
+        # PHASE 5.5: Optuna Feature Optimization (when enabled)
+        if (self.modeling_config.train_models and 
+            self.feature_optimization_config.enable_feature_optimization):
+            if self.show_progress:
+                logger.info("PHASE 5.5: Optuna Feature Optimization...")
+            self._optimize_features()
+        
         # PHASE 6: Model training
         if self.modeling_config.train_models:
             if self.show_progress:
@@ -1045,6 +1123,25 @@ class AutoML:
                      except Exception as e:
                          logger.warning(f"Target encoding failed: {e}")
         
+        # --- Handle Imbalanced Data Sampling (Classification Only) ---
+        if self.modeling_config.train_models:
+             task = self.raw_profile_.task_type if self.raw_profile_ else "unknown"
+             if task == 'classification' and self.data_config.sampling_strategy != 'none':
+                 if self.show_progress:
+                     logger.info(f"  Applying {self.data_config.sampling_strategy.upper()} sampling to handle class imbalance...")
+                 self.sampler_ = AutoSampler(
+                     strategy=self.data_config.sampling_strategy,
+                     random_state=self.data_config.random_state
+                 )
+                 try:
+                     self.X_train_, self.y_train_ = self.sampler_.fit_resample(
+                         self.X_train_, self.y_train_, task_type=task
+                     )
+                     if self.show_progress:
+                         logger.info(f"  Sampling complete. New training shape: {self.X_train_.shape}")
+                 except Exception as e:
+                     logger.error(f"Sampling failed: {e}. Proceeding with original data.")
+
         # Combine for analysis
         self.X_ = pd.concat([self.X_train_, self.X_test_], axis=0).sort_index()
         self.y_ = pd.concat([self.y_train_, self.y_test_], axis=0).sort_index()
@@ -1122,6 +1219,61 @@ class AutoML:
         except Exception as e:
             logger.warning(f"Failed to extract feature importance: {e}")
     
+    def _optimize_features(self) -> None:
+        """Run Optuna-driven feature optimization to find best features + model + hyperparams."""
+        try:
+            # Build config dict from the FeatureOptimizationConfig dataclass
+            config = {
+                'n_trials': self.feature_optimization_config.n_trials,
+                'timeout': self.feature_optimization_config.timeout,
+                'cv_folds': self.feature_optimization_config.cv_folds,
+                'max_synthetic_features': self.feature_optimization_config.max_synthetic_features,
+                'min_features': self.feature_optimization_config.min_features,
+                'generate_interactions': self.feature_optimization_config.generate_interactions,
+                'generate_ratios': self.feature_optimization_config.generate_ratios,
+                'generate_polynomials': self.feature_optimization_config.generate_polynomials,
+                'generate_log_transforms': self.feature_optimization_config.generate_log_transforms,
+                'top_k_interactions': 15,
+                'top_k_ratios': 10,
+            }
+            
+            metric = self.modeling_config.evaluation_metric
+            if metric is None:
+                metric = 'accuracy' if self.clean_profile_.task_type == 'classification' else 'r2'
+            
+            optimizer = FeatureOptimizer(
+                X_train=self.X_train_,
+                y_train=self.y_train_,
+                X_test=self.X_test_,
+                y_test=self.y_test_,
+                profile=self.clean_profile_,
+                config=config,
+                evaluation_metric=metric,
+            )
+            
+            result = optimizer.optimize()
+            self.feature_optimization_result_ = result
+            
+            # Apply the optimized feature set to X_train_ and X_test_
+            X_train_opt, X_test_opt = optimizer.get_optimized_data()
+            self.X_train_ = X_train_opt
+            self.X_test_ = X_test_opt
+            
+            # Update combined data for downstream tasks
+            self.X_ = pd.concat([self.X_train_, self.X_test_], axis=0).sort_index()
+            
+            if self.show_progress:
+                improvement = result.best_score - result.baseline_score
+                logger.info(f"Feature optimization complete [OK]")
+                logger.info(f"  Baseline: {result.baseline_score:.4f}")
+                logger.info(f"  Optimized: {result.best_score:.4f} (delta {improvement:+.4f})")
+                logger.info(f"  Best model: {result.best_model_name}")
+                logger.info(f"  Features: {len(result.best_features)} ({result.n_original_features} original + {result.n_synthetic_features} synthetic)")
+                
+        except Exception as e:
+            logger.warning(f"Feature optimization failed, falling back to standard pipeline: {str(e)}")
+            self.feature_optimization_result_ = None
+
     def _train_models(self) -> None:
         """Train machine learning models."""
         if not self.modeling_config.train_models:
@@ -1133,25 +1285,100 @@ class AutoML:
             if metric is None:
                 metric = 'f1' if self.clean_profile_.task_type == 'classification' else 'rmse'
             
-            trainer = ModelTrainer(
-                X=None, y=None,
-                profile=self.clean_profile_,
-                task_type=self.clean_profile_.task_type,
-                evaluation_metric=metric,
-                X_train=self.X_train_,
-                X_test=self.X_test_,
-                y_train=self.y_train_,
-                y_test=self.y_test_,
-                # New params
-                enable_gpu=self.parallel_config.enable_gpu,
-                early_stopping_rounds=self.optimization_config.early_stopping_rounds,
-                hyperparameter_overrides=self.optimization_config.hyperparameter_overrides,
-                baseline_score=self.optimization_config.baseline_score,
-                n_trials=self.optimization_config.optuna_trials_per_model if self.optimization_config.use_optuna else None,
-                timeout_seconds=self.optimization_config.optuna_timeout_seconds if self.optimization_config.use_optuna else None
-            )
-            
-            results = trainer.train_all_models()
+            # If feature optimization found an optimal model+params, directly
+            # build and evaluate that model — no need for full HPO.
+            opt_result = self.feature_optimization_result_
+            if opt_result is not None and opt_result.best_model_name:
+                logger.info(
+                    f"Using feature-optimized model: {opt_result.best_model_name} "
+                    f"(skipping redundant HPO)"
+                )
+                trainer = ModelTrainer(
+                    X=None, y=None,
+                    profile=self.clean_profile_,
+                    task_type=self.clean_profile_.task_type,
+                    evaluation_metric=metric,
+                    X_train=self.X_train_,
+                    X_test=self.X_test_,
+                    y_train=self.y_train_,
+                    y_test=self.y_test_,
+                    enable_gpu=self.parallel_config.enable_gpu,
+                    early_stopping_rounds=self.optimization_config.early_stopping_rounds,
+                    hyperparameter_overrides=self.optimization_config.hyperparameter_overrides,
+                    baseline_score=self.optimization_config.baseline_score,
+                    n_trials=self.optimization_config.optuna_trials_per_model if self.optimization_config.use_optuna else None,
+                    timeout_seconds=self.optimization_config.optuna_timeout_seconds if self.optimization_config.use_optuna else None
+                )
+                
+                # Build the optimized model directly
+                model = trainer._build_model(
+                    opt_result.best_model_name, 
+                    opt_result.best_params, 
+                    force_single_thread=True
+                )
+                X_train_proc = trainer._preprocess_data(self.X_train_)
+                X_test_proc = trainer._preprocess_data(self.X_test_)
+                model.fit(X_train_proc, self.y_train_)
+                
+                # Score using sklearn directly (avoids EVALUATION_CONFIG bug)
+                y_pred = model.predict(X_test_proc)
+                from sklearn.metrics import (
+                    accuracy_score, f1_score, r2_score,
+                    mean_squared_error, mean_absolute_error,
+                )
+                if self.clean_profile_.task_type == 'classification':
+                    score_acc = round(accuracy_score(self.y_test_, y_pred), 4)
+                    score_f1 = round(f1_score(self.y_test_, y_pred, average='weighted', zero_division=0), 4)
+                    eval_metrics = {'accuracy': score_acc, 'f1': score_f1}
+                    score = eval_metrics.get(metric, score_acc)
+                else:
+                    score_r2 = round(r2_score(self.y_test_, y_pred), 4)
+                    score_rmse = round(float(np.sqrt(mean_squared_error(self.y_test_, y_pred))), 4)
+                    eval_metrics = {'r2': score_r2, 'rmse': score_rmse}
+                    score = eval_metrics.get(metric, score_r2)
+                
+                y_proba = None
+                if hasattr(model, 'predict_proba'):
+                    try:
+                        y_proba = model.predict_proba(X_test_proc)
+                    except Exception:
+                        pass
+                
+                trainer.trained_models[opt_result.best_model_name] = model
+                trainer.model_scores[opt_result.best_model_name] = score
+                trainer.best_model = model
+                trainer.best_hp_params[opt_result.best_model_name] = opt_result.best_params
+                trainer.model_benchmarks = [{
+                    'model': opt_result.best_model_name,
+                    'score': score,
+                    'params': opt_result.best_params,
+                    'metrics': eval_metrics,
+                }]
+                trainer.best_model_predictions = y_pred.tolist() if hasattr(y_pred, 'tolist') else y_pred
+                trainer.best_model_probabilities = y_proba.tolist() if y_proba is not None and hasattr(y_proba, 'tolist') else y_proba
+                
+                results = {
+                    'best_model': opt_result.best_model_name,
+                    'best_score': score,
+                }
+            else:
+                trainer = ModelTrainer(
+                    X=None, y=None,
+                    profile=self.clean_profile_,
+                    task_type=self.clean_profile_.task_type,
+                    evaluation_metric=metric,
+                    X_train=self.X_train_,
+                    X_test=self.X_test_,
+                    y_train=self.y_train_,
+                    y_test=self.y_test_,
+                    enable_gpu=self.parallel_config.enable_gpu,
+                    early_stopping_rounds=self.optimization_config.early_stopping_rounds,
+                    hyperparameter_overrides=self.optimization_config.hyperparameter_overrides,
+                    baseline_score=self.optimization_config.baseline_score,
+                    n_trials=self.optimization_config.optuna_trials_per_model if self.optimization_config.use_optuna else None,
+                    timeout_seconds=self.optimization_config.optuna_timeout_seconds if self.optimization_config.use_optuna else None
+                )
+                results = trainer.train_all_models()
             
             self.trained_models_ = trainer.trained_models
             self.best_model_ = trainer.best_model

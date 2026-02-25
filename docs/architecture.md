@@ -22,10 +22,12 @@ graph TD
     D1 --> D2[Missing Value Imputation];
     D2 --> D3[Categorical Encoding];
     D3 --> D4[Feature Engineering];
-    D4 --> D5[Scaling & Normalization];
+    D4 --> D4a[Imbalanced Sampling];
+    D4a --> D5[Scaling & Normalization];
     end
     
-    D5 --> E[Model Arena];
+    D5 --> E0[Feature Optimization Engine];
+    E0 --> E[Model Arena];
     
     subgraph "Model Arena"
     E --> E1[XGBoost];
@@ -44,6 +46,13 @@ graph TD
     H --> H2[Model Registry Storage];
     H --> H3[SHAP Interpretation];
     end
+
+    %% Theme Styling
+    style A fill:#E43636,color:#F6EFD2
+    style E0 fill:#b82b2b,color:#F6EFD2
+    style E fill:#b82b2b,color:#F6EFD2
+    style H fill:#E2DDB4,color:#000000
+    style D fill:#E2DDB4,color:#000000
 ```
 
 ### Why a Pipeline Orchestrator?
@@ -62,7 +71,10 @@ OctoLearn/
 │   ├── profiling/
 │   │   └── data_profiler.py       # Statistical analysis → DatasetProfile
 │   ├── preprocessing/
-│   │   └── auto_cleaner.py        # Imputation, encoding, scaling
+│   │   ├── auto_cleaner.py        # Imputation, encoding, scaling
+│   │   └── sampler.py             # AutoSampler (SMOTE, Undersample)
+│   ├── optimization/
+│   │   └── feature_optimizer.py   # Optuna Feature Optimization Engine
 │   ├── models/
 │   │   ├── model_trainer.py       # Multi-model training + Optuna
 │   │   └── registry.py            # Model versioning and persistence
@@ -111,9 +123,10 @@ OctoLearn uses Python `@dataclass` objects instead of a flat list of keyword arg
 
 | Class | Key Fields | Rationale |
 |-------|-----------|-----------|
-| `DataConfig` | `sample_size=5000`, `test_size=0.2`, `stratify_target=True` | Sampling prevents OOM on large datasets |
+| `DataConfig` | `sample_size=5000`, `sampling_strategy='auto'` | Sampling prevents OOM; handles class imbalance natively |
 | `ProfilingConfig` | `detect_outliers=True`, `analyze_interactions=True` | Both are expensive; can be disabled for speed |
 | `PreprocessingConfig` | `imputer_strategy`, `scaler='standard'`, `encoder_strategy` | Sensible defaults; user can override per-column |
+| `FeatureOptimizationConfig`| `enable_feature_optimization=True`, `n_trials=20` | Jointly searches feature subsets, synthetic features, and models |
 | `ModelingConfig` | `n_models=5`, `models_to_train=None`, `evaluation_metric=None` | Metric auto-detected from task type |
 | `OptimizationConfig` | `optuna_trials_per_model=20`, `optuna_timeout_seconds=300` | Bayesian optimization speed/quality tradeoff |
 | `ReportingConfig` | `report_detail='detailed'`, `visuals_limit=10` | "Dashboard" vs "Simple" plot modes |

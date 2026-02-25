@@ -136,6 +136,26 @@ FEATURE_GENERATION_CONFIG = {
 }
 
 # ============================================================================
+# FEATURE OPTIMIZATION CONFIG (Optuna-Driven)
+# ============================================================================
+
+FEATURE_OPTIMIZATION_CONFIG = {
+    """Settings for joint feature selection + generation + model optimization."""
+    'enabled': True,
+    'n_trials': 40,                                     # Optuna trials for feature search
+    'timeout': 300,                                     # 5 min timeout
+    'cv_folds': 3,                                      # CV folds per trial
+    'max_synthetic_features': 30,                       # Cap on generated features
+    'min_features': 3,                                  # Minimum features per trial
+    'generate_interactions': True,                      # Generate A*B features
+    'generate_ratios': True,                            # Generate A/B features
+    'generate_polynomials': True,                       # Generate A² features
+    'generate_log_transforms': True,                    # Generate log(A) features
+    'top_k_interactions': 15,                           # Max interaction candidates
+    'top_k_ratios': 10,                                 # Max ratio candidates
+}
+
+# ============================================================================
 # AUTO CLEANING CONFIG
 # ============================================================================
 

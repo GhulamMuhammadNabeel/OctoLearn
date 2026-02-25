@@ -57,8 +57,9 @@ We believe the output of an AutoML run should be as much a **Decision Support To
 |:---|:---|
 | **Intelligence** | Auto-detects feature types, class imbalance, and **Data Leakage** suspects. |
 | **Resilience** | Industrial-strength cleaners handle outliers, missing values, and high-cardinality features. |
-| **Performance** | Bayesian optimization via **Optuna** + Stacking Ensembles for maximum ROI. |
-| **Clarity** | Magazine-style PDF reports with SHAP explainability and interactive-ready visuals. |
+| **Imbalanced Learning** | Native support for advanced sampling techniques like SMOTE, ADASYN, and Undersampling. |
+| **Performance** | **Feature Optimization Engine** jointly searches subsets, synthetic features, models, and hyperparameters via **Optuna**. |
+| **Clarity** | Magazine-style PDF reports with SHAP explainability and actionable business narratives. |
 | **Reliability** | Built-in data quality risk scoring (0-100) to flag "garbage-in" scenarios. |
 
 ---
@@ -403,6 +404,7 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
     | `test_size` | `float` | `0.2` | Fraction for test split |
     | `random_state` | `int` | `42` | Random seed for reproducibility |
     | `stratify_target` | `bool` | `True` | Stratify split on target |
+    | `sampling_strategy` | `str` | `"auto"` | Handling for imbalanced classification ('smote', 'undersample', etc.) |
 
 ???+ info "ProfilingConfig"
 
@@ -540,20 +542,22 @@ graph TD
     end
 
     %% Styling
-    style Start fill:#1a237e,color:#fff,stroke-width:2px
-    style Reg fill:#3f51b5,color:#fff
-    style Rep fill:#3f51b5,color:#fff
-    style Profiling fill:#7986cb,color:#fff
+    style Start fill:#E43636,color:#F6EFD2,stroke-width:2px,stroke:#F6EFD2
+    style Reg fill:#b82b2b,color:#F6EFD2
+    style Rep fill:#b82b2b,color:#F6EFD2
+    style Profiling fill:#E2DDB4,color:#000000
 ```
 
-The OctoLearn pipeline moves through 4 distinct phases, each meticulously logged for full observability and reproducibility.
+The OctoLearn pipeline moves through sequential phases, each meticulously logged for full observability and reproducibility.
 
 1. **Profiling** — Infer types, detect quality issues, estimate task type
-2. **Splitting** — Stratified train/test split
+2. **Train/Test Split** — Stratified splitting to prevent data leakage
 3. **Cleaning** — Impute missing values, encode categoricals, scale numerics
-4. **Clean Profiling** — Re-profile the cleaned dataset
-5. **Feature Engineering** — Outlier detection + interaction analysis
-6. **Model Training** — Train multiple models with optional Optuna HPO
+4. **Sampling** — Handle class imbalance via SMOTE/Undersampling (Classification only)
+5. **Feature Engineering** — Outlier detection + synthetic feature generation
+6. **Feature Optimization** — Joint Optuna search for best features + hyperparameters
+7. **Model Training** — Train/Ensemble multiple models using optimal parameters
+8. **Delivery** — Produce professional PDF Intelligence Report
 
 ---
 

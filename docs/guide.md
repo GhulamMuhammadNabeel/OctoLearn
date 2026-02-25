@@ -29,6 +29,7 @@ Controls how data is sampled and split.
 - `use_full_data`: If True, bypasses sampling.
 - `test_size`: Fraction of data held out for validation (default 0.2).
 - `random_state`: Integer seed for reproducibility.
+- `sampling_strategy`: Handles imbalanced data natively (`'auto'`, `'smote'`, `'undersample'`, etc.).
 
 ### PreprocessingConfig
 Controls the automated data cleaning engine.
@@ -99,7 +100,8 @@ When running OctoLearn, you will see a detailed execution log similar to this:
 2024-02-24 17:10:01 - octolearn.profiling - INFO - Profiling complete. Quality Score: 84.5
 2024-02-24 17:10:01 - octolearn.preprocessing - INFO - Removed ID columns: ['user_id']
 2024-02-24 17:10:01 - octolearn.preprocessing - INFO - Imputed 142 missing values in 3 columns.
-2024-02-24 17:10:02 - octolearn.models - INFO - Starting Optuna Optimization (20 trials)
-2024-02-24 17:10:45 - octolearn.models - INFO - Best Model found: XGBoost (F1: 0.923)
-2024-02-24 17:10:47 - octolearn.core - INFO - Pipeline complete! [OK]
+2024-02-24 17:10:02 - octolearn.core - INFO - [PHASE 5.5] Optuna Feature Optimization Engine...
+2024-02-24 17:10:05 - octolearn.feature_optimizer - INFO - Optimized features: 12 (Baseline: 0.81 -> New: 0.89)
+2024-02-24 17:10:06 - octolearn.models - INFO - Starting Model Training (using optimized model: XGBoost)
+2024-02-24 17:10:08 - octolearn.core - INFO - Pipeline complete! [OK]
 ```

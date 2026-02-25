@@ -153,25 +153,16 @@ details.info {
 }
 
 /* Aggressively target SVG text and HTML labels (foreignObjects) inside mermaid */
-.mermaid .node text,
-.mermaid .node tspan,
-.mermaid .edgeLabel,
-.mermaid text,
-.mermaid span,
-.mermaid div,
-.mermaid p,
-.mermaid foreignObject,
-.mermaid foreignObject div,
-.mermaid foreignObject span,
-.mermaid .cluster text,
-.mermaid .cluster-label text,
-.mermaid .cluster-label span,
-.mermaid .nodeLabel {
+.mermaid .node *,
+.mermaid .edgeLabel *,
+.mermaid .cluster *,
+.mermaid .nodeLabel *,
+.mermaid .label *,
+.mermaid foreignObject * {
     fill: #000000 !important;
     color: #000000 !important;
-    font-weight: 600 !important;
     stroke: none !important;
-    /* Prevents blurry white outlines on text */
+    font-weight: 600 !important;
 }
 
 /* Table rendering fix for md_in_html or pymdownx.details */
@@ -262,47 +253,43 @@ details.info {
 }
 
 /* ========================================================= */
-/* COMPLETELY REDESIGNED HEADER                              */
+/* HEADER LAYOUT: AGORAKIT STYLE (TWO-TIER)                  */
 /* ========================================================= */
 
 .md-header {
     background-color: #E2DDB4 !important;
     /* Khaki */
     color: #000000 !important;
-    height: 4rem !important;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Flexbox to keep everything vertically centered natively */
+/* Top Bar: Logo and Title vertically centered */
 .md-header__inner {
-    height: 100% !important;
     display: flex !important;
     align-items: center !important;
-    position: relative !important;
 }
 
 .md-logo img {
-    height: 40px !important;
+    height: 48px !important;
     width: auto !important;
     margin: 0 !important;
     padding: 0 !important;
 }
 
+/* High text size for Title */
 .md-header__title {
-    margin-left: 0.75rem !important;
-    line-height: normal !important;
+    margin-left: 1rem !important;
+    font-size: 1.6rem !important;
+    font-weight: 900 !important;
     display: flex !important;
     align-items: center !important;
-    height: 100% !important;
-    padding: 0 !important;
     color: #000000 !important;
 }
 
-/* Ensure all header text and icons are black */
+/* Ensure all top-bar items are black */
 .md-header label,
 .md-header .md-header__button,
 .md-header .md-title,
-.md-header .md-header__title,
 .md-header .md-search__input {
     color: #000000 !important;
 }
@@ -312,101 +299,79 @@ details.info {
 }
 
 /* ========================================================= */
-/* NAVIGATION BUTTONS WITH ICONS IN HEADER (DESKTOP)          */
+/* NAVIGATION TABS (SECOND TIER)                             */
 /* ========================================================= */
 
-@media screen and (min-width: 76.25em) {
-    .md-tabs {
-        position: absolute !important;
-        top: 0 !important;
-        left: 15rem !important;
-        /* Starts after the Logo and Title */
-        right: 15rem !important;
-        /* Ends before the Search bar */
-        height: 100% !important;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        z-index: 100 !important;
-        pointer-events: none;
-        /* Let clicks pass if not on link */
-    }
+/* Remove scroll behavior in navigation */
+.md-tabs,
+.md-tabs__scrollwrap {
+    overflow: visible !important;
+    contain: none !important;
+    background-color: #E2DDB4 !important;
+    /* Match primary header */
+    border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
+    /* Subtle separator */
+}
 
-    .md-tabs__list {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        height: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        pointer-events: auto;
-        /* Re-enable clicks for list */
-    }
+/* Wrap instead of scrolling */
+.md-tabs__list {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    white-space: normal !important;
+}
 
-    .md-tabs__item {
-        height: 100% !important;
-        display: flex !important;
-        align-items: center !important;
-    }
+.md-tabs__item {
+    padding: 0.2rem 0 !important;
+}
 
-    .md-tabs__link {
-        font-weight: 800 !important;
-        font-size: 0.95rem !important;
-        padding: 0.5rem 1rem !important;
-        margin: 0 !important;
-        opacity: 0.8 !important;
-        color: #000000 !important;
-        transition: none !important;
-        /* NO HOVER EFFECTS REQUESTED */
-        display: flex !important;
-        align-items: center !important;
-        gap: 0.5rem !important;
-        border-radius: 8px !important;
-    }
+.md-tabs__link {
+    font-weight: 800 !important;
+    font-size: 1rem !important;
+    color: #000000 !important;
+    opacity: 0.7 !important;
+    transition: none !important;
+    /* No Hover transition */
+}
 
-    /* Active state is distinct, but no hover transform */
-    .md-tabs__item--active .md-tabs__link {
-        opacity: 1 !important;
-        color: #E43636 !important;
-        /* Red */
-    }
+.md-tabs__item--active .md-tabs__link {
+    opacity: 1 !important;
+    color: #E43636 !important;
+    /* Active indicator */
 }
 
 /* ========================================================= */
-/* COMPLETELY REDESIGNED BACK-TO-TOP BUTTON (NO HOVER)       */
+/* STATIC BACK-TO-TOP BUTTON                                 */
 /* ========================================================= */
 
 .md-top {
     background-color: #E2DDB4 !important;
-    /* Khaki */
     color: #000000 !important;
-    /* Black arrow */
     border: 2px solid #000000 !important;
-    /* Black border */
     border-radius: 8px !important;
-    /* Slightly squared */
     width: 3rem !important;
     height: 3rem !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     box-shadow: none !important;
-    /* NO SHADOW */
     transition: none !important;
-    /* NO HOVER EFFECTS */
     font-size: 0 !important;
-    /* Hide text */
     padding: 0 !important;
+    animation: none !important;
+    /* Kill all animations */
 }
 
-/* Explicitly overriding the hover state to do absolutely nothing */
+/* Kill all hover/focus states */
 .md-top:hover,
-.md-top:focus {
+.md-top:focus,
+.md-top:active {
     background-color: #E2DDB4 !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
     transform: none !important;
     box-shadow: none !important;
-    border: 2px solid #000000 !important;
-    color: #000000 !important;
+    animation: none !important;
 }
 
 .md-top svg {
@@ -414,5 +379,5 @@ details.info {
     height: 1.5rem !important;
     margin: 0 !important;
     fill: #000000 !important;
-    /* Force black arrow */
+    transition: none !important;
 }

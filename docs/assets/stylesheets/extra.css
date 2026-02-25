@@ -44,29 +44,7 @@
     --md-code-font: "Roboto Mono", SFMono-Regular, Consolas, Menlo, monospace;
 }
 
-/* Glassmorphism for the Header */
-.md-header {
-    background-color: rgba(226, 221, 180, 0.95) !important;
-    /* Khaki #E2DDB4 */
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    height: 4rem;
-    color: #000000 !important;
-}
 
-/* Ensure all header text and icons are black for readability on Khaki */
-.md-header label,
-.md-header .md-header__button,
-.md-header .md-header__title,
-.md-header .md-tabs__link,
-.md-header .md-search__input {
-    color: #000000 !important;
-}
-
-.md-header svg {
-    fill: #000000 !important;
-}
 
 /* Balanced Logo Sizing */
 .md-logo img {
@@ -176,29 +154,16 @@ details.info {
     border: 1px solid #E2DDB4;
 }
 
-/* Back to Top Button fixing overlap and states */
-.md-top {
-    /* Allow MkDocs to toggle visibility naturally (don't force display/position) */
-    background-color: #E43636 !important;
-    /* Red */
-    color: #FFFFFF !important;
-    border-radius: 50% !important;
-    box-shadow: 0 4px 15px rgba(228, 54, 54, 0.4) !important;
-    /* Red ambient glow */
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease !important;
-}
-
-.md-top:hover {
-    transform: translateY(-5px) scale(1.05) !important;
-    box-shadow: 0 8px 25px rgba(228, 54, 54, 0.6) !important;
-}
-
 /* Fix text color in Mermaid diagrams to black */
+.mermaid .node text,
+.mermaid .node tspan,
+.mermaid .edgeLabel,
 .mermaid text,
-.mermaid .nodeLabel,
-.mermaid .edgeLabel {
-    color: #000000 !important;
+.mermaid .cluster text,
+.mermaid .cluster-label text {
     fill: #000000 !important;
+    color: #000000 !important;
+    font-weight: 600 !important;
 }
 
 /* Table rendering fix for md_in_html or pymdownx.details */

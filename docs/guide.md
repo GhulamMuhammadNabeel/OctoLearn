@@ -48,6 +48,55 @@ The `DataProfiler` looks for features that are essentially identical to or highl
 
 ---
 
+## Understanding the Data Transformation
+
+To truly trust an AutoML pipeline, you must understand exactly how it mutates your dataset. Here is the lifecycle of a single feature within OctoLearn:
+
+```mermaid
+stateDiagram-v2
+    [*] --> RawFeature: Ingestion
+    
+    state "Semantic Profiling" as Profiling {
+        RawFeature --> TypeInference: Date, Text, ID, Num, Cat
+        TypeInference --> QualityCheck: Missing Ratio, Cardinality
+    }
+    
+    state "AutoCleaner (Phase 3)" as Clean {
+        QualityCheck --> Drop: if ID or >95% Missing
+        QualityCheck --> NumericImpute: if Numeric (Mean/Median)
+        QualityCheck --> CatImpute: if Categorical (Mode)
+        
+        NumericImpute --> Scaling: Standard, Robust, MinMax
+        CatImpute --> Encoding: OneHot or Ordinal (based on card)
+    }
+    
+    state "Model Arena (Phase 6)" as Arena {
+        Scaling --> Optuna: Feature Optimization
+        Encoding --> Optuna
+    }
+    
+    Arena --> [*]: Prediction Ready
+```
+
+### Accessing Intermediate States
+You can pause the pipeline or inspect it at any point. Let's view the `AutoCleaner` logs to see what was dropped:
+
+```python
+automl = AutoML(preprocessing_config=PreprocessingConfig(auto_clean=True))
+automl.fit(X, y)
+
+# What did the cleaner actually do?
+print(automl.cleaning_log_)
+# Expected Output:
+# {
+#   "dropped_columns": ["customer_id", "timestamp_utc"],
+#   "imputed_numeric": {"age": "median (34.0)", "salary": "mean (56000.0)"},
+#   "imputed_categorical": {"state": "mode (CA)"}
+# }
+```
+
+---
+
 ## Advanced Tutorial: Deep Configuration
 OctoLearn shines when you take fine-grained control over its internal components. Let's look at how to tune the Optuna integration for maximum performance using the `OptimizationConfig` class.
 
@@ -88,6 +137,43 @@ When multiple models are selected for training, OctoLearn generates a Stacking R
     Bayesian Optimization takes time to build its probabilistic model of the parameter space. If it's running too slow for your dev cycle, reduce `optuna_trials_per_model` or temporarily disable it by passing `use_optuna=False` to your `fit()` call.
 
 ---
+
+### The `DataProfiler` Deep Dive
+OctoLearn's profiler is the first step of intelligence. Here is how you can access the raw profiling data natively:
+
+```python
+automl = AutoML(train_models=False) # Do a profiling-only run
+automl.fit(X, y)
+
+profile = automl.raw_profile_
+
+print(f"Dataset Size: {profile.shape}")
+print(f"Identified ID Columns: {profile.id_like_columns}")
+print(f"Constant/Useless Columns: {profile.constant_columns}")
+
+# Data Quality Diagnostics
+print("Missing Data Summary:")
+# Expected: {'age': 4.2%, 'salary': 1.1%, 'state': 0.0%}
+
+print(f"Risk Score: {automl.get_risk_score()['score']}/100")
+# Expected: "84/100 (Moderate Risk)"
+```
+
+### The `ModelRegistry` Outputs
+Every time OctoLearn successfully trains a champion model, it is saved in the `models/` directory natively.
+
+```python
+from octolearn.models.registry import ModelRegistry
+
+registry = ModelRegistry()
+# List all saved champions
+print(registry.list_models())
+# Expected: ['xgboost_champion_v1', 'stacking_ensemble_v2', 'lightgbm_champion_v1']
+
+# Load the best model directly without re-training
+best_model = registry.get_best_model(metric="f1_score")
+predictions = best_model.predict(X_new)
+```
 
 ---
 

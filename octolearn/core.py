@@ -56,7 +56,7 @@ License:
     MIT
 
 Version:
-    0.10.0
+    0.10.1
 """
 
 import pandas as pd
@@ -555,7 +555,7 @@ class AutoML:
         self.feature_optimized_columns_ = None
         
         if self.show_progress:
-            logger.info(f"AutoML initialized (v0.10.0)")
+            logger.info(f"AutoML initialized (v0.10.1)")
             self._log_configuration()
     
     def _validate_configs(self):
@@ -1162,7 +1162,7 @@ class AutoML:
     
     def _feature_engineering(self) -> None:
         """Perform intelligent feature engineering."""
-        # 1. Feature Generation (New in v0.10.0)
+        # 1. Feature Generation (New in v0.10.1)
         # We use analyzing_interactions flag as proxy, or it should be enabled by default
         if self.profiling_config.analyze_interactions:
              try:

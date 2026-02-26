@@ -84,9 +84,9 @@ Generate predictions using the fitted champion model.
 y_pred = automl.predict(X_new)
 ```
 
-Automatically applies the same preprocessing pipeline used during training. If string class labels were used, predictions are decoded back to the original labels.
+Automatically applies the same preprocessing pipeline used during training. If string class labels were used during `fit()`, predictions are automatically decoded back to the original string labels via the fitted `target_encoder_`.
 
-**Returns:** `np.ndarray` of predicted values.
+**Returns:** `np.ndarray` of predicted values (decoded to original string labels for classification if applicable).
 
 ---
 
@@ -147,12 +147,14 @@ suggestions = automl.get_preprocessing_suggestions()
 
 #### `get_feature_importance() → dict`
 
-Get permutation-based feature importance scores.
+Get feature importance scores derived from the best trained model.
 
 ```python
 importance = automl.get_feature_importance()
 # {'age': 0.34, 'salary': 0.28, 'tenure': 0.21, ...}
 ```
+
+For tree-based models (XGBoost, LightGBM, Random Forest, GradientBoosting), uses native `feature_importances_`. For linear models (LogisticRegression, LinearRegression), uses `|coef_|`. For SVM, importance is not available.
 
 **Returns:** `dict[str, float]` mapping feature name to importance score.
 
@@ -164,10 +166,10 @@ Get actionable ML recommendations based on data analysis.
 
 ```python
 recs = automl.get_recommendations()
-# {'data_quality': ['...'], 'modeling': ['...'], 'preprocessing': ['...']}
+# {'high': ['Remove highly correlated feature X...'], 'medium': ['...'], 'informational': ['...']}
 ```
 
-**Returns:** Dict of categorized plain-English recommendations.
+**Returns:** Dict with keys `'high'`, `'medium'`, and `'informational'`, each containing a list of plain-English recommendation strings.
 
 ---
 
@@ -178,10 +180,10 @@ Get performance metrics for all trained models.
 ```python
 benchmarks = automl.get_model_benchmarks()
 for model in benchmarks:
-    print(model['model'], model.get('f1', model.get('r2')))
+    print(model['model'], model['score'], model.get('metrics', {}))
 ```
 
-**Returns:** List of dicts, each containing model name and all evaluation metrics.
+**Returns:** List of dicts, each with keys `model` (str), `score` (float), `params` (dict), `metrics` (dict), and `training_time` (float).
 
 ---
 
@@ -220,7 +222,7 @@ These are populated after calling `fit()`:
 | `trained_models_` | `dict` | All fitted estimator objects |
 | `cleaner_` | `AutoCleaner` | Fitted cleaning pipeline |
 | `cleaning_log_` | `dict` | Record of all cleaning actions |
-| `outlier_results_` | `dict` | Per-feature outlier detection results |
+| `outlier_results_` | `dict` | Outlier detection results. Structure: `{'methods': {'iqr': {col: {count, bounds, indices}}, 'isolation_forest': {overall: {...}}, 'zscore': {col: {...}}}, 'summary': {severity, total_outlier_rows, ...}, 'affected_features': {col: {recommendation, ...}}}` |
 | `interaction_results_` | `dict` | Pairwise feature interaction scores |
 | `feature_optimization_result_` | `FeatureOptimizationResult` | Joint feature+HPO search results |
 | `original_rows_` | `int` | Number of rows in the original dataset |

@@ -65,12 +65,13 @@ When you call `automl.fit(X, y)`, OctoLearn executes a **7-phase pipeline**:
 ```mermaid
 flowchart LR
     A([Raw Data]):::red --> B[Phase 1\nProfiling]:::dark
-    B --> C[Phase 2\nOutlier Detection]:::dark
+    B --> C[Phase 2\nTrain/Test Split]:::dark
     C --> D[Phase 3\nCleaning]:::dark
-    D --> E[Phase 4\nSampling & Split]:::dark
-    E --> F[Phase 5\nFeature Optimization]:::dark
-    F --> G[Phase 6\nModel Training]:::dark
-    G --> H([Champion Model]):::red
+    D --> E[Phase 4\nClean Profiling]:::dark
+    E --> F[Phase 5\nFeature Engineering\n& Outlier Detection]:::dark
+    F --> G[Phase 5.5\nFeature Optimization]:::dark
+    G --> H[Phase 6\nModel Training]:::dark
+    H --> I([Champion Model]):::red
 
     classDef red fill:#E43636,color:#F6EFD2,stroke:#E43636
     classDef dark fill:#1e1e1e,color:#E2DDB4,stroke:#E2DDB4
@@ -79,12 +80,12 @@ flowchart LR
 | Phase | What Happens |
 |:---|:---|
 | **1 · Profiling** | Infers feature types, calculates stats, identifies ID columns, leakage suspects, class imbalance |
-| **2 · Outlier Detection** | Runs IQR, Z-Score, and Isolation Forest on all numeric columns |
-| **3 · Cleaning** | Drops IDs/constants, imputes missing values, encodes categoricals, scales numerics |
-| **4 · Sampling & Split** | Stratified train/test split; applies SMOTE/ADASYN if imbalance detected |
-| **5 · Feature Optimization** | Optuna jointly searches synthetic features (interactions, ratios, polynomials) + model type + hyperparams |
-| **6 · Model Training** | Trains top models; optionally builds stacking ensemble; saves to Registry |
-| **7 · Feature Importance** | SHAP + permutation importance for interpretation |
+| **2 · Train/Test Split** | Stratified split before cleaning to prevent data leakage |
+| **3 · Cleaning** | Drops IDs/constants, imputes missing values, encodes categoricals, scales numerics; applies SMOTE/ADASYN if imbalanced |
+| **4 · Clean Profiling** | Re-profiles the cleaned data (updated stats used for downstream phases) |
+| **5 · Feature Engineering & Outlier Detection** | Synthetic feature generation (if `analyze_interactions=True`); IQR + Z-Score + Isolation Forest outlier detection |
+| **5.5 · Feature Optimization** | Optuna jointly searches synthetic feature subsets + model type + hyperparams (when `enable_feature_optimization=True`) |
+| **6 · Model Training** | Trains top models via Bayesian HPO; optionally builds stacking ensemble; saves to Registry |
 
 ---
 
@@ -183,18 +184,18 @@ automl = AutoML(modeling_config=ModelingConfig(
 
 **Available models:**
 
-| Key | Algorithm |
-|:---|:---|
-| `'xgboost'` | XGBoost Gradient Boosting |
-| `'lightgbm'` | LightGBM Gradient Boosting |
-| `'random_forest'` | Random Forest |
-| `'gradient_boosting'` | Sklearn GradientBoostingClassifier/Regressor |
-| `'extra_trees'` | ExtraTreesClassifier/Regressor |
-| `'logistic_regression'` | LogisticRegression (classification only) |
-| `'ridge'` | Ridge Regression (regression only) |
-| `'lasso'` | Lasso (regression only) |
-| `'knn'` | K-Nearest Neighbours |
-| `'svm'` | Support Vector Machine |
+| Key | Algorithm | Task |
+|:---|:---|:---|
+| `'logistic_regression'` | Logistic Regression | Classification |
+| `'random_forest'` | Random Forest | Both |
+| `'gradient_boosting'` | Sklearn GradientBoosting | Both |
+| `'xgboost'` | XGBoost | Both |
+| `'lightgbm'` | LightGBM | Both |
+| `'svm'` | Support Vector Machine | Classification |
+| `'linear_regression'` | Linear Regression | Regression |
+| `'svr'` | Support Vector Regressor | Regression |
+
+> **Note:** Classification defaults: `logistic_regression`, `random_forest`, `gradient_boosting`, `xgboost`, `lightgbm`, `svm`. Regression defaults: `linear_regression`, `random_forest`, `gradient_boosting`, `xgboost`, `lightgbm`, `svr`.
 
 ---
 
@@ -353,8 +354,8 @@ automl.cleaner_            # Fitted AutoCleaner instance
 automl.cleaning_log_       # Dict: what was dropped/imputed/encoded
 
 # Analysis results
-automl.outlier_results_    # {'col': {'iqr_outliers': N, 'zscore': N, ...}}
-automl.interaction_results_ # Pairwise interaction analysis results
+automl.outlier_results_    # {'methods': {'iqr': {col: {count, bounds, ...}}, 'isolation_forest': {...}, 'zscore': {col: {...}}}, 'summary': {severity, total_outlier_rows, ...}, 'affected_features': {col: {outlier_count, recommendation, ...}}}
+automl.interaction_results_ # Pairwise interaction analysis results (only if analyze_interactions=True)
 
 # Feature optimization
 automl.feature_optimization_result_  # FeatureOptimizationResult object
@@ -371,13 +372,13 @@ risk = automl.get_risk_score()
 suggestions = automl.get_preprocessing_suggestions()
 # [{'column': 'salary', 'suggestion': 'Apply log transform (skewness=3.2)', ...}]
 
-# Feature importance (permutation-based)
+# Feature importance (native from model: feature_importances_ for trees, coef_ for linear)
 importance = automl.get_feature_importance()
 # {'age': 0.34, 'salary': 0.28, ...}
 
 # NLP-style recommendations
 recs = automl.get_recommendations()
-# {'data_quality': ['Consider removing duplicates...'], 'modeling': [...]}
+# {'high': ['Action item ...'], 'medium': ['...'], 'informational': ['...']}
 
 # All model scores
 benchmarks = automl.get_model_benchmarks()
@@ -468,7 +469,7 @@ automl.fit(X, y)
 automl = AutoML()
 automl.fit(
     X, y,
-    models=['xgboost', 'lightgbm', 'random_forest', 'extra_trees'],
+    models=['xgboost', 'lightgbm', 'random_forest', 'gradient_boosting'],
     n_models=4,
     evaluation_metric='f1_weighted'
 )
@@ -574,7 +575,7 @@ automl.fit(X, y)
 automl = AutoML(
     modeling_config=ModelingConfig(
         evaluation_metric='r2',     # R² for regression (also: 'rmse', 'mae')
-        models_to_train=['xgboost', 'lightgbm', 'ridge', 'lasso']
+        models_to_train=['xgboost', 'lightgbm', 'linear_regression', 'random_forest']
     )
 )
 automl.fit(X, y_continuous)

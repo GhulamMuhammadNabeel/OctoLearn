@@ -184,7 +184,7 @@ AUTO_CLEAN_CONFIG = {
 # ============================================================================
 
 MODEL_TRAINING_CONFIG = {
-    """Global settings for model selection, training splits, and parallelisms."""
+    # Global settings for model selection, training splits, and parallelisms.
     'enabled': True,
     'parallel_processing': True,                        # Use parallel models
     'n_jobs': -1,                                       # -1 = all cores

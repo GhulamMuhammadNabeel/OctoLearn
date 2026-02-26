@@ -1439,7 +1439,16 @@ class AutoML:
         else:
             X_clean = self.cleaner_.transform(X_new)
         
-        return self.best_model_.predict(X_clean)
+        y_pred = self.best_model_.predict(X_clean)
+        
+        # Decode string labels back to original class names (if target was string-encoded)
+        if self.target_encoder_ is not None:
+            try:
+                y_pred = self.target_encoder_.inverse_transform(y_pred.astype(int))
+            except Exception:
+                pass  # Return numeric if decode fails (e.g. out-of-range class)
+        
+        return y_pred
     
     def generate_report(self, filename: Optional[str] = None) -> str:
         """

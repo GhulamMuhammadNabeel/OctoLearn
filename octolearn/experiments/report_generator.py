@@ -16,7 +16,7 @@ Features:
 - Page headers and footers with branding
 
 Author: OctoLearn Development Team
-Version: 0.9.0 (Redesigned)
+Version: 0.10.0 (Redesigned)
 License: MIT
 """
 

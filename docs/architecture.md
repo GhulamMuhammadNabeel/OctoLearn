@@ -99,7 +99,7 @@ OctoLearn/
 ---
 
 !!! tip "NumPy Docstring Standard"
-    Starting from version 0.9.0, OctoLearn has adopted the **NumPy Docstring Standard** across the entire codebase. Every public class and method is documented with:
+    Starting from version 0.10.0, OctoLearn has adopted the **NumPy Docstring Standard** across the entire codebase. Every public class and method is documented with:
     
     *   **Parameters**: Detailed type information and descriptions.
     *   **Returns**: Clear explanation of output types and semantics.
@@ -238,4 +238,4 @@ This script exercises all 6 phases of the pipeline across diverse datasets to en
 
 ---
 
-*OctoLearn Architecture v0.9.0 — Updated 2026-02-21*
+*OctoLearn Architecture v0.10.0 — Updated 2026-02-21*

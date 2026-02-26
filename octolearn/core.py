@@ -529,7 +529,6 @@ class AutoML:
         self.X_train_ = None
         self.X_test_ = None
         self.y_train_ = None
-        self.y_train_ = None
         self.y_test_ = None
         
         # New: Track original dataset size before sampling/cleaning
@@ -552,6 +551,8 @@ class AutoML:
         
         # Feature optimization result
         self.feature_optimization_result_ = None
+        self.feature_pool_builder_ = None
+        self.feature_optimized_columns_ = None
         
         if self.show_progress:
             logger.info(f"AutoML initialized (v0.10.0)")
@@ -1050,15 +1051,24 @@ class AutoML:
     def _clean_data(self) -> None:
         """Clean training and test data."""
         if self.preprocessing_config.auto_clean:
-            # Remove duplicates ONLY from training set
+            # Remove duplicates ONLY from training set.
+            # We are conservative here: many datasets (e.g. Titanic) have real rows that share
+            # identical feature values for multiple distinct individuals. We only remove duplicates
+            # if the absolute count is >10 AND they represent >10% of the training data,
+            # which strongly indicates data quality issues (copy-paste errors, join explosions, etc.)
+            # rather than legitimate repeated observations.
             initial_train_size = len(self.X_train_)
-            dup_mask = self.X_train_.duplicated()
-            dup_count = dup_mask.sum()
-            if dup_count > 0:
+            dup_mask = self.X_train_.duplicated(keep='first')
+            dup_count = int(dup_mask.sum())
+            dup_rate = dup_count / max(initial_train_size, 1)
+            
+            if dup_count > 10 and dup_rate > 0.10:
                 self.X_train_ = self.X_train_[~dup_mask]
                 self.y_train_ = self.y_train_[~dup_mask]
                 if self.show_progress:
-                    logger.info(f"  Removed {dup_count} duplicate rows from training set")
+                    logger.info(f"  Removed {dup_count} duplicate rows ({dup_rate:.1%}) from training set")
+            elif dup_count > 0 and self.show_progress:
+                logger.info(f"  Skipped removal of {dup_count} near-duplicate rows ({dup_rate:.1%}) — below threshold to prevent data loss")
             
             # Clean data
             try:
@@ -1254,6 +1264,11 @@ class AutoML:
             result = optimizer.optimize()
             self.feature_optimization_result_ = result
             
+            # Store the pool builder and selected features for predict-time replay
+            self.feature_pool_builder_ = optimizer.pool_builder_
+            self.feature_optimized_columns_ = [f for f in result.best_features
+                                                if f in optimizer.pool_builder_.original_columns_ + optimizer.pool_builder_.synthetic_columns_]
+            
             # Apply the optimized feature set to X_train_ and X_test_
             X_train_opt, X_test_opt = optimizer.get_optimized_data()
             self.X_train_ = X_train_opt
@@ -1273,6 +1288,8 @@ class AutoML:
         except Exception as e:
             logger.warning(f"Feature optimization failed, falling back to standard pipeline: {str(e)}")
             self.feature_optimization_result_ = None
+            self.feature_pool_builder_ = None # Clear if optimization failed
+            self.feature_optimized_columns_ = None # Clear if optimization failed
 
     def _train_models(self) -> None:
         """Train machine learning models."""
@@ -1306,7 +1323,8 @@ class AutoML:
                     early_stopping_rounds=self.optimization_config.early_stopping_rounds,
                     hyperparameter_overrides=self.optimization_config.hyperparameter_overrides,
                     baseline_score=self.optimization_config.baseline_score,
-                    n_trials=self.optimization_config.optuna_trials_per_model if self.optimization_config.use_optuna else None,
+                    # n_trials=0 (not None) disables joint Optuna; None falls through to OPTUNA_CONFIG default
+                    n_trials=self.optimization_config.optuna_trials_per_model if self.optimization_config.use_optuna else 0,
                     timeout_seconds=self.optimization_config.optuna_timeout_seconds if self.optimization_config.use_optuna else None
                 )
                 
@@ -1375,7 +1393,8 @@ class AutoML:
                     early_stopping_rounds=self.optimization_config.early_stopping_rounds,
                     hyperparameter_overrides=self.optimization_config.hyperparameter_overrides,
                     baseline_score=self.optimization_config.baseline_score,
-                    n_trials=self.optimization_config.optuna_trials_per_model if self.optimization_config.use_optuna else None,
+                    # n_trials=0 (not None) disables joint Optuna; None falls through to OPTUNA_CONFIG default
+                    n_trials=self.optimization_config.optuna_trials_per_model if self.optimization_config.use_optuna else 0,
                     timeout_seconds=self.optimization_config.optuna_timeout_seconds if self.optimization_config.use_optuna else None
                 )
                 results = trainer.train_all_models()
@@ -1438,6 +1457,20 @@ class AutoML:
             X_clean = X_new.copy()
         else:
             X_clean = self.cleaner_.transform(X_new)
+        
+        # If feature optimization was used, regenerate synthetic features and select
+        if self.feature_pool_builder_ is not None and self.feature_optimized_columns_ is not None:
+            try:
+                import numpy as _np
+                X_pool = self.feature_pool_builder_.transform(X_clean)
+                # Select only the optimized columns that exist
+                cols = [c for c in self.feature_optimized_columns_ if c in X_pool.columns]
+                X_clean = X_pool[cols].copy()
+                X_clean.replace([_np.inf, -_np.inf], _np.nan, inplace=True)
+                X_clean.fillna(X_clean.mean(numeric_only=True), inplace=True)
+                X_clean.fillna(0, inplace=True)
+            except Exception as e:
+                logger.warning(f"Feature optimization replay failed, using cleaned data: {e}")
         
         y_pred = self.best_model_.predict(X_clean)
         

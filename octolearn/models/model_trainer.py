@@ -248,7 +248,7 @@ class ModelTrainer:
             logger.info("Performing JOINT Bayesian Optimization for Model Selection & Hyperparameters")
             best_model_name, best_params = self._joint_optimize_hyperparameters(models, direction)
             
-            # Rebuild and evaluate the single BEST model
+            # ── Train the CHAMPION (Optuna-optimized) model ───────────────────
             model = self._build_model(best_model_name, best_params, force_single_thread=True)
             start_time = time.time()
             model.fit(X_train_proc, self.y_train)
@@ -283,6 +283,37 @@ class ModelTrainer:
             self.best_model_predictions = eval_results.get('predictions')
             self.best_model_probabilities = eval_results.get('probabilities')
             
+            # ── Train ALL other models with defaults so the leaderboard ────────
+            # is populated for the report's "Model Arena" comparison table.
+            remaining_models = [m for m in models if m != best_model_name]
+            for alt_model_name in remaining_models:
+                try:
+                    alt_model = self._build_model(alt_model_name, {}, force_single_thread=True)
+                    t0 = time.time()
+                    alt_model.fit(X_train_proc, self.y_train)
+                    alt_train_time = time.time() - t0
+
+                    from ..evaluation.metrics import ModelEvaluator
+                    alt_evaluator = ModelEvaluator(alt_model, X_test_proc, self.y_test, self.task_type)
+                    alt_eval = alt_evaluator.evaluate()
+                    alt_metric_val = alt_eval.get('metrics', {}).get(metric, 0.0)
+                    alt_score = float(alt_metric_val)
+
+                    self.trained_models[alt_model_name] = alt_model
+                    self.model_scores[alt_model_name] = alt_score
+                    results['trained_models'][alt_model_name] = str(alt_model)
+                    results['model_scores'][alt_model_name] = round(alt_score, 4)
+                    results['model_benchmarks'].append({
+                        'model': alt_model_name,
+                        'score': round(alt_score, 4),
+                        'params': {},
+                        'metrics': alt_eval.get('metrics', {}),
+                        'training_time': round(alt_train_time, 4)
+                    })
+                    logger.info(f"  Baseline model {alt_model_name} -> {alt_score:.4f} ({metric})")
+                except Exception as e:
+                    logger.warning(f"  Baseline training failed for {alt_model_name}: {e}")
+
         else:
             # Fallback to training all models sequentially with default params
             best_score = None

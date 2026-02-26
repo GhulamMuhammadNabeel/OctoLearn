@@ -139,9 +139,18 @@ Get automated preprocessing recommendations for your dataset.
 
 ```python
 suggestions = automl.get_preprocessing_suggestions()
+# Returns a dict with 6 sections:
+# {
+#   'missing_value_strategy': ['Impute age with mean/median.', ...],
+#   'categorical_encoding':   ['One-Hot Encode sex.', ...],
+#   'scaling_strategy':       ['Scaling required for SVM...', ...],
+#   'feature_engineering':    ['Explore feature interactions...'],
+#   'column_actions':         ['Remove identifier columns: [...]'],
+#   'risk_mitigation':        ['Apply class balancing (SMOTE)...']
+# }
 ```
 
-**Returns:** List of suggestion dicts with `column`, `suggestion`, and `severity` keys.
+**Returns:** `dict[str, list[str]]` — six categorized sections, each containing a list of actionable suggestion strings.
 
 ---
 

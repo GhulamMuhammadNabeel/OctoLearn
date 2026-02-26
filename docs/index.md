@@ -45,10 +45,14 @@ We believe the output of an AutoML run should be as much a **Decision Support To
 |:---|:---|
 | **Intelligence** | Auto-detects feature types, class imbalance, and **Data Leakage** suspects. |
 | **Resilience** | Industrial-strength cleaners handle outliers, missing values, and high-cardinality features. |
-| **Imbalanced Learning** | Native support for advanced sampling techniques like SMOTE, ADASYN, and Undersampling. |
-| **Performance** | **Feature Optimization Engine** jointly searches subsets, synthetic features, models, and hyperparameters via **Optuna**. |
+| **Imbalanced Learning** | Native support for SMOTE, ADASYN, and Undersampling to handle class imbalance. |
+| **Feature Synthesis** | Automatically generates interaction terms, ratios, polynomials, and log-transforms via the **Feature Optimization Engine**. |
+| **Performance** | Joint Optuna search over feature subsets, synthetic features, models, and hyperparameters. |
+| **Outlier Narratives** | Multi-method outlier detection (IQR, Z-score, Isolation Forest) with narrative context in the PDF report. |
+| **Interaction Analysis** | Statistical pairwise feature interaction analysis with correlation narratives. |
+| **Risk Scoring** | Data quality risk score (0–100) flagging leakage, imbalance, missingness, and skew. |
 | **Clarity** | Magazine-style PDF reports with SHAP explainability and actionable business narratives. |
-| **Reliability** | Built-in data quality risk scoring (0-100) to flag "garbage-in" scenarios. |
+| **Deployment** | Export the full Preprocessing + Best Model pipeline as a single sklearn object. |
 
 ---
 
@@ -231,6 +235,7 @@ from octolearn import (
     DataConfig,
     ProfilingConfig,
     PreprocessingConfig,
+    FeatureOptimizationConfig,
     ModelingConfig,
     OptimizationConfig,
     ReportingConfig,
@@ -249,7 +254,7 @@ automl = AutoML(
     # Profiling behavior
     profiling_config=ProfilingConfig(
         detect_outliers=True,
-        analyze_interactions=True,   # Enable interaction analysis
+        analyze_interactions=True,   # Enable pairwise interaction analysis
         generate_risk_score=True,
         calculate_feature_importance=True,
     ),
@@ -262,11 +267,24 @@ automl = AutoML(
         id_columns=["user_id"],  # Columns to remove
     ),
 
+    # Feature Synthesis & Optimization
+    feature_optimization_config=FeatureOptimizationConfig(
+        enable_feature_optimization=True,
+        n_trials=30,             # Optuna trials for the feature search
+        timeout=300,             # Seconds per feature optimization run
+        max_synthetic_features=30,   # Max synthetic features to generate
+        generate_interactions=True,  # Interaction terms (A * B)
+        generate_ratios=True,        # Ratio features (A / B)
+        generate_polynomials=True,   # Polynomial features (A^2)
+        generate_log_transforms=True,# Log-transform features
+    ),
+
     # Model training
     modeling_config=ModelingConfig(
         train_models=True,
         n_models=5,
         models_to_train=["random_forest", "xgboost", "logistic_regression"],
+        use_stacking=True,       # Build stacking ensemble from top models
     ),
 
     # Hyperparameter tuning
@@ -281,6 +299,7 @@ automl = AutoML(
         generate_report=True,
         report_detail="detailed",   # "brief" or "detailed"
         include_shap=True,
+        include_data_journey=True,
         plot_mode="simple",         # "simple" or "dashboard"
     ),
 
@@ -358,28 +377,31 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
 
 ### `AutoML` — Main Orchestrator
 
-| Method | Description |
-|--------|-------------|
-| `fit(X, y)` | Run the complete pipeline |
-| `surprise_me(task='classification')` | **Instant benchmark** with auto-data & report |
-| `predict(X_new)` | Make predictions using best model |
-| `generate_report()` | Generate PDF report |
-| `get_risk_score()` | Get data quality risk score (0-100) |
-| `get_recommendations()` | Get ML recommendations |
-| `get_feature_importance()` | Get feature importance scores |
-| `get_preprocessing_suggestions()` | Get preprocessing advice |
-| `get_model_benchmarks()` | Get all model metrics |
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `fit(X, y)` | `self` | Run the complete pipeline |
+| `surprise_me(task='classification')` | `(pdf_path, model)` | **Instant benchmark** with auto-downloaded data & report |
+| `predict(X_new)` | `np.ndarray` | Make predictions using best model |
+| `get_pipeline()` | `sklearn.Pipeline` | Export preprocessing + best model as a sklearn pipeline |
+| `generate_report()` | `str` | Generate & return path to the PDF intelligence report |
+| `get_risk_score()` | `dict` | Data quality risk score `{score, category, details}` |
+| `get_recommendations()` | `list` | Narrative ML recommendations |
+| `get_feature_importance()` | `dict` | Feature importance scores |
+| `get_preprocessing_suggestions()` | `list` | Automated preprocessing advice |
+| `get_model_benchmarks()` | `dict` | All model metrics from the Model Arena |
 
-| Attribute | Description |
-|-----------|-------------|
-| `raw_profile_` | `DatasetProfile` of raw data |
-| `clean_profile_` | `DatasetProfile` of cleaned data |
-| `X_`, `y_` | Cleaned feature matrix and target |
-| `X_train_`, `X_test_` | Train/test splits |
-| `cleaning_log_` | Dictionary of cleaning operations |
-| `outlier_results_` | Outlier detection results |
-| `trained_models_` | Dictionary of trained models |
-| `best_model_` | Best performing model |
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `raw_profile_` | `DatasetProfile` | Profile of the raw input data |
+| `clean_profile_` | `DatasetProfile` | Profile of the cleaned data |
+| `X_`, `y_` | `DataFrame`, `Series` | Cleaned feature matrix and target |
+| `X_raw_` | `DataFrame` | Raw input data (post-sampling if enabled) |
+| `X_train_`, `X_test_` | `DataFrame` | Train/test splits |
+| `cleaning_log_` | `dict` | Step-by-step cleaning operations log |
+| `outlier_results_` | `dict` | Outlier detection results per column |
+| `trained_models_` | `dict` | All trained model objects |
+| `best_model_` | `object` | Best performing model object |
+| `cleaner_` | `AutoCleaner` | Fitted cleaner (use `.transform()` on new data) |
 
 ### Configuration Dataclasses
 
@@ -448,6 +470,21 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
     | `include_shap` | `bool` | `True` | Include SHAP analysis |
     | `color_scheme` | `str` | `"light"` | Theme ('light', 'dark', 'neon') |
 
+???+ info "FeatureOptimizationConfig"
+
+    | Field | Type | Default | Description |
+    |-------|------|---------|-------------|
+    | `enable_feature_optimization` | `bool` | `True` | Enable the Optuna Feature Optimization Engine |
+    | `n_trials` | `int` | `20` | Optuna trials for joint feature + HPO search |
+    | `timeout` | `int` | `300` | Timeout (seconds) for the optimization run |
+    | `cv_folds` | `int` | `3` | Cross-validation folds during feature scoring |
+    | `max_synthetic_features` | `int` | `30` | Maximum synthetic features to generate |
+    | `min_features` | `int` | `3` | Minimum features to keep in any trial |
+    | `generate_interactions` | `bool` | `True` | Generate multiplicative interaction terms (A × B) |
+    | `generate_ratios` | `bool` | `True` | Generate ratio features (A / B) |
+    | `generate_polynomials` | `bool` | `True` | Generate polynomial features (A²) |
+    | `generate_log_transforms` | `bool` | `True` | Generate log-transformed features |
+
 ???+ info "ParallelConfig"
 
     | Field | Type | Default | Description |
@@ -455,6 +492,7 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
     | `parallel_processing` | `bool` | `True` | Enable parallelism |
     | `n_jobs` | `int` | `-1` | Number of cores (-1 = all) |
     | `backend` | `str` | `"threading"` | Joblib backend |
+    | `verbose` | `int` | `0` | Verbosity level for joblib |
     | `enable_gpu` | `bool` | `False` | Attempt hardware acceleration |
 
 ---
@@ -463,38 +501,43 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
 
 ```
 octolearn/
-├── __init__.py              # Public API exports
-├── config.py                # Centralized configuration constants
-├── core.py                  # AutoML orchestrator (main entry point)
+├── __init__.py                    # Public API exports
+├── config.py                      # Centralized configuration constants
+├── core.py                        # AutoML orchestrator (main entry point)
 │
 ├── profiling/
-│   └── data_profiler.py     # DataProfiler + DatasetProfile
+│   └── data_profiler.py           # DataProfiler + DatasetProfile
 │
 ├── preprocessing/
-│   ├── auto_cleaner.py      # AutoCleaner (impute/encode/scale)
-│   └── pipeline_builder.py  # sklearn Pipeline export
+│   ├── auto_cleaner.py            # AutoCleaner (impute / encode / scale)
+│   ├── sampler.py                 # AutoSampler (SMOTE, ADASYN, Undersample)
+│   └── pipeline_builder.py        # sklearn Pipeline export
+│
+├── optimization/
+│   └── feature_optimizer.py       # Optuna Feature Optimization Engine
 │
 ├── models/
-│   ├── model_trainer.py     # ModelTrainer + Optuna integration
-│   └── registry.py          # ModelRegistry (versioned storage)
+│   ├── model_trainer.py           # ModelTrainer + Optuna HPO
+│   └── registry.py                # ModelRegistry (versioned storage)
 │
 ├── evaluation/
-│   └── metrics.py           # ModelEvaluator (classification/regression)
+│   └── metrics.py                 # ModelEvaluator (classification / regression)
 │
 ├── experiments/
-│   ├── report_generator.py  # PDF report generation
-│   ├── plot_generator.py    # Visualization engine
-│   ├── recommendation_engine.py  # ML recommendations
-│   ├── risk_scorer.py       # Data quality risk scoring
-│   ├── outlier_detector.py  # Multi-method outlier detection
-│   ├── baseline_importance.py    # Feature importance
-│   └── preprocessing_suggester.py # Preprocessing advice
+│   ├── report_generator.py        # PDF intelligence report (ReportLab)
+│   ├── plot_generator.py          # matplotlib / seaborn visualizations
+│   ├── recommendation_engine.py   # Narrative ML recommendations
+│   ├── risk_scorer.py             # Data quality risk scoring (0–100)
+│   ├── outlier_detector.py        # Multi-method outlier detection
+│   ├── baseline_importance.py     # Permutation / SHAP feature importance
+│   └── preprocessing_suggester.py # Automated preprocessing advice
 │
 ├── feature/
-│   └── interaction_analyzer.py   # Feature interaction analysis
+│   ├── generator.py               # Synthetic Feature Generator
+│   └── interaction_analyzer.py    # Pairwise feature interaction analysis
 │
 └── utils/
-    └── helpers.py           # Logging, decorators, validation
+    └── helpers.py                 # Logging, decorators, validation
 ```
 
 ### Pipeline Flow
@@ -530,10 +573,10 @@ graph TD
     end
 
     %% Styling
-    style Start fill:#E43636,color:#F6EFD2,stroke-width:2px,stroke:#F6EFD2
-    style Reg fill:#b82b2b,color:#F6EFD2
-    style Rep fill:#b82b2b,color:#F6EFD2
-    style Profiling fill:#E2DDB4,color:#000000
+    style Start fill:#E43636,color:#F6EFD2,stroke-width:2px,stroke:#E43636
+    style Reg fill:#b82b2b,color:#F6EFD2,stroke:#b82b2b
+    style Rep fill:#b82b2b,color:#F6EFD2,stroke:#b82b2b
+    style Profiling fill:#1e1e1e,color:#E2DDB4,stroke:#E2DDB4
 ```
 
 The OctoLearn pipeline moves through sequential phases, each meticulously logged for full observability and reproducibility.

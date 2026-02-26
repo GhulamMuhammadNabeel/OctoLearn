@@ -59,7 +59,7 @@ RISK_SCORING_CONFIG = {
 # ============================================================================
 
 OUTLIER_CONFIG = {
-    """Configuration for statistical and ML-based outlier detection."""
+    # Configuration for statistical and ML-based outlier detection.
     'methods': ['iqr', 'isolation_forest', 'zscore'],  # Detection methods
     
     'iqr': {
@@ -216,7 +216,7 @@ MODEL_TRAINING_CONFIG = {
 # ============================================================================
 
 OPTUNA_CONFIG = {
-    """Configuration for hyperparameter optimization and search spaces."""
+    # Configuration for hyperparameter optimization and search spaces.
     'enabled': True,
     'study_name': 'octolearn_hpo',
     'baseline_score': None,
@@ -288,7 +288,7 @@ OPTUNA_CONFIG = {
 # ============================================================================
 
 MODEL_REGISTRY_CONFIG = {
-    """Settings for tracking and versioning models and performance artifacts."""
+    # Settings for tracking and versioning models and performance artifacts.
     'enabled': True,
     'storage': 'json',                                  # json (default, no deps), sqlite (optional), csv (readable)
     'db_path': '.octolearn/model_registry.json',       # Registry database/file
@@ -311,7 +311,7 @@ MODEL_REGISTRY_CONFIG = {
 # ============================================================================
 
 EVALUATION_CONFIG = {
-    """Metrics and cross-validation settings for model evaluation."""
+    # Metrics and cross-validation settings for model evaluation.
     'classification_metrics': [
         'accuracy',
         'precision',
@@ -339,7 +339,7 @@ EVALUATION_CONFIG = {
 # ============================================================================
 
 PARALLEL_CONFIG = {
-    """Hardware acceleration and multi-core processing settings."""
+    # Hardware acceleration and multi-core processing settings.
     'enabled': True,
     'n_jobs': -1,                                       # -1 = all cores
     'backend': 'threading',                             # threading, loky, dask
@@ -361,7 +361,7 @@ PARALLEL_CONFIG = {
 # ============================================================================
 
 REPORT_CONFIG = {
-    """Aesthetics, fonts, and section visibility for the PDF Intelligence Report."""
+    # Aesthetics, fonts, and section visibility for the PDF Intelligence Report.
     'mode': 'detailed',
     'include_sections': {
         'executive_summary': True,
@@ -392,7 +392,7 @@ REPORT_CONFIG = {
 # ============================================================================
 
 LOGGING_CONFIG = {
-    """Central logging configuration for the entire library."""
+    # Central logging configuration for the entire library.
     'enabled': True,
     'level': 'INFO',                                    # DEBUG, INFO, WARNING, ERROR
     'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -404,7 +404,7 @@ LOGGING_CONFIG = {
 # ============================================================================
 
 ERROR_CONFIG = {
-    """Fault tolerance and retry logic for the pipeline orchestration."""
+    # Fault tolerance and retry logic for the pipeline orchestration.
     'raise_on_error': False,                            # Continue on errors
     'log_errors': True,
     'max_retries': 3,                                   # Retry failed tasks

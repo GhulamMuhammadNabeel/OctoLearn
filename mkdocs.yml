@@ -28,8 +28,9 @@ theme:
 
 nav:
   - 'Home': index.md
-  - 'Architecture': architecture.md
   - 'User Guide': guide.md
+  - 'API Reference': api.md
+  - 'Architecture': architecture.md
   - 'Testing': testing.md
 
 extra_css:

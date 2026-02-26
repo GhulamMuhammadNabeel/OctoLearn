@@ -48,11 +48,11 @@ graph TD
     end
 
     %% Theme Styling
-    style A fill:#E43636,color:#F6EFD2
-    style E0 fill:#b82b2b,color:#F6EFD2
-    style E fill:#b82b2b,color:#F6EFD2
-    style H fill:#E2DDB4,color:#000000
-    style D fill:#E2DDB4,color:#000000
+    style A fill:#E43636,color:#F6EFD2,stroke:#E43636
+    style E0 fill:#b82b2b,color:#F6EFD2,stroke:#b82b2b
+    style E fill:#b82b2b,color:#F6EFD2,stroke:#b82b2b
+    style H fill:#1e1e1e,color:#E2DDB4,stroke:#E2DDB4
+    style D fill:#1e1e1e,color:#E2DDB4,stroke:#E2DDB4
 ```
 
 ### Why a Pipeline Orchestrator?

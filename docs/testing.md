@@ -140,8 +140,8 @@ Here is the visual lifecycle of how OctoLearn selects the ultimate champion:
 ```mermaid
 flowchart TD
     %% Styling
-    classDef primary fill:#E43636,stroke:#000000,stroke-width:1px,color:#FFFFFF;
-    classDef secondary fill:#E2DDB4,stroke:#000000,stroke-width:1px,color:#000000;
+    classDef primary fill:#E43636,stroke:#E43636,stroke-width:1px,color:#FFFFFF;
+    classDef secondary fill:#1e1e1e,stroke:#E2DDB4,stroke-width:1px,color:#E2DDB4;
     classDef default fill:#000000,stroke:#E2DDB4,stroke-width:1px,color:#E2DDB4;
 
     Start[Cleaned & Sampled Data]:::secondary --> Optimize{Is Optimization Enabled?}:::default

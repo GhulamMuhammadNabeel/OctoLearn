@@ -485,6 +485,27 @@ details.info {
    !important on both the foreignObject content AND SVG text paths.
    ========================================================================== */
 
+/* Enlarge diagrams and normalize text sizes to match document body */
+.md-typeset .mermaid {
+    text-align: center;
+    margin: 2em 0;
+}
+
+.md-typeset .mermaid svg {
+    max-width: 100% !important;
+    width: 90% !important;     /* Force diagrams to span most of the page width */
+    height: auto !important;
+}
+
+.md-typeset .mermaid text,
+.md-typeset .mermaid .label,
+.md-typeset .mermaid .nodeLabel,
+.md-typeset .mermaid .edgeLabel,
+pre.mermaid foreignObject>div {
+    font-size: 16px !important;    /* Match standard readable text size */
+    line-height: 1.4 !important;
+}
+
 /* SVG native text (edge labels, subgraph titles, state labels) */
 pre.mermaid svg text,
 pre.mermaid svg tspan,

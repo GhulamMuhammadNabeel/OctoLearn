@@ -76,6 +76,19 @@ automl.fit(
 
 ---
 
+#### `estimate_time(X) → str`
+
+Get a heuristic ETA for the pipeline execution based on dataset dimensions, hardware, and configuration.
+
+```python
+eta = automl.estimate_time(X)
+print(f"Pipeline will take approx: {eta}")
+```
+
+**Returns:** Human-readable time string (e.g., "~45 seconds", "2-3 minutes").
+
+---
+
 #### `predict(X_new) → np.ndarray`
 
 Generate predictions using the fitted champion model.
@@ -107,16 +120,17 @@ pdf_path = automl.generate_report(filename='my_report.pdf')
 
 ---
 
-#### `get_pipeline() → sklearn.pipeline.Pipeline`
+#### `export_pipeline_code(filepath=None) → str`
 
-Export a standalone scikit-learn pipeline (preprocessing + model).
+Export the optimal pipeline as a standalone, heavily-commented Python script.
 
 ```python
-pipeline = automl.get_pipeline()
-pipeline.predict(X_new)   # Standard sklearn interface — no OctoLearn needed
+script = automl.export_pipeline_code("best_pipeline.py")
 ```
 
-**Returns:** `sklearn.pipeline.Pipeline` object.
+Generates a standalone `scikit-learn` script that replicates the exact cleaning, factorizations, scaling, target encoding, and optimal hyperparameters discovered by OctoLearn.
+
+**Returns:** The raw Python code string.
 
 ---
 

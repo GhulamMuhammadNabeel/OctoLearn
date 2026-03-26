@@ -215,6 +215,15 @@ y_final = automl.y_
 clean_data = automl.cleaner_.transform(new_df)
 ```
 
+### Exporting Pipeline Code to Standalone Scripts
+Need to deploy the optimal model without the OctoLearn dependency overhead? You can extract the exact hyperparameters and preprocessing logic as a fully annotated standalone `scikit-learn` script.
+
+```python
+# Generates 'best_pipeline.py' replicating the sequence
+# (Imputation -> Factorization -> Scaling -> Target Encoding -> Model)
+automl.export_pipeline_code("best_pipeline.py")
+```
+
 ---
 
 ### Full Configuration Control
@@ -356,7 +365,9 @@ AutoML(modeling_config=ModelingConfig(train_models=False))
 | Method | Description |
 |--------|-------------|
 | `fit(X, y)` | Run the complete pipeline |
-| `predict(X_new)` | Make predictions using best model |
+| `estimate_time(X)` | Get heuristic ETA for pipeline execution |
+| `predict(X_new)` | Make predictions using best model (applies same transformations natively) |
+| `export_pipeline_code(filepath)` | Export optimal pipeline to a Python script |
 | `generate_report()` | Generate PDF report |
 | `get_risk_score()` | Get data quality risk score (0-100) |
 | `get_recommendations()` | Get ML recommendations |

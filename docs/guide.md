@@ -384,31 +384,28 @@ recs = automl.get_recommendations()
 benchmarks = automl.get_model_benchmarks()
 # [{'model': 'XGBoost', 'f1': 0.94, 'accuracy': 0.96, ...}, ...]
 
-# Production-ready sklearn pipeline
-pipeline = automl.get_pipeline()
-# sklearn.pipeline.Pipeline with preprocessing + best model
-pipeline.predict(X_new)  # Standard sklearn interface
+# Pipeline ETA estimation
+eta = automl.estimate_time(X)
+
+# Production-ready scikit-learn pipeline script
+automl.export_pipeline_code("best_pipeline.py")
+# The exported file uses NO OctoLearn dependencies at inference time!
 ```
 
 ---
 
 ## 7. Production Deployment
 
-### Method 1: The OctoLearn Pipeline (Recommended)
+### Method 1: Pipeline Code Export (Recommended)
 
 ```python
 automl.fit(X_train, y_train)
 
-# Export a standard sklearn Pipeline — no OctoLearn dependency at inference time
-pipeline = automl.get_pipeline()
+# Export a standalone script replicating the exact pipeline
+automl.export_pipeline_code('best_pipeline.py')
 
-import joblib
-joblib.dump(pipeline, 'model.pkl')
-
-# At inference time (no OctoLearn needed):
-import joblib
-pipeline = joblib.load('model.pkl')
-predictions = pipeline.predict(X_new)
+# This script can be run entirely independently of OctoLearn:
+# $ python best_pipeline.py
 ```
 
 ### Method 2: Direct Model Access

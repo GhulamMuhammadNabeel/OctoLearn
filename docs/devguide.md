@@ -103,9 +103,10 @@ classDiagram
         +reporting_config: ReportingConfig
         +parallel_config: ParallelConfig
         +fit(X, y, **overrides)
+        +estimate_time(X)
         +predict(X_new)
         +generate_report()
-        +get_pipeline()
+        +export_pipeline_code(filepath)
     }
 
     class DataConfig {

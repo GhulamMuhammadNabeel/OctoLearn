@@ -168,7 +168,7 @@ OctoLearn/
 ---
 
 !!! tip "NumPy Docstring Standard"
-    Starting from version 0.10.1, OctoLearn has adopted the **NumPy Docstring Standard** across the entire codebase. Every public class and method is documented with:
+    Starting from version 0.10.2, OctoLearn has adopted the **NumPy Docstring Standard** across the entire codebase. Every public class and method is documented with:
     
     *   **Parameters**: Detailed type information and descriptions.
     *   **Returns**: Clear explanation of output types and semantics.

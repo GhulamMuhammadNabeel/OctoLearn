@@ -201,6 +201,33 @@ automl.fit(X, y)
 
 ---
 
+## 6.5 Distributed Cluster Computing (Dask & Ray)
+
+For extreme enterprise workloads spanning massive datasets, a single machine's CPU cores may not be enough. Because OctoLearn's orchestrator natively routes parallelization through `joblib`, it fully supports seamless execution across distributed compute clusters (like **Dask** or **Ray**) out of the box!
+
+To run your Optuna trials and model sweeps across hundreds of remote worker nodes, simply initialize your cluster client and pass the backend type to OctoLearn:
+
+```python
+from dask.distributed import Client
+from octolearn import AutoML, ParallelConfig
+
+# 1. Connect to your distributed computing cluster
+client = Client("tcp://your-dask-scheduler:8786")
+
+# 2. Tell OctoLearn to use the remote Dask backend
+automl = AutoML(
+    parallel_config=ParallelConfig(
+        n_jobs=-1,        # Distribute across all cluster cores
+        backend="dask"    # Route workloads via Dask
+    )
+)
+
+# 3. Fit! OctoLearn will automatically swarm the cluster network.
+automl.fit(X, y)
+```
+
+---
+
 ## 7. Understanding the Pipeline Architecture
 
 Ever wonder what `automl.fit(X, y)` is actually doing behind the scenes? It executes a strict 7-phase flow:

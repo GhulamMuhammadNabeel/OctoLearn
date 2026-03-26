@@ -392,7 +392,9 @@ class ParallelConfig:
     n_jobs : int, default=-1
         The number of worker threads/processes. -1 uses all available CPU cores.
     backend : str, default='threading'
-        The parallelization engine ('threading', 'loky', or 'mulitprocessing').
+        The parallelization engine. Built-in defaults include 'threading', 'loky', 
+        or 'multiprocessing'. If you have a distributed cluster, you can also pass 
+        external third-party joblib backends like 'dask' or 'ray'.
     verbose : int, default=0
         Logging verbosity for parallel workers.
     enable_gpu : bool, default=False
@@ -400,7 +402,11 @@ class ParallelConfig:
 
     Examples
     --------
-    >>> config = ParallelConfig(n_jobs=4, enable_gpu=True)
+    >>> # Local multicore processing
+    >>> config = ParallelConfig(n_jobs=-1, backend='loky', enable_gpu=True)
+    
+    >>> # Distributed cluster compute (Assuming Dask Client is initialized)
+    >>> config = ParallelConfig(n_jobs=-1, backend='dask')
     """
     parallel_processing: bool = True
     n_jobs: int = -1
@@ -1499,21 +1505,35 @@ class AutoML:
     
     def export_pipeline_code(self, filepath: Optional[str] = None) -> str:
         """
-        Exports the optimal pipeline trained by OctoLearn as a standalone Python script.
+        Export the trained optimal AutoML pipeline as a standalone scikit-learn script.
         
-        This translates the automated cleaning, encoding, sampling, and optimized model 
-        architecture with its tuned hyperparameters into plain, readable scikit-learn code.
-        
+        To prevent ecosystem lock-in, this method extracts the entire data journey—
+        including identical preprocessing strategies (imputation, encoding, scaling, 
+        selected features) and the champion model's exact hyperparameter configuration—
+        into a zero-dependency, highly readable Python script.
+
         Parameters
         ----------
         filepath : str, optional
-            Path to save the generated Python script (e.g. 'best_pipeline.py' or 'best_pipeline.txt').
-            If None, the code string is returned but not saved to disk.
+            The destination path to save the generated Python script (e.g., 
+            'best_pipeline.py' or 'octolearn_pipeline.txt'). If None, the 
+            pipeline script is returned as a string but not saved to disk.
             
         Returns
         -------
         pipeline_code : str
-            The raw Python code string representing the pipeline.
+            The raw Python code string representing the production-ready pipeline.
+
+        Raises
+        ------
+        ValueError
+            If invoked before the `.fit()` method has successfully trained a champion model.
+
+        Examples
+        --------
+        >>> automl = AutoML()
+        >>> automl.fit(X, y)
+        >>> automl.export_pipeline_code("app/deploy_model.py")
         """
         if self.best_model_ is None:
             raise ValueError("No trained model available. Run fit() first.")
@@ -1689,11 +1709,29 @@ class AutoML:
     
     def estimate_time(self, X: pd.DataFrame) -> str:
         """
-        Public method to get a heuristic estimate of how long the pipeline
-        will take to run on this dataset.
-        
-        Returns:
-            str: Human readable ETA string.
+        Calculate a heuristic estimate of the AutoML pipeline's total execution time.
+
+        This method analyzes the dimensions of the input dataset alongside the current
+        configurations (e.g., optimization iterations, feature engineering complexity,
+        and parallel backend details) to predict the wall-clock time required for `.fit()`.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The feature matrix intended for training. The total shape is used
+            to calculate the computational complexity baseline.
+
+        Returns
+        -------
+        eta : str
+            A human-readable string indicating the estimated time (e.g., "~ 2 min 45 sec").
+
+        Examples
+        --------
+        >>> automl = AutoML()
+        >>> eta = automl.estimate_time(X)
+        >>> print(eta)
+        '~ 45 sec'
         """
         from .utils.time_estimator import TimeEstimator
         estimator = TimeEstimator(

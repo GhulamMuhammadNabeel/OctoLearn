@@ -7,7 +7,7 @@ Welcome to the OctoLearn Developer Guide. This document provides module-by-modul
 ## Module Architecture
 
 ```mermaid
-graph TD
+flowchart LR
     subgraph "Entry Point"
         Core["core.py<br/>AutoML Orchestrator"]
         Config["config.py<br/>Global Constants"]
@@ -93,6 +93,7 @@ All behavior is controlled through 8 `@dataclass` config objects passed to the `
 
 ```mermaid
 classDiagram
+    direction LR
     class AutoML {
         +data_config: DataConfig
         +profiling_config: ProfilingConfig

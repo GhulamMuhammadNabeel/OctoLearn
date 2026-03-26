@@ -63,7 +63,7 @@ That's it. OctoLearn handles everything in between.
 When you call `automl.fit(X, y)`, OctoLearn executes a **7-phase pipeline**:
 
 ```mermaid
-flowchart LR
+flowchart TD
     A([Raw Data]):::red --> B[Phase 1\nProfiling]:::dark
     B --> C[Phase 2\nTrain/Test Split]:::dark
     C --> D[Phase 3\nCleaning]:::dark

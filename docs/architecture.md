@@ -12,52 +12,102 @@ OctoLearn follows a **Pipeline Orchestration** pattern. The central `AutoML` cla
 
 ```mermaid
 graph TD
-    A[Data Ingestion] --> B{Profiling & Health};
-    B -->|High Risk| C[Risk Scoring & Alerts];
-    B -->|Normal| D[Preprocessing Orchestrator];
-    C --> D;
-    
-    subgraph "Preprocessing Orchestrator"
-    D --> D1[ID & Constant Drops];
-    D1 --> D2[Missing Value Imputation];
-    D2 --> D3[Categorical Encoding];
-    D3 --> D4[Feature Engineering];
-    D4 --> D4a[Imbalanced Sampling];
-    D4a --> D5[Scaling & Normalization];
-    end
-    
-    D5 --> E0[Feature Optimization Engine];
-    E0 --> E[Model Arena];
-    
-    subgraph "Model Arena"
-    E --> E1[XGBoost];
-    E --> E2[LightGBM];
-    E --> E3[Random Forest];
-    E --> E4[Logistic Regression];
-    E --> E5[Stacking Ensemble];
-    end
-    
-    E1 & E2 & E3 & E4 & E5 --> F[Model Evaluation];
-    F --> G[Comparison & Ranking];
-    G --> H[Artifact Generation];
-    
-    subgraph "Reporting"
-    H --> H1[PDF Intelligence Report];
-    H --> H2[Model Registry Storage];
-    H --> H3[SHAP Interpretation];
+    A["Raw Dataset"]:::red --> B["DataProfiler<br/><i>Type inference, quality scoring,<br/>leakage detection</i>"]:::dark
+    B --> |"DatasetProfile"| C["RiskScorer<br/><i>Score: 0-100</i>"]:::dark
+    B --> |"DatasetProfile"| D["PreprocessingSuggester"]:::dark
+    B --> S["Train/Test Split<br/><i>Stratified, leakage-safe</i>"]:::dark
+
+    S --> CL["AutoCleaner<br/><i>Impute, encode, scale</i>"]:::dark
+
+    subgraph "Cleaning Pipeline"
+        CL --> CL1["Drop IDs & Constants"]:::dark
+        CL1 --> CL2["Impute Missing Values"]:::dark
+        CL2 --> CL3["Encode Categoricals"]:::dark
+        CL3 --> CL4["Scale Numerics"]:::dark
     end
 
-    %% Theme Styling
-    style A fill:#E43636,color:#F6EFD2,stroke:#E43636
-    style E0 fill:#b82b2b,color:#F6EFD2,stroke:#b82b2b
-    style E fill:#b82b2b,color:#F6EFD2,stroke:#b82b2b
-    style H fill:#1e1e1e,color:#E2DDB4,stroke:#E2DDB4
-    style D fill:#1e1e1e,color:#E2DDB4,stroke:#E2DDB4
+    CL4 --> SA["AutoSampler<br/><i>SMOTE / ADASYN / Undersample</i>"]:::dark
+    SA --> OD["OutlierDetector<br/><i>IQR + Z-Score + Isolation Forest</i>"]:::dark
+
+    OD --> FO["Feature Optimization Engine<br/><i>Optuna joint search:<br/>features × model × params</i>"]:::red
+    FO --> |"FeatureOptimizationResult"| MT
+
+    subgraph "Model Arena"
+        MT["ModelTrainer"]:::red
+        MT --> M1["XGBoost"]:::dark
+        MT --> M2["LightGBM"]:::dark
+        MT --> M3["Random Forest"]:::dark
+        MT --> M4["Gradient Boosting"]:::dark
+        MT --> M5["Stacking Ensemble"]:::dark
+    end
+
+    M1 & M2 & M3 & M4 & M5 --> EV["ModelEvaluator<br/><i>Accuracy, F1, ROC-AUC, RMSE</i>"]:::dark
+    EV --> REG["ModelRegistry<br/><i>Versioned .pkl storage</i>"]:::dark
+    EV --> REP["ReportGenerator<br/><i>PDF Intelligence Report</i>"]:::red
+
+    classDef red fill:#E43636,color:#F6EFD2,stroke:#E43636
+    classDef dark fill:#1e1e1e,color:#E2DDB4,stroke:#E2DDB4
 ```
 
-### Why a Pipeline Orchestrator?
+### Class Interaction Map
 
-The orchestrator pattern keeps each component **single-responsibility** and **independently testable**. You can swap out the cleaner, trainer, or report generator without touching the others. It also makes the execution order explicit and auditable.
+```mermaid
+graph LR
+    subgraph "core.py"
+        AutoML
+    end
+
+    subgraph "profiling/"
+        DP["DataProfiler"]
+        DSP["DatasetProfile"]
+    end
+
+    subgraph "preprocessing/"
+        AC["AutoCleaner"]
+        AS["AutoSampler"]
+        PB["PipelineBuilder"]
+    end
+
+    subgraph "optimization/"
+        FO["FeatureOptimizer"]
+        FPB["_FeaturePoolBuilder"]
+        FOR["FeatureOptimizationResult"]
+    end
+
+    subgraph "models/"
+        MT["ModelTrainer"]
+        MR["ModelRegistry"]
+    end
+
+    subgraph "evaluation/"
+        ME["ModelEvaluator"]
+    end
+
+    subgraph "experiments/"
+        RG["ReportGenerator"]
+        PG["PlotGenerator"]
+        RS["RiskScorer"]
+        OD["OutlierDetector"]
+        RE["RecommendationEngine"]
+    end
+
+    AutoML --> DP
+    DP --> DSP
+    AutoML --> AC
+    AutoML --> AS
+    AutoML --> FO
+    FO --> FPB
+    FO --> FOR
+    AutoML --> MT
+    MT --> ME
+    MT --> MR
+    AutoML --> RG
+    RG --> PG
+    AutoML --> RS
+    AutoML --> OD
+    AutoML --> RE
+    AutoML --> PB
+```
 
 ---
 
@@ -69,31 +119,50 @@ OctoLearn/
 │   ├── core.py                    # AutoML orchestrator + config dataclasses
 │   ├── config.py                  # Global constants (Optuna, model registry)
 │   ├── profiling/
-│   │   └── data_profiler.py       # Statistical analysis → DatasetProfile
+│   │   ├── data_profiler.py       # Statistical analysis → DatasetProfile
+│   │   └── README.md              # Module documentation
 │   ├── preprocessing/
 │   │   ├── auto_cleaner.py        # Imputation, encoding, scaling
-│   │   └── sampler.py             # AutoSampler (SMOTE, Undersample)
+│   │   ├── sampler.py             # AutoSampler (SMOTE, Undersample)
+│   │   ├── pipeline_builder.py    # sklearn Pipeline export
+│   │   └── README.md              # Module documentation
 │   ├── optimization/
-│   │   └── feature_optimizer.py   # Optuna Feature Optimization Engine
+│   │   ├── feature_optimizer.py   # Optuna Feature Optimization Engine
+│   │   └── README.md              # Module documentation
 │   ├── models/
 │   │   ├── model_trainer.py       # Multi-model training + Optuna
-│   │   └── registry.py            # Model versioning and persistence
+│   │   ├── registry.py            # Model versioning and persistence
+│   │   └── README.md              # Module documentation
 │   ├── experiments/
 │   │   ├── report_generator.py    # PDF report (ReportLab)
 │   │   ├── plot_generator.py      # matplotlib/seaborn visualizations
-│   │   └── recommendation_engine.py # Narrative Summary Engine
+│   │   ├── recommendation_engine.py # Narrative Summary Engine
+│   │   ├── risk_scorer.py         # Data quality risk scoring (0–100)
+│   │   ├── outlier_detector.py    # Multi-method outlier detection
+│   │   ├── baseline_importance.py # Permutation / SHAP feature importance
+│   │   ├── preprocessing_suggester.py # Automated preprocessing advice
+│   │   └── README.md              # Module documentation
 │   ├── evaluation/
-│   │   └── metrics.py             # Scoring functions
+│   │   ├── metrics.py             # Scoring functions
+│   │   └── README.md              # Module documentation
+│   ├── feature/
+│   │   ├── generator.py           # Synthetic Feature Generator
+│   │   ├── interaction_analyzer.py # Pairwise feature interaction analysis
+│   │   └── README.md              # Module documentation
 │   ├── utils/
-│   │   └── helpers.py             # Logging, utilities
+│   │   ├── helpers.py             # Logging, utilities
+│   │   └── README.md              # Module documentation
 │   ├── fonts/                     # ShantellSans TTF font files
 │   └── images/                    # logo.png
-├── tests/
-│   └── test_complete_pipeline.py  # Integration test suite
-├── ARCHITECTURE.md                # This file
-├── README.md                      # High-level overview
-├── guide.md                       # User manual & cookbook
-└── testing.md                     # Benchmarking & QA protocols
+├── docs/                          # MkDocs documentation source
+│   ├── index.md                   # Home page
+│   ├── guide.md                   # User Guide
+│   ├── api.md                     # API Reference
+│   ├── architecture.md            # This file
+│   ├── devguide.md                # Developer Guide (module deep-dives)
+│   └── testing.md                 # Benchmarking & QA protocols
+├── tests/                         # pytest test suite
+└── mkdocs.yml                     # MkDocs configuration
 ```
 
 ---
@@ -238,4 +307,4 @@ This script exercises all 6 phases of the pipeline across diverse datasets to en
 
 ---
 
-*OctoLearn Architecture v0.10.1 — Updated 2026-02-21*
+*OctoLearn Architecture v0.11.0 — Updated 2026-03-25*

@@ -31,6 +31,7 @@ nav:
   - 'User Guide': guide.md
   - 'API Reference': api.md
   - 'Architecture': architecture.md
+  - 'Dev Guide': devguide.md
   - 'Testing': testing.md
 
 extra_css:

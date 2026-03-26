@@ -224,7 +224,7 @@ OPTUNA_CONFIG = {
     'optimization': {
         'n_trials': 20,                                 # Number of trials (reduced for speed)
         'n_jobs': 1,                                    # Sequential trials (avoids CPU oversubscription on Windows)
-        'timeout': 120,                                 # 2 min per-model timeout
+        'timeout': 300,                                 # 5 min per-model timeout
         'sampler': 'TPESampler',                        # Sampler type
     },
     

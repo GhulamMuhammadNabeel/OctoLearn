@@ -1675,9 +1675,16 @@ class ReportGenerator:
             summary = self.outlier_results.get('summary', {})
             outlier_data = [['Detection Method', 'Outliers Found']]
             for method, count in summary.items():
+                if isinstance(count, list):
+                    count_str = f"{len(count)} features" if len(count) > 10 else ", ".join(map(str, count))
+                elif isinstance(count, str) and len(count) > 100:
+                    count_str = count[:97] + "..."
+                else:
+                    count_str = str(count)
+                    
                 outlier_data.append([
                     Paragraph(str(method).replace('_', ' ').title(), self.styles['TableCell']),
-                    Paragraph(str(count), ParagraphStyle('OC', parent=self.styles['TableCell'], alignment=TA_CENTER)),
+                    Paragraph(count_str, ParagraphStyle('OC', parent=self.styles['TableCell'], alignment=TA_CENTER)),
                 ])
             if len(outlier_data) > 1:
                 ot = self._styled_table(outlier_data, [3.5 * inch, 2.5 * inch])

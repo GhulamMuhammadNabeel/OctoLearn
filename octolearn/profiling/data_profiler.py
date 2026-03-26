@@ -227,27 +227,42 @@ class DataProfiler:
         target_name = target.name if target is not None else None
 
         if target is not None:
-            if pd.api.types.is_numeric_dtype(target):
-                for col in numeric_cols:
-                    if target_name and col == target_name:
-                        continue
-                    try:
-                        # Safe conversion for correlation
-                        series = df[col]
-                        if not pd.api.types.is_numeric_dtype(series):
-                             series = pd.to_numeric(series, errors='coerce')
-                        
-                        corr = series.corr(target)
-                        if corr is not None and abs(corr) > 0.95:
-                            leakage_suspects.append(col)
-                    except Exception:
-                        pass
-            # Name-based heuristic
-            for col in df.columns:
-                if target_name and target_name.lower() in col.lower() and col != target_name:
-                    # Double check equality to be safe
+            # Safely create numeric target for correlation checks
+            if not pd.api.types.is_numeric_dtype(target):
+                target_numeric = pd.Series(pd.factorize(target)[0], index=target.index)
+            else:
+                target_numeric = target
+                
+            for col in numeric_cols:
+                if target_name and col == target_name:
+                    continue
+                try:
+                    series = df[col]
+                    if not pd.api.types.is_numeric_dtype(series):
+                         series = pd.to_numeric(series, errors='coerce')
+                    
+                    corr = series.corr(target_numeric)
+                    if corr is not None and abs(corr) > 0.95:
+                        leakage_suspects.append(col)
+                except Exception:
+                    pass
+            
+            # Name-based heuristic (Safeguarded against short target names)
+            if target_name:
+                tgt_lower = target_name.lower()
+                for col in df.columns:
                     if col == target_name: continue
-                    leakage_suspects.append(col)
+                    col_lower = col.lower()
+                    
+                    if len(tgt_lower) > 3 and tgt_lower in col_lower:
+                        leakage_suspects.append(col)
+                    elif len(tgt_lower) <= 3:
+                        # For short target names like 'y', 'is', 'buy' - demand exact word matching
+                        import re
+                        tokens = re.split(r'[_ -]', col_lower)
+                        if tgt_lower in tokens:
+                            leakage_suspects.append(col)
+                            
             leakage_suspects = list(set(leakage_suspects))
 
         # ----------------------------------------------------

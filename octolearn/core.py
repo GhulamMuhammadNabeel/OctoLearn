@@ -56,7 +56,7 @@ License:
     MIT
 
 Version:
-    0.10.2
+    0.10.3
 """
 
 import pandas as pd
@@ -555,7 +555,7 @@ class AutoML:
         self.feature_optimized_columns_ = None
         
         if self.show_progress:
-            logger.info(f"AutoML initialized (v0.10.2)")
+            logger.info(f"AutoML initialized (v0.10.3)")
             self._log_configuration()
     
     def _validate_configs(self):
@@ -866,7 +866,15 @@ class AutoML:
                 f"Converting to strings for compatibility."
             )
             X.columns = [str(col) for col in X.columns]
-        
+            
+        # Target leakage prevention: User accidentally passed y inside X
+        if y.name and str(y.name) in X.columns:
+            logger.warning(
+                f"Target block detected! Column '{y.name}' found inside feature matrix X. "
+                f"Automatically dropping it to prevent 100% target leakage."
+            )
+            X.drop(columns=[str(y.name)], inplace=True)
+            
         # All-NaN column detection
         all_nan_cols = X.columns[X.isnull().all()].tolist()
         if all_nan_cols:
@@ -978,7 +986,24 @@ class AutoML:
         # Since we already sampled globally if needed, we pass the (potentially sampled) data
         self._profile_raw_data(X, y)
         
-        # PHASE 2: Train/test split (BEFORE cleaning to prevent leakage)
+        # PHASE 1.5: Global Duplicate Removal (Anti-Leakage)
+        if self.preprocessing_config.auto_clean:
+            # We must drop true duplicate observations (X and y identical) BEFORE splitting.
+            # Otherwise, identical twins split into Train and Test will cause catastrophic target leakage.
+            combined = pd.concat([X, y], axis=1)
+            dup_mask = combined.duplicated(keep='first')
+            dup_count = int(dup_mask.sum())
+            dup_rate = dup_count / max(len(X), 1)
+            
+            if dup_count > 10 and dup_rate > 0.05:
+                X = X[~dup_mask].copy()
+                y = y[~dup_mask].copy()
+                if self.show_progress:
+                    logger.info(f"  Removed {dup_count} global duplicate rows ({dup_rate:.1%}) to prevent train-test leakage")
+            elif dup_count > 0 and self.show_progress:
+                logger.info(f"  Skipped removal of {dup_count} duplicate rows ({dup_rate:.1%}) — below threshold")
+
+        # PHASE 2: Train/test split (BEFORE processing to prevent leakage)
         if self.show_progress:
             logger.info("PHASE 2: Train/test split...")
         self._split_data(X, y)
@@ -1063,25 +1088,6 @@ class AutoML:
     def _clean_data(self) -> None:
         """Clean training and test data."""
         if self.preprocessing_config.auto_clean:
-            # Remove duplicates ONLY from training set.
-            # We are conservative here: many datasets (e.g. Titanic) have real rows that share
-            # identical feature values for multiple distinct individuals. We only remove duplicates
-            # if the absolute count is >10 AND they represent >10% of the training data,
-            # which strongly indicates data quality issues (copy-paste errors, join explosions, etc.)
-            # rather than legitimate repeated observations.
-            initial_train_size = len(self.X_train_)
-            dup_mask = self.X_train_.duplicated(keep='first')
-            dup_count = int(dup_mask.sum())
-            dup_rate = dup_count / max(initial_train_size, 1)
-            
-            if dup_count > 10 and dup_rate > 0.10:
-                self.X_train_ = self.X_train_[~dup_mask]
-                self.y_train_ = self.y_train_[~dup_mask]
-                if self.show_progress:
-                    logger.info(f"  Removed {dup_count} duplicate rows ({dup_rate:.1%}) from training set")
-            elif dup_count > 0 and self.show_progress:
-                logger.info(f"  Skipped removal of {dup_count} near-duplicate rows ({dup_rate:.1%}) — below threshold to prevent data loss")
-            
             # Clean data
             try:
                 self.cleaner_ = AutoCleaner(
@@ -1099,10 +1105,6 @@ class AutoML:
                 
                 if self.show_progress:
                     logger.info("  Data cleaning complete [OK]")
-                
-                # Manually inject duplicate removal stats since it was done outside AutoCleaner
-                if self.cleaning_log_:
-                    self.cleaning_log_['duplicates_removed'] = int(dup_count)
                     
             except Exception as e:
                 logger.error(f"Data cleaning failed: {str(e)}")
@@ -1174,7 +1176,7 @@ class AutoML:
     
     def _feature_engineering(self) -> None:
         """Perform intelligent feature engineering."""
-        # 1. Feature Generation (New in v0.10.2)
+        # 1. Feature Generation (New in v0.10.3)
         # We use analyzing_interactions flag as proxy, or it should be enabled by default
         if self.profiling_config.analyze_interactions:
              try:

@@ -103,6 +103,7 @@ class AutoCleaner:
         self.low_variance_columns_removed_ = []
         self.constant_columns_removed_ = []
         self.redundant_columns_removed_ = []  # New: High correlation
+        self.leakage_suspects_removed_ = []   # New: Leakage suspects dropped
         self.output_columns_ = None  # final column list after transform
         
         # Internal state
@@ -243,6 +244,16 @@ class AutoCleaner:
                 X = X.drop(columns=to_drop)
                 self.redundant_columns_removed_ = to_drop
                 logger.info(f"Removed redundant redundant features: {to_drop}")
+
+        # Remove Target Leakage Suspects (Detected during profiling)
+        leakage_cols = []
+        if self.profile and getattr(self.profile, 'leakage_suspects', None):
+            leakage_cols = [c for c in self.profile.leakage_suspects if c in X.columns]
+        
+        if leakage_cols:
+            X = X.drop(columns=leakage_cols, errors='ignore')
+            self.leakage_suspects_removed_ = leakage_cols
+            logger.warning(f"CRITICAL: Dropped target leakage suspects to prevent overfitting: {leakage_cols}")
 
         # ===== STEP 2: TEMPORAL FEATURE EXTRACTION =====
         date_cols = []
@@ -476,6 +487,9 @@ class AutoCleaner:
         if getattr(self, 'redundant_columns_removed_', None):
             X = X.drop(columns=[c for c in self.redundant_columns_removed_ if c in X.columns],
                       errors='ignore')
+        if getattr(self, 'leakage_suspects_removed_', None):
+            X = X.drop(columns=[c for c in self.leakage_suspects_removed_ if c in X.columns],
+                      errors='ignore')
 
         # Handle infinite values
         X = X.replace([np.inf, -np.inf], np.nan)
@@ -597,6 +611,7 @@ class AutoCleaner:
             'id_columns_removed': self.removed_id_columns_,
             'constant_columns_removed': self.constant_columns_removed_,
             'low_variance_columns_removed': self.low_variance_columns_removed_,
+            'leakage_suspects_removed': self.leakage_suspects_removed_,
             'numeric_imputer': type(self.numeric_imputer_).__name__ if self.numeric_imputer_ else None,
             'categorical_imputer': type(self.categorical_imputer_).__name__ if self.categorical_imputer_ else None,
             'ordinal_encoder': type(self.ordinal_encoder_).__name__ if self.ordinal_encoder_ else None,
@@ -614,6 +629,7 @@ class AutoCleaner:
             f"\nID columns removed: {self.removed_id_columns_ or 'None'}",
             f"Constant columns removed: {self.constant_columns_removed_ or 'None'}",
             f"Low variance columns removed: {self.low_variance_columns_removed_ or 'None'}",
+            f"Leakage suspects removed: {self.leakage_suspects_removed_ or 'None'}",
             f"\nNumeric imputer: {type(self.numeric_imputer_).__name__ if self.numeric_imputer_ else 'None'}",
             f"Categorical imputer: {type(self.categorical_imputer_).__name__ if self.categorical_imputer_ else 'None'}",
             f"Ordinal encoder: {type(self.ordinal_encoder_).__name__ if self.ordinal_encoder_ else 'None'}",

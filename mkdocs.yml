@@ -32,7 +32,6 @@ nav:
   - 'API Reference': api.md
   - 'Architecture': architecture.md
   - 'Dev Guide': devguide.md
-  - 'Testing': testing.md
 
 extra_css:
   - assets/stylesheets/extra.css
